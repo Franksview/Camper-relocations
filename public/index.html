@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camper Relocations — Cheap Campervan Deals Across Europe</title>
+  <meta name="description" content="Find €1/day campervan and motorhome relocation deals across Europe. Compare deals from Imoova, Roadsurfer, Indie Campers and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0c0f1a;
+      --surface: #141829;
+      --surface2: #1a1f36;
+      --border: #252b48;
+      --border-light: #323966;
+      --text: #e2e8f0;
+      --text-dim: #7c83a6;
+      --text-muted: #4a5178;
+      --accent: #5b6cf7;
+      --accent-light: #8b96ff;
+      --accent-glow: rgba(91, 108, 247, 0.15);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.12);
+      --orange: #fb923c;
+      --orange-dim: rgba(251, 146, 60, 0.12);
+      --red: #f87171;
+      --font: 'DM Sans', sans-serif;
+      --mono: 'Space Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(91, 108, 247, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(91, 108, 247, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.4rem;
+    }
+
+    header h1 span { color: var(--accent-light); }
+
+    header p {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      max-width: 480px;
+      margin: 0 auto 0.75rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--green-dim);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.85rem;
+      border-radius: 100px;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ---- CARD ---- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.01em;
+    }
+
+    /* ---- SEARCH FORM ---- */
+    .search-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      .search-grid { grid-template-columns: 1fr; }
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: var(--font);
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .field input::placeholder { color: var(--text-muted); }
+
+    select option { background: var(--surface); }
+
+    /* ---- BUTTONS ---- */
+    .btn-row {
+      display: flex;
+      gap: 0.65rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.3rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 2px 12px rgba(91, 108, 247, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-light);
+      box-shadow: 0 4px 20px rgba(91, 108, 247, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+
+    /* ---- LEG WRAPPER ---- */
+    .leg {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.15rem;
+      margin-bottom: 0.85rem;
+      position: relative;
+    }
+
+    .leg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.85rem;
+    }
+
+    .leg-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-light);
+      font-family: var(--mono);
+    }
+
+    .btn-remove {
+      background: rgba(248, 113, 113, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      padding: 0.3rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    /* ---- SEARCHING STATE ---- */
+    .searching-box {
+      background: var(--accent-glow);
+      border: 1px solid rgba(91, 108, 247, 0.2);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .searching-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      font-size: 0.9rem;
+      margin-bottom: 0.65rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+
+    .provider-chips {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .provider-chip {
+      background: rgba(255,255,255,0.04);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .log {
+      margin-top: 0.65rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .log div { margin-bottom: 0.1rem; }
+    .log span { color: var(--text-dim); }
+
+    /* ---- ERROR ---- */
+    .error-box {
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 14px;
+      padding: 1.15rem;
+      margin-bottom: 1.25rem;
+      color: #fca5a5;
+      font-size: 0.9rem;
+    }
+
+    /* ---- NO RESULTS ---- */
+    .no-results {
+      text-align: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .no-results h3 { font-size: 1.15rem; margin: 0.75rem 0 0.35rem; }
+    .no-results p { color: var(--text-dim); max-width: 380px; margin: 0 auto; font-size: 0.9rem; }
+
+    /* ---- DEAL CARD ---- */
+    .deal {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 0.65rem;
+      transition: border-color 0.2s;
+    }
+
+    .deal:hover { border-color: var(--border-light); }
+
+    .deal-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.65rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .route-cities {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .city-tag {
+      background: var(--accent);
+      color: white;
+      padding: 0.25rem 0.7rem;
+      border-radius: 100px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .route-arrow { color: var(--accent-light); font-weight: 700; }
+
+    .provider-tag {
+      background: var(--green-dim);
+      color: var(--green);
+      padding: 0.15rem 0.55rem;
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      margin-top: 0.35rem;
+      display: inline-block;
+    }
+
+    .deal-price {
+      text-align: right;
+    }
+
+    .price-amount {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--accent-light);
+      line-height: 1;
+    }
+
+    .price-unit {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .deal-meta {
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+      color: var(--text-dim);
+      font-size: 0.84rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .deal-meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+    .deal-vehicle {
+      font-size: 0.84rem;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+    }
+
+    .btn-book {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--accent);
+      color: white;
+      padding: 0.5rem 1.1rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      font-family: var(--font);
+    }
+
+    .btn-book:hover {
+      background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+
+    /* ---- PROVIDERS FOOTER ---- */
+    .providers-footer {
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+    }
+
+    .providers-footer h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.65rem;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .provider-links {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .provider-link {
+      background: rgba(255,255,255,0.04);
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--text-dim);
+      font-weight: 500;
+      font-size: 0.78rem;
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.15s;
+    }
+
+    .provider-link:hover {
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .providers-footer p {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    /* SVG icons inline */
+    .icon {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <!-- Header -->
+  <header>
+    <h1>🚐 Camper <span>Relocations</span></h1>
+    <p>Find dirt-cheap campervan relocation deals across Europe. Real deals, real bookings.</p>
+    <div class="badge">Live search across 6 providers</div>
+  </header>
+
+  <!-- Search Card -->
+  <div class="card">
+    <h2>Find Deals</h2>
+    <div id="legs-container"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="addLeg()">+ Add Leg</button>
+      <button class="btn btn-primary" id="search-btn" onclick="searchDeals()">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search Real Deals
+      </button>
+    </div>
+  </div>
+
+  <!-- Results area -->
+  <div id="results-area"></div>
+
+  <!-- Providers Footer -->
+  <div class="providers-footer">
+    <h3>📍 Providers We Search</h3>
+    <div class="provider-links">
+      <a href="https://www.imoova.com/en/relocations?region=EU" target="_blank" rel="noopener" class="provider-link">Imoova</a>
+      <a href="https://roadsurfer.com/nl/aanbiedingen/" target="_blank" rel="noopener" class="provider-link">Roadsurfer</a>
+      <a href="https://indiecampers.com/deals/europe" target="_blank" rel="noopener" class="provider-link">Indie Campers</a>
+      <a href="https://mobility.movacar.de/content/1-euro-camper-van-rentals/" target="_blank" rel="noopener" class="provider-link">Movacar</a>
+      <a href="https://bunkcampers.com/campervan-relocation-deals/" target="_blank" rel="noopener" class="provider-link">Bunk Campers</a>
+      <a href="https://spaceshipsrentals.co.uk/deals/relocation" target="_blank" rel="noopener" class="provider-link">Spaceships</a>
+    </div>
+    <p>Deals are fetched live from provider websites. Availability changes daily — search often for the best deals!</p>
+  </div>
+</div>
+
+<script>
+  // ---- STATE ----
+  let legs = [{ from: '', to: '', startDate: '', dateFlex: 7 }];
+  let isSearching = false;
+  let searchLog = [];
+
+  const PROVIDERS = ['Imoova', 'Roadsurfer', 'Indie Campers', 'Movacar', 'Bunk Campers', 'Spaceships'];
+
+  // ---- RENDER LEGS ----
+  function renderLegs() {
+    const container = document.getElementById('legs-container');
+    container.innerHTML = legs.map((leg, i) => `
+      <div class="leg">
+        <div class="leg-header">
+          <span class="leg-label">LEG ${i + 1}</span>
+          ${legs.length > 1 ? `<button class="btn-remove" onclick="removeLeg(${i})">✕ Remove</button>` : ''}
+        </div>
+        <div class="search-grid">
+          <div class="field">
+            <label>From</label>
+            <input type="text" value="${leg.from}" placeholder="e.g. Berlin"
+              oninput="updateLeg(${i}, 'from', this.value)" />
+          </div>
+          <div class="field">
+            <label>To</label>
+            <input type="text" value="${leg.to}" placeholder="e.g. Barcelona"
+              oninput="updateLeg(${i}, 'to', this.value)" />
+          </div>
+          <div class="field">
+            <label>Preferred date (optional)</label>
+            <input type="date" value="${leg.startDate}"
+              onchange="updateLeg(${i}, 'startDate', this.value)" />
+          </div>
+          <div class="field">
+            <label>Flexibility</label>
+            <select onchange="updateLeg(${i}, 'dateFlex', Number(this.value))">
+              <option value="3" ${leg.dateFlex === 3 ? 'selected' : ''}>± 3 days</option>
+              <option value="7" ${leg.dateFlex === 7 ? 'selected' : ''}>± 7 days</option>
+              <option value="14" ${leg.dateFlex === 14 ? 'selected' : ''}>± 14 days</option>
+              <option value="30" ${leg.dateFlex === 30 ? 'selected' : ''}>± 30 days</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateLeg(i, field, value) { legs[i][field] = value; }
+
+  function addLeg() {
+    const last = legs[legs.length - 1];
+    legs.push({ from: last.to || '', to: '', startDate: '', dateFlex: 7 });
+    renderLegs();
+  }
+
+  function removeLeg(i) {
+    if (legs.length > 1) { legs.splice(i, 1); renderLegs(); }
+  }
+
+  // ---- FORMAT DATE ----
+  function fmtDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { return dateStr; }
+  }
+
+  // ---- LOG ----
+  function addLog(msg) {
+    searchLog.push({ time: new Date().toLocaleTimeString(), msg });
+    renderSearching();
+  }
+
+  // ---- RENDER SEARCHING STATE ----
+  function renderSearching() {
+    if (!isSearching) return;
+    const area = document.getElementById('results-area');
+    area.innerHTML = `
+      <div class="searching-box">
+        <div class="searching-header">
+          <svg class="icon spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          Searching provider websites...
+        </div>
+        <div class="provider-chips">
+          ${PROVIDERS.map((p, i) => `<span class="provider-chip" style="animation: pulse 1.5s ease-in-out infinite; animation-delay: ${i * 0.15}s">${p}</span>`).join('')}
+        </div>
+        <div class="log">
+          ${searchLog.map(l => `<div><span>[${l.time}]</span> ${l.msg}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- RENDER RESULTS ----
+  function renderResults(deals) {
+    const area = document.getElementById('results-area');
+
+    if (deals.length === 0) {
+      area.innerHTML = `
+        <div class="card no-results">
+          <div style="font-size: 2.5rem">🗺️</div>
+          <h3>No deals found</h3>
+          <p>No relocation deals for this route right now. Try different cities, a wider date range, or check back later.</p>
+        </div>
+      `;
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="card">
+        <h2>${deals.length} Deal${deals.length !== 1 ? 's' : ''} Found</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin: -0.75rem 0 1.15rem;">Live results from provider websites</p>
+        ${deals.map(deal => `
+          <div class="deal">
+            <div class="deal-top">
+              <div>
+                <div class="route-cities">
+                  <span class="city-tag">${deal.from_city}</span>
+                  <span class="route-arrow">→</span>
+                  <span class="city-tag">${deal.to_city}</span>
+                </div>
+                <div class="provider-tag">${deal.provider}</div>
+              </div>
+              <div class="deal-price">
+                <div class="price-amount">€${deal.price_per_day}</div>
+                <div class="price-unit">per day</div>
+              </div>
+            </div>
+            <div class="deal-meta">
+              ${deal.available_from ? `<span>📅 ${fmtDate(deal.available_from)}${deal.available_to ? ' – ' + fmtDate(deal.available_to) : ''}</span>` : ''}
+              ${deal.days_allowed ? `<span>🕐 ${deal.days_allowed} days</span>` : ''}
+              ${deal.seats ? `<span>👥 ${deal.seats} seats</span>` : ''}
+            </div>
+            ${deal.vehicle_type ? `<div class="deal-vehicle">🚐 ${deal.vehicle_type}</div>` : ''}
+            ${deal.booking_url && deal.booking_url !== '' ? `
+              <a href="${deal.booking_url}" target="_blank" rel="noopener" class="btn-book">
+                ↗ Book on ${deal.provider}
+              </a>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // ---- RENDER ERROR ----
+  function renderError(msg) {
+    const area = document.getElementById('results-area');
+    area.innerHTML = `
+      <div class="error-box">
+        <strong>Error:</strong> ${msg}
+        ${searchLog.length ? `
+          <div class="log" style="margin-top: 0.5rem">
+            ${searchLog.map(l => `<div><span>[${l.time}]</span> ${l.msg}</div>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // ---- SEARCH ----
+  async function searchDeals() {
+    const leg = legs[0];
+    if (!leg.from || !leg.to) return;
+
+    isSearching = true;
+    searchLog = [];
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="icon spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Searching...`;
+
+    addLog(`Searching: ${leg.from} → ${leg.to}`);
+    addLog('Scanning provider websites for real deals...');
+
+    try {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: leg.from,
+          to: leg.to,
+          startDate: leg.startDate || null,
+          dateFlex: leg.dateFlex
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.detail || err.error || `Server error ${res.status}`);
+      }
+
+      const data = await res.json();
+      addLog(`Found ${data.deals.length} deal(s) (${data.source})`);
+
+      isSearching = false;
+      renderResults(data.deals);
+
+    } catch (err) {
+      isSearching = false;
+      addLog(`Error: ${err.message}`);
+      renderError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search Real Deals`;
+    }
+  }
+
+  // ---- MULTI-LEG SEARCH (future) ----
+  // For now searches leg 1 only. Multi-leg chaining coming next.
+
+  // ---- INIT ----
+  renderLegs();
+</script>
+
+</body>
+</html>

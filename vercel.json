@@ -1,0 +1,12 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "s-maxage=1800" }
+      ]
+    }
+  ]
+}
