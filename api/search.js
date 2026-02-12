@@ -116,6 +116,7 @@ Real deals only.`;
     const result = {
       deals,
       meta: { from, date, flexibility, headingTowards: headingTowards || null, radius: searchRadius, count: deals.length, cached: false, timestamp: new Date().toISOString() },
+      debug: { blockTypes, textLength: text.length, textPreview: text.substring(0, 500), stopReason: data.stop_reason },
     };
 
     // Only cache if we found deals
