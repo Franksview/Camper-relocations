@@ -88,14 +88,25 @@ Real deals only.`;
     const data = await response.json();
 
     let text = '';
+    const blockTypes = [];
     for (const block of data.content || []) {
+      blockTypes.push(block.type);
       if (block.type === 'text') text += block.text;
     }
+    console.log('Block types:', blockTypes.join(', '));
+    console.log('Raw text length:', text.length);
+    console.log('Raw text preview:', text.substring(0, 500));
+    console.log('Stop reason:', data.stop_reason);
 
     let deals = [];
     try {
       const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) deals = JSON.parse(jsonMatch[0]);
+      if (jsonMatch) {
+        console.log('JSON match found, length:', jsonMatch[0].length);
+        deals = JSON.parse(jsonMatch[0]);
+      } else {
+        console.log('No JSON array found in response');
+      }
     } catch (parseErr) {
       console.error('Parse error:', parseErr.message, 'Raw:', text.substring(0, 300));
     }
