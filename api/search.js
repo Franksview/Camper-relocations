@@ -30,17 +30,20 @@ export default async function handler(req, res) {
 
   const radiusNote = searchRadius === 0 ? 'exact city only' : `within ${searchRadius}km`;
 
-  const prompt = `Search for campervan relocation deals from "${from}" (${radiusNote}) around ${date} ±${flexibility} days.
+  const prompt = `Search the web for: "imoova.com relocation ${from}" and "roadsurfer rally" and "indie campers relocation deals"
 
-Search for: "imoova relocation ${from}" and "roadsurfer rally ${from}" and "indie campers relocation deals europe"
+Extract any campervan relocation deals you find that depart from or near "${from}" (${radiusNote}).
+Date target: around ${date} ±${flexibility} days. Include deals even if exact dates are approximate.
 
 ${dirClause}
 
-IMPORTANT: You MUST respond with ONLY a raw JSON array. No text before or after. No markdown.
-If you find deals, return them like this:
-[{"from":"City","to":"City","date_range":"11-26 Apr","price":"EUR 1/night","vehicle":"Model","seats":5,"provider":"Imoova","url":"https://...","direction_match":false,"description":"summary"}]
+From the search results, extract every deal you can find into this JSON format.
+Include deals even if some fields are approximate or missing - use "unknown" for missing fields.
 
-If no specific deals found, return exactly: []`;
+Respond with ONLY a JSON array, nothing else:
+[{"from":"City","to":"City","date_range":"approx dates","price":"EUR X/day","vehicle":"type if known","seats":0,"provider":"source site","url":"page_url","direction_match":false,"description":"one line summary"}]
+
+If truly nothing found: []`;
 
   async function callAPI(attempt = 1) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -59,7 +62,7 @@ If no specific deals found, return exactly: []`;
           max_uses: 5,
         }],
         messages: [{ role: 'user', content: prompt }],
-        system: 'You are a deal search API. You MUST respond with ONLY a raw JSON array. Never include explanatory text, markdown, or commentary. If you cannot find specific deals, respond with exactly: []',
+        system: 'You are a web scraping API that extracts deal data from search results. Output ONLY valid JSON arrays. Never explain, apologize, or add commentary. Never say you cannot do something. Extract whatever deal information is visible in search results, even if incomplete. Use "unknown" for missing fields.',
       }),
     });
 
