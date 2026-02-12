@@ -1,167 +1,148 @@
-// Vercel Serverless Function: /api/search
-// Receives search requests from frontend, calls Claude API with web search,
-// returns structured relocation deals
+// Vercel Serverless Function — Camper Relocation Deal Finder v3
+// Origin-based browsing with optional "heading towards" filtering
+// Providers: Imoova, Roadsurfer, Indie Campers, Bunk Campers
 
-// Simple in-memory cache (persists per serverless instance, ~5-15 min)
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 export default async function handler(req, res) {
-  // CORS headers
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { from, to, startDate, dateFlex } = req.body || {};
+  const { from, date, flexibility = 3, headingTowards = '' } = req.body;
 
-  if (!from || !to) {
-    return res.status(400).json({ error: 'Missing "from" and "to" fields' });
+  if (!from || !date) {
+    return res.status(400).json({ error: 'Missing required fields: from, date' });
   }
 
-  // Check cache
-  const cacheKey = `${from.toLowerCase()}-${to.toLowerCase()}-${startDate || 'any'}-${dateFlex || 7}`;
+  // Build cache key
+  const cacheKey = `${from.toLowerCase()}|${date}|${flexibility}|${headingTowards.toLowerCase()}`;
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return res.status(200).json({ deals: cached.deals, source: 'cache' });
+  if (cached && Date.now() - cached.time < CACHE_TTL) {
+    return res.status(200).json(cached.data);
   }
 
-  // Build the prompt
-  const dateInfo = startDate
-    ? `around ${startDate} (within ${dateFlex || 7} days flexibility)`
-    : 'for any upcoming available dates in the next 2-3 months';
-
-  const prompt = `Search for real, currently available campervan and motorhome relocation deals in Europe.
-
-I need deals going from or near "${from}" to or near "${to}" ${dateInfo}.
-
-Search these specific websites:
-1. imoova.com/en/relocations - they list €1/day relocation deals across Europe
-2. roadsurfer.com relocation/transfer deals
-3. indiecampers.com/deals/europe
-4. movacar.de camper relocation deals
-5. bunkcampers.com/campervan-relocation-deals
-6. spaceshipsrentals.co.uk/deals/relocation
-
-For each deal you find, extract:
-- Provider name
-- Departure city and country
-- Destination city and country
-- Available dates (start and end date window)
-- Number of nights/days allowed
-- Price per night/day
-- Vehicle type and description
-- Number of seats/passengers
-- Direct booking URL for that specific deal
-
-IMPORTANT: Only include REAL deals you actually find on these websites. Do not invent deals.
-If no exact route matches, also look for nearby cities (within ~300km) as alternatives.
-
-Respond ONLY with a JSON array. No markdown, no backticks, no explanation text.
-Each object must have this exact structure:
-[
-  {
-    "provider": "Imoova",
-    "from_city": "Berlin",
-    "from_country": "Germany",
-    "to_city": "Barcelona",
-    "to_country": "Spain",
-    "available_from": "2026-03-21",
-    "available_to": "2026-04-04",
-    "days_allowed": 14,
-    "price_per_day": 1,
-    "currency": "EUR",
-    "vehicle_type": "Motorhome - 4 berth",
-    "seats": 4,
-    "booking_url": "https://www.imoova.com/en/relocations/..."
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'API key not configured' });
   }
-]
 
-If you find NO deals at all, respond with exactly: []`;
+  // Build the search prompt
+  const headingClause = headingTowards
+    ? `The traveller is heading towards "${headingTowards}". Prioritise deals going in that general direction, but still include ALL other deals from this origin. Mark deals matching the direction with "direction_match": true.`
+    : 'Show ALL available deals from this origin city. No direction filter.';
+
+  const prompt = `You are a campervan relocation deal search engine. Find ALL available relocation deals departing from or near "${from}" around ${date} (plus or minus ${flexibility} days).
+
+Search these 4 providers for current deals:
+1. Imoova (imoova.com/en/relocations?region=EU) - EUR 1/day relocations
+2. Roadsurfer (roadsurfer.com/rv-rental/rally/) - EUR 129 one-way rally deals
+3. Indie Campers (indiecampers.com/deals/europe) - relocation specials up to 80% off
+4. Bunk Campers (bunkcampers.com/campervan-relocation-deals/) - UK/Ireland factory relocations
+
+${headingClause}
+
+"Near" means the exact city or cities within 50km (e.g. Berlin includes Potsdam, Munich includes Augsburg).
+
+For EACH deal found, return this exact JSON structure:
+{
+  "from": "City name",
+  "to": "City name",
+  "date_range": "e.g. 11 - 26 Apr",
+  "nights": "e.g. 9 + 3 nights",
+  "price": "e.g. EUR 1/night or EUR 129 total",
+  "vehicle": "e.g. Comfort Standard 5 Auto",
+  "seats": 5,
+  "provider": "Imoova|Roadsurfer|Indie Campers|Bunk Campers",
+  "url": "direct booking URL",
+  "direction_match": true or false,
+  "description": "one-line summary"
+}
+
+Return ONLY a JSON array of deal objects. No markdown, no explanation, no wrapping. Just the raw JSON array.
+If no deals found at all, return an empty array: []
+Be thorough - check each provider carefully. Real deals only, no invented data.`;
 
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Server misconfigured: missing API key' });
-    }
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      })
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 10,
+          },
+        ],
+        messages: [{ role: 'user', content: prompt }],
+      }),
     });
 
     if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error('Anthropic API error:', errData);
-      return res.status(502).json({
-        error: 'Failed to search providers',
-        detail: errData.error?.message || `API returned ${response.status}`
-      });
+      const err = await response.text();
+      console.error('API error:', err);
+      return res.status(502).json({ error: 'Search API error', detail: err });
     }
 
     const data = await response.json();
 
-    // Extract text content from response
-    const textBlocks = data.content
-      .filter(item => item.type === 'text')
-      .map(item => item.text);
-    const fullText = textBlocks.join('\n');
-
-    // Parse JSON from response
-    let deals = [];
-    try {
-      const cleaned = fullText.replace(/```json|```/g, '').trim();
-      deals = JSON.parse(cleaned);
-    } catch {
-      const jsonMatch = fullText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        try {
-          deals = JSON.parse(jsonMatch[0]);
-        } catch {
-          console.error('Failed to parse deals JSON:', fullText.substring(0, 500));
-        }
+    // Extract text from content blocks
+    let text = '';
+    for (const block of data.content || []) {
+      if (block.type === 'text') {
+        text += block.text;
       }
     }
 
-    if (!Array.isArray(deals)) deals = [];
+    // Parse deals from response
+    let deals = [];
+    try {
+      // Try to find JSON array in the response
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        deals = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr) {
+      console.error('Parse error:', parseErr.message, 'Raw:', text.substring(0, 500));
+    }
 
-    // Normalize the data
-    const normalized = deals.map((deal, idx) => ({
-      id: `deal-${Date.now()}-${idx}`,
-      provider: deal.provider || 'Unknown',
-      from_city: deal.from_city || '',
-      from_country: deal.from_country || '',
-      to_city: deal.to_city || '',
-      to_country: deal.to_country || '',
-      available_from: deal.available_from || '',
-      available_to: deal.available_to || '',
-      days_allowed: deal.days_allowed || deal.min_nights || deal.max_nights || 0,
-      price_per_day: deal.price_per_day || deal.price_per_night || 0,
-      currency: deal.currency || 'EUR',
-      vehicle_type: deal.vehicle_type || 'Campervan',
-      seats: deal.seats || 0,
-      booking_url: deal.booking_url || ''
-    }));
+    // Sort: direction matches first, then by date
+    deals.sort((a, b) => {
+      if (a.direction_match && !b.direction_match) return -1;
+      if (!a.direction_match && b.direction_match) return 1;
+      return 0;
+    });
 
-    // Cache results
-    cache.set(cacheKey, { deals: normalized, timestamp: Date.now() });
+    const result = {
+      deals,
+      meta: {
+        from,
+        date,
+        flexibility,
+        headingTowards: headingTowards || null,
+        count: deals.length,
+        cached: false,
+        timestamp: new Date().toISOString(),
+      },
+    };
 
-    return res.status(200).json({ deals: normalized, source: 'live' });
+    // Cache it
+    cache.set(cacheKey, { data: result, time: Date.now() });
 
+    return res.status(200).json(result);
   } catch (err) {
-    console.error('Search handler error:', err);
+    console.error('Server error:', err);
     return res.status(500).json({ error: 'Internal server error', detail: err.message });
   }
 }
