@@ -118,7 +118,10 @@ Real deals only.`;
       meta: { from, date, flexibility, headingTowards: headingTowards || null, radius: searchRadius, count: deals.length, cached: false, timestamp: new Date().toISOString() },
     };
 
-    cache.set(cacheKey, { data: result, time: Date.now() });
+    // Only cache if we found deals
+    if (deals.length > 0) {
+      cache.set(cacheKey, { data: result, time: Date.now() });
+    }
     return res.status(200).json(result);
   } catch (err) {
     console.error('Server error:', err);
