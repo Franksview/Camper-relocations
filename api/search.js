@@ -30,21 +30,17 @@ export default async function handler(req, res) {
 
   const radiusNote = searchRadius === 0 ? 'exact city only' : `within ${searchRadius}km`;
 
-  const prompt = `Find campervan relocation deals departing from/near "${from}" (${radiusNote}) around ${date} ±${flexibility} days.
+  const prompt = `Search for campervan relocation deals from "${from}" (${radiusNote}) around ${date} ±${flexibility} days.
 
-Search these sites:
-- imoova.com/en/relocations (EU relocations, EUR 1/day)
-- roadsurfer.com/rv-rental/rally/ (EUR 129 rally deals)
-- indiecampers.com/deals/europe (relocation specials)
-- bunkcampers.com/campervan-relocation-deals/ (UK/Ireland)
+Search for: "imoova relocation ${from}" and "roadsurfer rally ${from}" and "indie campers relocation deals europe"
 
 ${dirClause}
 
-Return ONLY a JSON array (no markdown). Each deal:
-{"from":"City","to":"City","date_range":"11-26 Apr","nights":"9+3","price":"EUR 1/night","vehicle":"Model","seats":5,"provider":"Imoova|Roadsurfer|Indie Campers|Bunk Campers","url":"booking_url","direction_match":false,"description":"summary"}
+IMPORTANT: You MUST respond with ONLY a raw JSON array. No text before or after. No markdown.
+If you find deals, return them like this:
+[{"from":"City","to":"City","date_range":"11-26 Apr","price":"EUR 1/night","vehicle":"Model","seats":5,"provider":"Imoova","url":"https://...","direction_match":false,"description":"summary"}]
 
-Empty if none found: []
-Real deals only.`;
+If no specific deals found, return exactly: []`;
 
   async function callAPI(attempt = 1) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -60,9 +56,10 @@ Real deals only.`;
         tools: [{
           type: 'web_search_20250305',
           name: 'web_search',
-          max_uses: 3,
+          max_uses: 5,
         }],
         messages: [{ role: 'user', content: prompt }],
+        system: 'You are a deal search API. You MUST respond with ONLY a raw JSON array. Never include explanatory text, markdown, or commentary. If you cannot find specific deals, respond with exactly: []',
       }),
     });
 
