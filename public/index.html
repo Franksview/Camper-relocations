@@ -667,6 +667,16 @@
           <input type="text" id="headingTowards" placeholder="e.g. Spain, Southern Europe, or leave empty for all">
         </div>
         <div class="form-group">
+          <label for="radius">Search radius</label>
+          <select id="radius">
+            <option value="0">Exact city only</option>
+            <option value="50" selected>Within 50 km</option>
+            <option value="100">Within 100 km</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full">
           <label>Date flexibility</label>
           <div class="flex-toggle" id="flexToggle">
             <button data-days="0">Exact</button>
@@ -725,6 +735,7 @@ async function doSearch() {
   const from = document.getElementById('fromCity').value.trim();
   const date = document.getElementById('travelDate').value;
   const headingTowards = document.getElementById('headingTowards').value.trim();
+  const radius = document.getElementById('radius').value;
 
   if (!from) {
     document.getElementById('fromCity').focus();
@@ -755,7 +766,7 @@ async function doSearch() {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, date, flexibility, headingTowards }),
+      body: JSON.stringify({ from, date, flexibility, headingTowards, radius: parseInt(radius) }),
     });
 
     const data = await res.json();
