@@ -30,20 +30,25 @@ export default async function handler(req, res) {
 
   const radiusNote = searchRadius === 0 ? 'exact city only' : `within ${searchRadius}km`;
 
-  const prompt = `Search the web for: "imoova.com relocation ${from}" and "roadsurfer rally" and "indie campers relocation deals"
+  const prompt = `Search for campervan relocation deals DEPARTING FROM ${from}.
 
-Extract any campervan relocation deals you find that depart from or near "${from}" (${radiusNote}).
+Search queries to use:
+- "imoova relocation deals from ${from}"
+- "roadsurfer rally relocations"
+- "indie campers relocation deals"
+
+CRITICAL: Only include deals where the PICKUP/START city is "${from}" or within ${radiusNote} of "${from}".
+The "from" field = where you COLLECT the vehicle. The "to" field = where you DROP OFF the vehicle.
+Do NOT include deals where "${from}" is the destination/drop-off city.
+
 Date target: around ${date} ±${flexibility} days. Include deals even if exact dates are approximate.
 
 ${dirClause}
 
-From the search results, extract every deal you can find into this JSON format.
-Include deals even if some fields are approximate or missing - use "unknown" for missing fields.
+Respond with ONLY a JSON array:
+[{"from":"pickup city","to":"dropoff city","date_range":"approx dates","price":"EUR X/day","vehicle":"type if known","seats":0,"provider":"source","url":"page_url","direction_match":false,"description":"one line summary"}]
 
-Respond with ONLY a JSON array, nothing else:
-[{"from":"City","to":"City","date_range":"approx dates","price":"EUR X/day","vehicle":"type if known","seats":0,"provider":"source site","url":"page_url","direction_match":false,"description":"one line summary"}]
-
-If truly nothing found: []`;
+Use "unknown" for missing fields. If nothing found: []`;
 
   async function callAPI(attempt = 1) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -99,16 +104,20 @@ If truly nothing found: []`;
     console.log('Stop reason:', data.stop_reason);
 
     let deals = [];
+    let parseError = null;
     try {
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         console.log('JSON match found, length:', jsonMatch[0].length);
         deals = JSON.parse(jsonMatch[0]);
       } else {
         console.log('No JSON array found in response');
+        parseError = 'No JSON array found';
       }
     } catch (parseErr) {
-      console.error('Parse error:', parseErr.message, 'Raw:', text.substring(0, 300));
+      parseError = parseErr.message;
+      console.error('Parse error:', parseErr.message);
     }
 
     deals.sort((a, b) => (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0));
@@ -116,7 +125,7 @@ If truly nothing found: []`;
     const result = {
       deals,
       meta: { from, date, flexibility, headingTowards: headingTowards || null, radius: searchRadius, count: deals.length, cached: false, timestamp: new Date().toISOString() },
-      debug: { blockTypes, textLength: text.length, textPreview: text.substring(0, 500), stopReason: data.stop_reason },
+      debug: { blockTypes, textLength: text.length, textPreview: text.substring(0, 800), parseError, stopReason: data.stop_reason },
     };
 
     // Only cache if we found deals
