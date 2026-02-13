@@ -634,7 +634,7 @@
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
-        <div>Enter your <strong>starting city</strong> and travel date</div>
+        <div>Enter your <strong>starting city</strong> to find available deals</div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
@@ -657,8 +657,8 @@
           <input type="text" id="fromCity" placeholder="e.g. Berlin, Munich, Milan" autofocus>
         </div>
         <div class="form-group">
-          <label for="travelDate">When</label>
-          <input type="date" id="travelDate">
+          <label for="travelDate">When (optional)</label>
+          <input type="date" id="travelDate" placeholder="Any date">
         </div>
       </div>
       <div class="form-row">
@@ -716,10 +716,7 @@ let trip = [];
 let flexibility = 3;
 let currentDeals = [];
 
-// Set default date to 2 weeks from now
-const defaultDate = new Date();
-defaultDate.setDate(defaultDate.getDate() + 14);
-document.getElementById('travelDate').value = defaultDate.toISOString().split('T')[0];
+// Default date is empty (= any date, show all deals)
 
 // ─── FLEXIBILITY TOGGLE ───
 document.querySelectorAll('#flexToggle button').forEach(btn => {
@@ -739,10 +736,6 @@ async function doSearch() {
 
   if (!from) {
     document.getElementById('fromCity').focus();
-    return;
-  }
-  if (!date) {
-    document.getElementById('travelDate').focus();
     return;
   }
 
@@ -766,7 +759,7 @@ async function doSearch() {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, date, flexibility, headingTowards, radius: parseInt(radius) }),
+      body: JSON.stringify({ from, date: date || null, flexibility: date ? flexibility : 0, headingTowards, radius: parseInt(radius) }),
     });
 
     const data = await res.json();

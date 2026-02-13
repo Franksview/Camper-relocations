@@ -12,10 +12,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const { from, date, flexibility = 3, headingTowards = '', radius = 50 } = req.body;
-  if (!from || !date) return res.status(400).json({ error: 'Missing: from, date' });
+  if (!from) return res.status(400).json({ error: 'Missing: from' });
 
   const searchRadius = Math.min(Math.max(parseInt(radius) || 50, 0), 100);
-  const cacheKey = `${from.toLowerCase()}|${date}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
+  const cacheKey = `${from.toLowerCase()}|${date || 'any'}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.time < CACHE_TTL) {
     return res.status(200).json(cached.data);
@@ -30,6 +30,10 @@ export default async function handler(req, res) {
 
   const radiusNote = searchRadius === 0 ? 'exact city only' : `within ${searchRadius}km`;
 
+  const dateClause = date
+    ? `Date target: around ${date} ±${flexibility} days. Include deals even if exact dates are approximate.`
+    : 'No date filter — include ALL available deals regardless of date.';
+
   const prompt = `Search for campervan relocation deals DEPARTING FROM ${from}.
 
 Search queries to use:
@@ -41,7 +45,7 @@ CRITICAL: Only include deals where the PICKUP/START city is "${from}" or within 
 The "from" field = where you COLLECT the vehicle. The "to" field = where you DROP OFF the vehicle.
 Do NOT include deals where "${from}" is the destination/drop-off city.
 
-Date target: around ${date} ±${flexibility} days. Include deals even if exact dates are approximate.
+${dateClause}
 
 ${dirClause}
 
