@@ -1,4 +1,4 @@
-// Vercel Serverless Function — Relocamp v3.1
+// Vercel Serverless Function — Relocamp v3.10
 // Origin-based campervan relocation deal finder
 
 const cache = new Map();
@@ -36,14 +36,26 @@ export default async function handler(req, res) {
 
   const prompt = `Search for campervan relocation deals DEPARTING FROM ${from}.
 
-Search queries to use:
-- "imoova relocation deals from ${from}"
-- "roadsurfer rally relocations"
-- "indie campers relocation deals"
+Search queries to use (try ALL of these):
+1. "imoova.com relocations departure ${from} campervan"
+2. "imoova ${from} relocation departure Europe campervans"
+3. "roadsurfer rally relocations from ${from}"
 
-CRITICAL: Only include deals where the PICKUP/START city is "${from}" or within ${radiusNote} of "${from}".
-The "from" field = where you COLLECT the vehicle. The "to" field = where you DROP OFF the vehicle.
-Do NOT include deals where "${from}" is the destination/drop-off city.
+DIRECTION FILTER — THIS IS THE MOST IMPORTANT RULE:
+Search results will contain deals in BOTH directions. You MUST carefully check each deal.
+✅ INCLUDE: "${from} to [somewhere]" — pickup/departure city is ${from}
+❌ EXCLUDE: "[somewhere] to ${from}" — this means ${from} is the DROP-OFF, not departure
+
+Example: If searching from Amsterdam:
+✅ "Amsterdam to Hamburg" = CORRECT (departing Amsterdam)
+❌ "Munich to Amsterdam" = WRONG (arriving in Amsterdam, not departing)
+❌ "Berlin to Amsterdam" = WRONG (arriving in Amsterdam, not departing)
+
+Also include deals from cities within ${radiusNote} of "${from}".
+
+Provider identification:
+- Vehicles named "EU Active/Comfort/Standard", "VW California", "Atlas", "Nomad" = Indie Campers via Imoova
+- Set provider to "Indie Campers via Imoova" for these vehicles
 
 ${dateClause}
 
