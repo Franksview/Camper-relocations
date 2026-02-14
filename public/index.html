@@ -532,6 +532,7 @@
     font-size: 1.6rem;
     animation: drive 3s ease-in-out infinite;
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+    transform: scaleX(-1);
   }
 
   @keyframes drive {
@@ -611,6 +612,171 @@
     color: #b91c1c;
     font-size: 0.88rem;
     margin-bottom: 16px;
+  }
+
+  /* ─── BRIDGE BLOCK ("Get to the deals") ─── */
+  .bridge-block {
+    background: linear-gradient(135deg, #fdf8f4 0%, #f5efe8 100%);
+    border: 1px solid var(--stone);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-top: 20px;
+  }
+
+  .bridge-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .bridge-header .bridge-icon {
+    font-size: 1.4rem;
+  }
+
+  .bridge-header h3 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 1.1rem;
+    color: var(--ink);
+  }
+
+  .bridge-header .hub-count {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    background: var(--forest-light);
+    color: var(--forest);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .bridge-subtitle {
+    font-size: 0.85rem;
+    color: #777;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .bridge-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bridge-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid #e8e4de;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--ink);
+    transition: var(--transition);
+    font-size: 0.88rem;
+  }
+
+  .bridge-option:hover {
+    border-color: var(--rust);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
+
+  .bridge-option .transport-icon {
+    font-size: 1.2rem;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .bridge-option .transport-info {
+    flex: 1;
+  }
+
+  .bridge-option .transport-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .bridge-option .transport-detail {
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 1px;
+  }
+
+  .bridge-option .transport-price {
+    font-weight: 600;
+    color: var(--forest);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .bridge-option.night-train {
+    border-left: 3px solid #6366f1;
+  }
+
+  .bridge-option.night-train .transport-name {
+    color: #4f46e5;
+  }
+
+  .bridge-option.bus {
+    border-left: 3px solid #22c55e;
+  }
+
+  .bridge-option.train {
+    border-left: 3px solid var(--sky);
+  }
+
+  .bridge-option.camper {
+    border-left: 3px solid var(--rust);
+  }
+
+  .bridge-option.accommodation {
+    border-left: 3px solid #f59e0b;
+  }
+
+  .bridge-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 12px;
+    font-size: 0.78rem;
+    color: var(--warm);
+  }
+
+  .bridge-divider::before,
+  .bridge-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--stone);
+  }
+
+  .bridge-search-btn {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 8px 20px;
+    background: var(--forest);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+  }
+
+  .bridge-search-btn:hover {
+    background: #2d5a4d;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 640px) {
+    .bridge-block { padding: 18px; }
+    .bridge-header { flex-wrap: wrap; }
   }
 
   /* ─── FOOTER ─── */
@@ -795,6 +961,272 @@ function displayCity(input) {
   return input.charAt(0).toUpperCase() + input.slice(1);
 }
 
+// ─── BRIDGE / "GET TO THE DEALS" DATA ───
+// Hub cities that typically have many relocation deals
+// Transport links use base URLs — affiliate tracking params added later
+const DEAL_HUBS = {
+  munich:    { label: 'Munich',    deals: '30+' },
+  berlin:    { label: 'Berlin',    deals: '15+' },
+  hamburg:   { label: 'Hamburg',   deals: '10+' },
+  frankfurt: { label: 'Frankfurt', deals: '10+' },
+  london:    { label: 'London',    deals: '10+' },
+  paris:     { label: 'Paris',     deals: '5+' },
+  lisbon:    { label: 'Lisbon',    deals: '5+' },
+  barcelona: { label: 'Barcelona', deals: '5+' },
+  milan:     { label: 'Milan',     deals: '5+' },
+};
+
+// For each origin city, which hubs to suggest + transport info
+// nightTrain, bus, train — each has: price, time, via (optional), provider
+const BRIDGE_ROUTES = {
+  amsterdam: [
+    { hub: 'munich', nightTrain: { price: '€49–89', time: '12h', via: 'Nightjet via Cologne' }, bus: { price: '€29–45', time: '10h' }, train: { price: '€39–79', time: '7h' } },
+    { hub: 'berlin', nightTrain: { price: '€49–89', time: '10h', via: 'European Sleeper' }, bus: { price: '€19–35', time: '8h' }, train: { price: '€39–69', time: '6h' } },
+    { hub: 'hamburg', nightTrain: null, bus: { price: '€19–29', time: '6h' }, train: { price: '€29–59', time: '5h' } },
+  ],
+  rotterdam: [
+    { hub: 'munich', nightTrain: { price: '€49–89', time: '12h', via: 'Nightjet (from Amsterdam)' }, bus: { price: '€29–45', time: '11h' }, train: { price: '€49–89', time: '7h' } },
+    { hub: 'berlin', nightTrain: { price: '€49–89', time: '11h', via: 'European Sleeper (from Amsterdam)' }, bus: { price: '€19–35', time: '9h' }, train: { price: '€39–69', time: '7h' } },
+    { hub: 'frankfurt', nightTrain: null, bus: { price: '€19–29', time: '6h' }, train: { price: '€29–59', time: '4h' } },
+  ],
+  brussels: [
+    { hub: 'munich', nightTrain: { price: '€49–89', time: '12h', via: 'Nightjet' }, bus: { price: '€29–45', time: '10h' }, train: { price: '€49–99', time: '7h' } },
+    { hub: 'berlin', nightTrain: { price: '€49–89', time: '10h', via: 'European Sleeper' }, bus: { price: '€19–35', time: '9h' }, train: { price: '€39–79', time: '6h' } },
+    { hub: 'paris', nightTrain: null, bus: { price: '€9–19', time: '4h' }, train: { price: '€29–49', time: '1.5h' } },
+  ],
+  vienna: [
+    { hub: 'munich', nightTrain: { price: '€29–69', time: '8h', via: 'Nightjet' }, bus: { price: '€19–29', time: '6h' }, train: { price: '€29–69', time: '4h' } },
+    { hub: 'berlin', nightTrain: { price: '€49–89', time: '11h', via: 'Nightjet' }, bus: { price: '€25–39', time: '10h' }, train: { price: '€39–89', time: '5.5h' } },
+    { hub: 'milan', nightTrain: { price: '€29–69', time: '11h', via: 'Nightjet' }, bus: { price: '€25–39', time: '8h' }, train: { price: '€29–69', time: '7h' } },
+  ],
+  prague: [
+    { hub: 'munich', nightTrain: { price: '€29–69', time: '7h', via: 'EuroNight' }, bus: { price: '€15–29', time: '5h' }, train: { price: '€19–49', time: '5h' } },
+    { hub: 'berlin', nightTrain: { price: '€49–89', time: '8h', via: 'European Sleeper' }, bus: { price: '€15–29', time: '5h' }, train: { price: '€19–49', time: '4.5h' } },
+    { hub: 'hamburg', nightTrain: null, bus: { price: '€25–39', time: '8h' }, train: { price: '€39–79', time: '7h' } },
+  ],
+  copenhagen: [
+    { hub: 'hamburg', nightTrain: null, bus: { price: '€15–29', time: '5h' }, train: { price: '€29–59', time: '5h' } },
+    { hub: 'berlin', nightTrain: null, bus: { price: '€19–35', time: '8h' }, train: { price: '€29–69', time: '6h' } },
+    { hub: 'munich', nightTrain: null, bus: { price: '€35–55', time: '14h' }, train: { price: '€59–119', time: '10h' } },
+  ],
+  zurich: [
+    { hub: 'munich', nightTrain: { price: '€29–69', time: '6h', via: 'Nightjet' }, bus: { price: '€19–29', time: '5h' }, train: { price: '€29–59', time: '3.5h' } },
+    { hub: 'milan', nightTrain: { price: '€29–69', time: '9h', via: 'Nightjet' }, bus: { price: '€19–29', time: '4h' }, train: { price: '€25–49', time: '3h' } },
+    { hub: 'frankfurt', nightTrain: null, bus: { price: '€19–29', time: '5h' }, train: { price: '€29–59', time: '4h' } },
+  ],
+  paris: [
+    { hub: 'berlin', nightTrain: { price: '€49–109', time: '12h', via: 'European Sleeper (Mar 2026)' }, bus: { price: '€25–45', time: '12h' }, train: { price: '€39–99', time: '4h TGV' } },
+    { hub: 'munich', nightTrain: null, bus: { price: '€29–49', time: '12h' }, train: { price: '€49–129', time: '6h' } },
+    { hub: 'barcelona', nightTrain: null, bus: { price: '€25–45', time: '10h' }, train: { price: '€39–89', time: '6.5h' } },
+  ],
+  london: [
+    { hub: 'paris', nightTrain: null, bus: { price: '£19–35', time: '8h' }, train: { price: '£39–89', time: '2.5h Eurostar' } },
+    { hub: 'berlin', nightTrain: null, bus: { price: '£29–49', time: '14h' }, train: { price: '£59–139', time: '9h' } },
+    { hub: 'amsterdam', nightTrain: null, bus: { price: '£15–29', time: '10h' }, train: { price: '£39–79', time: '4h Eurostar' } },
+  ],
+};
+
+// Alias lookup: map city slug variants to BRIDGE_ROUTES keys
+const BRIDGE_ALIASES = {
+  'den haag': 'amsterdam', 'the hague': 'amsterdam', 'utrecht': 'amsterdam', 'eindhoven': 'amsterdam',
+  'antwerp': 'brussels', 'antwerpen': 'brussels', 'brugge': 'brussels', 'bruges': 'brussels', 'gent': 'brussels', 'ghent': 'brussels',
+  'munchen': 'munich', 'münchen': 'munich', 'muenchen': 'munich',
+  'wien': 'vienna', 'wenen': 'vienna',
+  'prag': 'prague', 'praha': 'prague',
+  'kopenhagen': 'copenhagen', 'københavn': 'copenhagen',
+  'zürich': 'zurich', 'geneve': 'zurich', 'geneva': 'zurich', 'bern': 'zurich', 'basel': 'zurich',
+  'parijs': 'paris', 'lyon': 'paris', 'marseille': 'paris',
+  'londen': 'london', 'londres': 'london', 'manchester': 'london', 'edinburgh': 'london',
+  'milano': 'milan', 'rome': 'milan', 'roma': 'milan',
+  'lisboa': 'lisbon', 'lissabon': 'lisbon', 'porto': 'lisbon',
+  'köln': 'brussels', 'cologne': 'brussels', 'keulen': 'brussels',
+  'düsseldorf': 'amsterdam', 'dusseldorf': 'amsterdam',
+  'hannover': 'hamburg', 'hanover': 'hamburg', 'bremen': 'hamburg',
+  'nurnberg': 'munich', 'nürnberg': 'munich', 'nuremberg': 'munich', 'stuttgart': 'munich', 'salzburg': 'munich', 'innsbruck': 'munich',
+  'warsaw': 'prague', 'warszawa': 'prague', 'warschau': 'prague', 'krakow': 'prague', 'kraków': 'prague',
+  'stockholm': 'copenhagen', 'oslo': 'copenhagen', 'malmö': 'copenhagen', 'malmo': 'copenhagen', 'gothenburg': 'copenhagen',
+  'barcelona': 'paris', 'madrid': 'paris', 'sevilla': 'paris', 'seville': 'paris', 'valencia': 'paris',
+};
+
+// Affiliate link builders — replace BASE_URLs with tracked affiliate links later
+const AFFILIATE_LINKS = {
+  trainline: (from, to) => `https://www.thetrainline.com`,          // → add ?affiliate=CODE
+  flixbus:   (from, to) => `https://www.flixbus.com`,               // → add Awin tracking
+  nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
+  euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
+  camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
+  imoova:    (from, to) => `https://www.imoova.com/en`,             // → add ?ref=CODE
+  // Future: booking, hostelworld, airbnb
+  // booking:    (from, to) => `https://www.booking.com`,
+  // hostelworld: (from, to) => `https://www.hostelworld.com`,
+};
+
+function renderBridgeBlock(fromCity, dealCount) {
+  const key = fromCity.toLowerCase().trim();
+  const routeKey = BRIDGE_ROUTES[key] ? key : (BRIDGE_ALIASES[key] || null);
+
+  if (!routeKey || !BRIDGE_ROUTES[routeKey]) return '';
+
+  // Don't show bridge if we're already at a hub with many deals
+  if (dealCount > 5) return '';
+
+  const routes = BRIDGE_ROUTES[routeKey];
+  const fromDisplay = displayCity(fromCity);
+
+  // Pick the best hub (first in list typically has most deals)
+  const bestRoute = routes[0];
+  const hubInfo = DEAL_HUBS[bestRoute.hub];
+  if (!hubInfo) return '';
+
+  let html = `
+    <div class="bridge-block">
+      <div class="bridge-header">
+        <span class="bridge-icon">&#128161;</span>
+        <h3>More deals from ${hubInfo.label}</h3>
+        <span class="hub-count">typically ${hubInfo.deals} departures</span>
+      </div>
+      <div class="bridge-subtitle">
+        ${fromDisplay} ${dealCount === 0 ? 'has no deals right now' : `has only ${dealCount} deal${dealCount !== 1 ? 's' : ''}`}, but ${hubInfo.label} is a major hub. Here's how to get there:
+      </div>
+      <div class="bridge-options">
+  `;
+
+  // Night train (if available) — shown first, most on-brand
+  if (bestRoute.nightTrain) {
+    html += `
+      <a href="${AFFILIATE_LINKS.trainline(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option night-train">
+        <span class="transport-icon">&#127769;</span>
+        <div class="transport-info">
+          <div class="transport-name">Night train · ${bestRoute.nightTrain.time}</div>
+          <div class="transport-detail">${bestRoute.nightTrain.via} — sleep on board, save a hotel night</div>
+        </div>
+        <span class="transport-price">${bestRoute.nightTrain.price}</span>
+      </a>
+    `;
+  }
+
+  // Bus
+  if (bestRoute.bus) {
+    html += `
+      <a href="${AFFILIATE_LINKS.flixbus(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option bus">
+        <span class="transport-icon">&#128652;</span>
+        <div class="transport-info">
+          <div class="transport-name">FlixBus · ${bestRoute.bus.time}</div>
+          <div class="transport-detail">Budget-friendly, WiFi on board</div>
+        </div>
+        <span class="transport-price">${bestRoute.bus.price}</span>
+      </a>
+    `;
+  }
+
+  // Day train
+  if (bestRoute.train) {
+    html += `
+      <a href="${AFFILIATE_LINKS.trainline(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option train">
+        <span class="transport-icon">&#128646;</span>
+        <div class="transport-info">
+          <div class="transport-name">Train · ${bestRoute.train.time}</div>
+          <div class="transport-detail">Fast connection via Trainline</div>
+        </div>
+        <span class="transport-price">${bestRoute.train.price}</span>
+      </a>
+    `;
+  }
+
+  // Camper rental
+  html += `
+    <a href="${AFFILIATE_LINKS.camperdays(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option camper">
+      <span class="transport-icon">&#128656;</span>
+      <div class="transport-info">
+        <div class="transport-name">Rent a camper to ${hubInfo.label}</div>
+        <div class="transport-detail">Drive there via CamperDays — full road trip experience</div>
+      </div>
+      <span class="transport-price">from ~€85/day</span>
+    </a>
+  `;
+
+  html += `</div>`;
+
+  // Also show other hubs as quick links
+  if (routes.length > 1) {
+    const otherHubs = routes.slice(1).filter(r => DEAL_HUBS[r.hub]);
+    if (otherHubs.length > 0) {
+      html += `<div class="bridge-divider">or search these hubs directly</div>`;
+      html += `<div style="display:flex;gap:8px;flex-wrap:wrap;">`;
+      otherHubs.forEach(r => {
+        const h = DEAL_HUBS[r.hub];
+        html += `<button class="bridge-search-btn" onclick="searchFromHub('${r.hub}')">${h.label} (${h.deals})</button>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function searchFromHub(hubCity) {
+  document.getElementById('fromCity').value = hubCity;
+  doSearch();
+  document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── COUNTRY DETECTION ───
+const COUNTRY_MAP = {
+  'netherlands': ['Amsterdam', 'Rotterdam', 'Utrecht'],
+  'nederland': ['Amsterdam', 'Rotterdam', 'Utrecht'],
+  'holland': ['Amsterdam', 'Rotterdam', 'Utrecht'],
+  'germany': ['Munich', 'Berlin', 'Hamburg', 'Frankfurt'],
+  'deutschland': ['Munich', 'Berlin', 'Hamburg', 'Frankfurt'],
+  'duitsland': ['Munich', 'Berlin', 'Hamburg', 'Frankfurt'],
+  'france': ['Paris', 'Lyon', 'Marseille'],
+  'frankrijk': ['Paris', 'Lyon', 'Marseille'],
+  'spain': ['Barcelona', 'Madrid', 'Seville'],
+  'spanje': ['Barcelona', 'Madrid', 'Seville'],
+  'españa': ['Barcelona', 'Madrid', 'Seville'],
+  'italy': ['Milan', 'Rome', 'Florence'],
+  'italië': ['Milan', 'Rome', 'Florence'],
+  'italia': ['Milan', 'Rome', 'Florence'],
+  'portugal': ['Lisbon', 'Porto', 'Faro'],
+  'austria': ['Vienna', 'Salzburg', 'Innsbruck'],
+  'oostenrijk': ['Vienna', 'Salzburg', 'Innsbruck'],
+  'österreich': ['Vienna', 'Salzburg', 'Innsbruck'],
+  'switzerland': ['Zurich', 'Geneva', 'Basel'],
+  'zwitserland': ['Zurich', 'Geneva', 'Basel'],
+  'schweiz': ['Zurich', 'Geneva', 'Basel'],
+  'belgium': ['Brussels', 'Antwerp', 'Ghent'],
+  'belgië': ['Brussels', 'Antwerp', 'Ghent'],
+  'belgique': ['Brussels', 'Antwerp', 'Ghent'],
+  'uk': ['London', 'Edinburgh', 'Manchester'],
+  'united kingdom': ['London', 'Edinburgh', 'Manchester'],
+  'england': ['London', 'Manchester', 'Bristol'],
+  'scotland': ['Edinburgh', 'Glasgow', 'Inverness'],
+  'ireland': ['Dublin', 'Cork', 'Galway'],
+  'ierland': ['Dublin', 'Cork', 'Galway'],
+  'czech republic': ['Prague', 'Brno'],
+  'czechia': ['Prague', 'Brno'],
+  'tsjechië': ['Prague', 'Brno'],
+  'poland': ['Warsaw', 'Krakow', 'Gdansk'],
+  'polen': ['Warsaw', 'Krakow', 'Gdansk'],
+  'denmark': ['Copenhagen', 'Aarhus'],
+  'denemarken': ['Copenhagen', 'Aarhus'],
+  'sweden': ['Stockholm', 'Gothenburg', 'Malmö'],
+  'zweden': ['Stockholm', 'Gothenburg', 'Malmö'],
+  'norway': ['Oslo', 'Bergen', 'Tromsø'],
+  'noorwegen': ['Oslo', 'Bergen', 'Tromsø'],
+  'croatia': ['Zagreb', 'Split', 'Dubrovnik'],
+  'kroatië': ['Zagreb', 'Split', 'Dubrovnik'],
+  'greece': ['Athens', 'Thessaloniki'],
+  'griekenland': ['Athens', 'Thessaloniki'],
+  'hungary': ['Budapest', 'Debrecen'],
+  'hongarije': ['Budapest', 'Debrecen'],
+};
+
+function checkCountry(input) {
+  const key = input.toLowerCase().trim();
+  return COUNTRY_MAP[key] || null;
+}
+
 // Default date is empty (= any date, show all deals)
 
 // ─── FLEXIBILITY TOGGLE ───
@@ -815,6 +1247,25 @@ async function doSearch() {
 
   if (!from) {
     document.getElementById('fromCity').focus();
+    return;
+  }
+
+  // ─── COUNTRY DETECTION ───
+  const countrySuggestions = checkCountry(from);
+  if (countrySuggestions) {
+    const resultsSection = document.getElementById('resultsSection');
+    resultsSection.style.display = 'block';
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">&#x1F30D;</div>
+        <h3>"${from}" is a country — try a city instead</h3>
+        <p>Relocation deals depart from specific cities. Try one of these:</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px;">
+          ${countrySuggestions.map(c => `<button class="bridge-search-btn" onclick="document.getElementById('fromCity').value='${c}';doSearch();">${c}</button>`).join('')}
+        </div>
+      </div>
+    `;
     return;
   }
 
@@ -902,6 +1353,7 @@ function renderResults(data) {
         <h3>No deals found from ${displayCity(meta.from) || 'this city'}</h3>
         <p>Try a nearby major city, different dates, or wider date flexibility.</p>
       </div>
+      ${renderBridgeBlock(meta.from, 0)}
     `;
     return;
   }
@@ -930,6 +1382,9 @@ function renderResults(data) {
   remaining.forEach((deal, i) => {
     html += renderDealCard(deal, (directionDeals.length || 0) + i);
   });
+
+  // Show bridge block when few deals
+  html += renderBridgeBlock(meta.from, deals.length);
 
   container.innerHTML = html;
 }
