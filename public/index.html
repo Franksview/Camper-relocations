@@ -856,7 +856,7 @@ function renderDealCard(deal, index) {
           View deal &#8599;
         </a>
         <button class="btn-book btn-next-leg" onclick='addToTrip(${JSON.stringify(deal).replace(/'/g, "&#39;")})'>
-          + Add as next leg
+          ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as next leg'}
         </button>
       </div>
     </div>
@@ -896,14 +896,11 @@ function addToTrip(deal) {
   // Clear heading towards for next leg
   document.getElementById('headingTowards').value = '';
 
-  // Scroll to search
+  // Scroll to search and auto-trigger search from destination
   document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  // Flash the search button
-  const btn = document.getElementById('searchBtn');
-  btn.textContent = `Search deals from ${deal.to}`;
-  btn.style.background = 'var(--forest)';
-  setTimeout(() => { btn.style.background = ''; }, 2000);
+  // Auto-search from the destination city after a brief delay for scroll
+  setTimeout(() => doSearch(), 400);
 }
 
 function renderTrip() {

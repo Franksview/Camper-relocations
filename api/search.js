@@ -4,8 +4,35 @@
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+// Imoova uses English city names in URLs
+const CITY_SLUGS = {
+  'munchen': 'munich', 'münchen': 'munich', 'muenchen': 'munich',
+  'wien': 'vienna', 'wenen': 'vienna',
+  'lissabon': 'lisbon', 'lisboa': 'lisbon',
+  'kopenhagen': 'copenhagen', 'københavn': 'copenhagen',
+  'brussel': 'brussels', 'bruxelles': 'brussels',
+  'mailand': 'milan', 'milano': 'milan',
+  'rom': 'rome', 'roma': 'rome',
+  'prag': 'prague', 'praha': 'prague',
+  'warschau': 'warsaw', 'warszawa': 'warsaw',
+  'genf': 'geneva', 'geneve': 'geneva', 'genève': 'geneva',
+  'londen': 'london', 'londres': 'london',
+  'parijs': 'paris',
+  'antwerpen': 'antwerp',
+  'den haag': 'the-hague',
+  'sevilla': 'seville',
+  'athene': 'athens', 'athen': 'athens',
+  'boekarest': 'bucharest', 'bukarest': 'bucharest',
+  'keulen': 'cologne', 'köln': 'cologne', 'koln': 'cologne',
+  'nurnberg': 'nuremberg', 'nürnberg': 'nuremberg',
+  'hannover': 'hanover',
+  'marseilles': 'marseille',
+  'edinburg': 'edinburgh',
+};
+
 async function fetchImoovaPage(city) {
-  const slug = city.toLowerCase().replace(/\s+/g, '-');
+  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
+  const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
   const url = `https://www.imoova.com/en/relocations?region=EU&departure_city=${encodeURIComponent(slug)}`;
   console.log('Fetching Imoova:', url);
 
@@ -50,6 +77,14 @@ async function fetchImoovaPage(city) {
 
     console.log('Stripped text length:', text.length);
     console.log('Text sample:', text.substring(0, 300));
+
+    // Check if we got the generic Europe page instead of city-filtered results
+    const hasCity = text.toLowerCase().includes('relocations in ' + slug) || 
+                    text.toLowerCase().includes('relocations in ' + city.toLowerCase());
+    if (!hasCity && text.includes('Relocations In Europe')) {
+      console.log('Got generic Europe page, city filter not applied for:', slug);
+      return { text: null, dealUrlIds: [] };
+    }
 
     return { text, dealUrlIds };
   } catch (err) {
