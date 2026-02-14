@@ -504,20 +504,73 @@
   /* ─── LOADING ─── */
   .loading {
     text-align: center;
-    padding: 60px 20px;
+    padding: 48px 20px 40px;
   }
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--sand);
-    border-top-color: var(--rust);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
+  .loading-road {
+    position: relative;
+    width: 280px;
+    height: 48px;
+    margin: 0 auto 20px;
+    overflow: hidden;
   }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-road::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--stone) 0, var(--stone) 12px, transparent 12px, transparent 24px);
+    opacity: 0.3;
+  }
+
+  .loading-van {
+    position: absolute;
+    bottom: 12px;
+    font-size: 1.6rem;
+    animation: drive 3s ease-in-out infinite;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+  }
+
+  @keyframes drive {
+    0% { left: -10%; opacity: 0; }
+    5% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { left: 95%; opacity: 0; }
+  }
+
+  .loading-providers {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .loading-provider {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--sand);
+    color: var(--stone);
+    opacity: 0.4;
+    transition: all 0.4s ease;
+  }
+
+  .loading-provider.active {
+    opacity: 1;
+    color: var(--warm);
+    background: #fff3cd;
+    box-shadow: 0 0 0 1px rgba(133, 100, 4, 0.15);
+  }
+
+  .loading-provider.done {
+    opacity: 1;
+    color: var(--forest);
+    background: #d4edda;
+  }
 
   .loading-text {
     font-size: 0.9rem;
@@ -716,6 +769,32 @@ let trip = [];
 let flexibility = 3;
 let currentDeals = [];
 
+// ─── CITY DISPLAY NAME ───
+const DISPLAY_NAMES = {
+  'munchen': 'Munich', 'münchen': 'Munich', 'muenchen': 'Munich',
+  'wien': 'Vienna', 'wenen': 'Vienna',
+  'lissabon': 'Lisbon', 'lisboa': 'Lisbon',
+  'kopenhagen': 'Copenhagen', 'københavn': 'Copenhagen',
+  'brussel': 'Brussels', 'bruxelles': 'Brussels',
+  'mailand': 'Milan', 'milano': 'Milan',
+  'rom': 'Rome', 'roma': 'Rome',
+  'prag': 'Prague', 'praha': 'Prague',
+  'warschau': 'Warsaw', 'warszawa': 'Warsaw',
+  'genf': 'Geneva', 'geneve': 'Geneva', 'genève': 'Geneva',
+  'londen': 'London', 'londres': 'London',
+  'parijs': 'Paris', 'antwerpen': 'Antwerp',
+  'den haag': 'The Hague', 'sevilla': 'Seville',
+  'athene': 'Athens', 'athen': 'Athens',
+  'keulen': 'Cologne', 'köln': 'Cologne', 'koln': 'Cologne',
+  'nurnberg': 'Nuremberg', 'nürnberg': 'Nuremberg',
+};
+function displayCity(input) {
+  if (!input) return '';
+  const key = input.toLowerCase().trim();
+  if (DISPLAY_NAMES[key]) return DISPLAY_NAMES[key];
+  return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
 // Default date is empty (= any date, show all deals)
 
 // ─── FLEXIBILITY TOGGLE ───
@@ -748,12 +827,39 @@ async function doSearch() {
 
   const container = document.getElementById('resultsContainer');
   container.innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Searching 4 providers for deals from ${from}...</div>
-      <div class="loading-sub">This usually takes 15-30 seconds</div>
+    <div class="loading" id="loadingState">
+      <div class="loading-road">
+        <div class="loading-van">&#x1F690;</div>
+      </div>
+      <div class="loading-providers" id="loadingProviders">
+        <span class="loading-provider" data-p="imoova">Imoova</span>
+        <span class="loading-provider" data-p="roadsurfer">Roadsurfer</span>
+        <span class="loading-provider" data-p="indie">Indie Campers</span>
+        <span class="loading-provider" data-p="bunk">Bunk Campers</span>
+      </div>
+      <div class="loading-text">Searching for deals from ${displayCity(from)}...</div>
+      <div class="loading-sub">This usually takes 15–30 seconds</div>
     </div>
   `;
+
+  // Animate provider pills lighting up
+  const pills = container.querySelectorAll('.loading-provider');
+  let pillIndex = 0;
+  if (pills[0]) pills[0].classList.add('active');
+  pillIndex = 1;
+  const pillInterval = setInterval(() => {
+    if (pillIndex > 0 && pills[pillIndex - 1]) {
+      pills[pillIndex - 1].classList.remove('active');
+      pills[pillIndex - 1].classList.add('done');
+    }
+    if (pillIndex < pills.length) {
+      pills[pillIndex].classList.add('active');
+      pillIndex++;
+    } else {
+      pillIndex = 0;
+      pills.forEach(p => { p.classList.remove('done', 'active'); });
+    }
+  }, 4000);
 
   try {
     const res = await fetch('/api/search', {
@@ -777,6 +883,7 @@ async function doSearch() {
       </div>
     `;
   } finally {
+    clearInterval(pillInterval);
     btn.disabled = false;
     btn.textContent = 'Search available deals';
   }
@@ -792,7 +899,7 @@ function renderResults(data) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">&#x1F6A3;</div>
-        <h3>No deals found from ${meta.from || 'this city'}</h3>
+        <h3>No deals found from ${displayCity(meta.from) || 'this city'}</h3>
         <p>Try a nearby major city, different dates, or wider date flexibility.</p>
       </div>
     `;
@@ -804,7 +911,7 @@ function renderResults(data) {
 
   let html = `
     <div class="results-header">
-      <h2>Deals from ${meta.from}</h2>
+      <h2>Deals from ${displayCity(meta.from)}</h2>
       <span class="results-count">${deals.length} deal${deals.length !== 1 ? 's' : ''} found</span>
     </div>
   `;
@@ -828,9 +935,9 @@ function renderResults(data) {
 }
 
 function renderDealCard(deal, index) {
-  const providerClass = deal.provider?.toLowerCase().includes('imoova') ? 'provider-imoova'
+  const providerClass = deal.provider?.toLowerCase().includes('indie') ? 'provider-indie'
     : deal.provider?.toLowerCase().includes('roadsurfer') ? 'provider-roadsurfer'
-    : deal.provider?.toLowerCase().includes('indie') ? 'provider-indie'
+    : deal.provider?.toLowerCase().includes('imoova') ? 'provider-imoova'
     : 'provider-bunk';
 
   const bookUrl = deal.url && deal.url.startsWith('http') ? deal.url : '#';
@@ -844,13 +951,12 @@ function renderDealCard(deal, index) {
         <div class="deal-price">${deal.price || 'See provider'}</div>
       </div>
       <div class="deal-meta">
-        <span><span class="icon">&#128197;</span> ${deal.date_range || 'Flexible'}</span>
-        <span><span class="icon">&#127769;</span> ${deal.nights || 'See listing'}</span>
+        <span><span class="icon">&#128197;</span> ${deal.date_range && deal.date_range !== 'unknown' ? deal.date_range : 'Flexible'}</span>
+        ${deal.nights ? `<span><span class="icon">&#127769;</span> ${deal.nights}</span>` : ''}
         <span><span class="icon">&#128663;</span> ${deal.vehicle || 'Campervan'}</span>
         ${deal.seats ? `<span><span class="icon">&#129485;</span> ${deal.seats} seats</span>` : ''}
         <span class="provider-badge ${providerClass}">${deal.provider || 'Provider'}</span>
       </div>
-      ${deal.description ? `<div style="font-size:0.84rem;color:#888;margin-bottom:10px;">${deal.description}</div>` : ''}
       <div class="deal-actions">
         <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary">
           View deal &#8599;
