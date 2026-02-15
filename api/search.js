@@ -1,5 +1,5 @@
-// Vercel Serverless Function — Relocamp v4.1
-// Hybrid: direct Imoova fetch + Claude Haiku for other providers
+// Vercel Serverless Function — Relocamp v4.5
+// Hybrid: direct Imoova fetch + Claude Haiku for other providers (incl. Movacar)
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -268,14 +268,22 @@ If no deals: []` }],
       ? `Search for ALL of these providers:
 1. "imoova relocations departing from ${from} Europe"
 2. "roadsurfer rally relocations from ${from}"
-3. "bunk campers relocation deals ${from}"`
+3. "bunk campers relocation deals ${from}"
+4. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`
       : `Search for these providers ONLY (Imoova already handled):
 1. "roadsurfer rally relocations from ${from}"
-2. "bunk campers relocation deals ${from}"`;
+2. "bunk campers relocation deals ${from}"
+3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`;
 
-    const prompt = `Search for campervan relocation deals DEPARTING FROM ${from}.
+    const prompt = `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
 
 ${providerQueries}
+
+IMPORTANT for Movacar:
+- Movacar has BOTH campervan/camper AND regular car relocations
+- Include ALL vehicle types (cars, campers, vans) from Movacar
+- Use provider "Movacar" for all Movacar deals
+- Movacar URL format: movacar.com/mietwagen/CityName/
 
 DIRECTION FILTER:
 ✅ INCLUDE: "${from} to [somewhere]"
@@ -303,7 +311,7 @@ If nothing found: []`;
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 3000,
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: imoovaFailed ? 5 : 3 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: imoovaFailed ? 6 : 4 }],
           messages: [{ role: 'user', content: prompt }],
           system: 'Web scraping API. Output ONLY valid JSON arrays. No commentary. Use "unknown" for missing fields.',
         }),

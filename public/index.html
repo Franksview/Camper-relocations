@@ -459,6 +459,7 @@
   .provider-roadsurfer { background: #d4edda; color: #155724; }
   .provider-indie { background: #e3eef5; color: #2a5f8a; }
   .provider-bunk { background: #f0e6f6; color: #6a3d7d; }
+  .provider-movacar { background: #d1fae5; color: #065f46; }
 
   .deal-actions {
     display: flex;
@@ -733,6 +734,23 @@
     border-left: 3px solid #f59e0b;
   }
 
+  .destination-bridge {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+  }
+
+  .destination-bridge .bridge-header h3 {
+    color: #1e40af;
+  }
+
+  .destination-bridge .bridge-subtitle {
+    color: #475569;
+    margin-bottom: 12px;
+    font-size: 0.92rem;
+  }
+
   .bridge-option.camper {
     border-left: 3px solid var(--rust);
   }
@@ -929,7 +947,7 @@
 </div>
 
 <footer>
-  <p>Relocamp searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a> and <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> for live deals.</p>
+  <p>Relocamp searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
 </footer>
 
@@ -1065,6 +1083,49 @@ const AFFILIATE_LINKS = {
   // booking:    (from, to) => `https://www.booking.com`,
   // hostelworld: (from, to) => `https://www.hostelworld.com`,
 };
+
+function renderDestinationBridge(dealDestination, finalDestination) {
+  if (!dealDestination || !finalDestination) return '';
+  const from = displayCity(dealDestination);
+  const to = finalDestination;
+
+  return `
+    <div class="destination-bridge">
+      <div class="bridge-header">
+        <h3>&#128204; Continue to ${to}</h3>
+      </div>
+      <div class="bridge-subtitle">
+        Your deal gets you to ${from}. Here's how to continue to ${to}:
+      </div>
+      <div class="bridge-options">
+        <a href="${AFFILIATE_LINKS.movacar(from, to)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+          <span class="transport-icon">&#128663;</span>
+          <div class="transport-info">
+            <div class="transport-name">Relocate a car · €1</div>
+            <div class="transport-detail">One-way rental car via Movacar from ${from}</div>
+          </div>
+          <span class="transport-price">€1</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.trainline(from, to)}" target="_blank" rel="noopener" class="bridge-option train">
+          <span class="transport-icon">&#128646;</span>
+          <div class="transport-info">
+            <div class="transport-name">Train to ${to}</div>
+            <div class="transport-detail">Find connections via Trainline</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.flixbus(from, to)}" target="_blank" rel="noopener" class="bridge-option bus">
+          <span class="transport-icon">&#128652;</span>
+          <div class="transport-info">
+            <div class="transport-name">FlixBus to ${to}</div>
+            <div class="transport-detail">Budget-friendly, WiFi on board</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
+      </div>
+    </div>
+  `;
+}
 
 function renderBridgeBlock(fromCity, dealCount) {
   const key = fromCity.toLowerCase().trim();
@@ -1304,6 +1365,7 @@ async function doSearch() {
         <span class="loading-provider" data-p="roadsurfer">Roadsurfer</span>
         <span class="loading-provider" data-p="indie">Indie Campers</span>
         <span class="loading-provider" data-p="bunk">Bunk Campers</span>
+        <span class="loading-provider" data-p="movacar">Movacar</span>
       </div>
       <div class="loading-text">Searching for deals from ${displayCity(from)}...</div>
       <div class="loading-sub">This usually takes 15–30 seconds</div>
@@ -1390,8 +1452,21 @@ function renderResults(data) {
     directionDeals.forEach((deal, i) => {
       html += renderDealCard(deal, i);
     });
+    // Show destination bridge: how to continue from deal destination to final destination
+    const bestDeal = directionDeals[0];
+    if (bestDeal.to && bestDeal.to.toLowerCase() !== meta.headingTowards.toLowerCase()) {
+      html += renderDestinationBridge(bestDeal.to, meta.headingTowards);
+    }
     if (otherDeals.length > 0) {
       html += `<div class="other-label">Other available departures</div>`;
+    }
+  }
+
+  // Also show destination bridge when heading towards is set but no direction matches
+  if (meta.headingTowards && directionDeals.length === 0 && deals.length > 0) {
+    const bestDeal = deals[0];
+    if (bestDeal.to && bestDeal.to.toLowerCase() !== meta.headingTowards.toLowerCase()) {
+      html += renderDestinationBridge(bestDeal.to, meta.headingTowards);
     }
   }
 
@@ -1407,7 +1482,8 @@ function renderResults(data) {
 }
 
 function renderDealCard(deal, index) {
-  const providerClass = deal.provider?.toLowerCase().includes('indie') ? 'provider-indie'
+  const providerClass = deal.provider?.toLowerCase().includes('movacar') ? 'provider-movacar'
+    : deal.provider?.toLowerCase().includes('indie') ? 'provider-indie'
     : deal.provider?.toLowerCase().includes('roadsurfer') ? 'provider-roadsurfer'
     : deal.provider?.toLowerCase().includes('imoova') ? 'provider-imoova'
     : 'provider-bunk';
