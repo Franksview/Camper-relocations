@@ -1078,7 +1078,7 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
-  movacar:   (from, to) => `https://www.movacar.com`,                // → add affiliate tracking (€12/lead)
+  movacar:   (from, to) => to ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/` : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`,                // → add affiliate tracking (€12/lead)
   // Future: booking, hostelworld, airbnb
   // booking:    (from, to) => `https://www.booking.com`,
   // hostelworld: (from, to) => `https://www.hostelworld.com`,
@@ -1462,12 +1462,48 @@ function renderResults(data) {
     }
   }
 
-  // Also show destination bridge when heading towards is set but no direction matches
+  // No direction matches: show direct transport options to destination
   if (meta.headingTowards && directionDeals.length === 0 && deals.length > 0) {
-    const bestDeal = deals[0];
-    if (bestDeal.to && bestDeal.to.toLowerCase() !== meta.headingTowards.toLowerCase()) {
-      html += renderDestinationBridge(bestDeal.to, meta.headingTowards);
-    }
+    const fromCity = displayCity(meta.from);
+    const toCity = meta.headingTowards;
+    html += `
+      <div class="direction-label">&#x1F9ED; Heading towards ${toCity}</div>
+      <div class="destination-bridge" style="margin-top:0;">
+        <div class="bridge-header">
+          <h3>&#128663; No campervan deals towards ${toCity} right now</h3>
+        </div>
+        <div class="bridge-subtitle">
+          No relocation deals from ${fromCity} heading towards ${toCity} at the moment. But here's how to get there:
+        </div>
+        <div class="bridge-options">
+          <a href="${AFFILIATE_LINKS.movacar(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+            <span class="transport-icon">&#128663;</span>
+            <div class="transport-info">
+              <div class="transport-name">Relocate a car or camper · from €1</div>
+              <div class="transport-detail">Check Movacar for one-way deals ${fromCity} → ${toCity}</div>
+            </div>
+            <span class="transport-price">from €1</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.trainline(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option train">
+            <span class="transport-icon">&#128646;</span>
+            <div class="transport-info">
+              <div class="transport-name">Train to ${toCity}</div>
+              <div class="transport-detail">Find connections via Trainline</div>
+            </div>
+            <span class="transport-price">Check prices</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.flixbus(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option bus">
+            <span class="transport-icon">&#128652;</span>
+            <div class="transport-info">
+              <div class="transport-name">FlixBus to ${toCity}</div>
+              <div class="transport-detail">Budget-friendly, WiFi on board</div>
+            </div>
+            <span class="transport-price">Check prices</span>
+          </a>
+        </div>
+      </div>
+      <div class="other-label">Other campervan deals from ${fromCity}</div>
+    `;
   }
 
   const remaining = meta.headingTowards ? otherDeals : deals;
