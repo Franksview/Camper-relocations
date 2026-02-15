@@ -729,6 +729,10 @@
     border-left: 3px solid var(--sky);
   }
 
+  .bridge-option.car-relocation {
+    border-left: 3px solid #f59e0b;
+  }
+
   .bridge-option.camper {
     border-left: 3px solid var(--rust);
   }
@@ -1056,6 +1060,7 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
+  movacar:   (from, to) => `https://www.movacar.com`,                // → add affiliate tracking (€12/lead)
   // Future: booking, hostelworld, airbnb
   // booking:    (from, to) => `https://www.booking.com`,
   // hostelworld: (from, to) => `https://www.hostelworld.com`,
@@ -1091,7 +1096,19 @@ function renderBridgeBlock(fromCity, dealCount) {
       <div class="bridge-options">
   `;
 
-  // Night train (if available) — shown first, most on-brand
+  // Car relocation (Movacar) — €1 car to get to hub, shown first
+  html += `
+    <a href="${AFFILIATE_LINKS.movacar(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+      <span class="transport-icon">&#128663;</span>
+      <div class="transport-info">
+        <div class="transport-name">Relocate a car · €1</div>
+        <div class="transport-detail">Drive a rental car one-way via Movacar — same concept, regular cars</div>
+      </div>
+      <span class="transport-price">€1</span>
+    </a>
+  `;
+
+  // Night train (if available)
   if (bestRoute.nightTrain) {
     html += `
       <a href="${AFFILIATE_LINKS.trainline(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option night-train">
