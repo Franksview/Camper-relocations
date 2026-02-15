@@ -925,7 +925,7 @@
 </div>
 
 <footer>
-  <p>Relocamp searches <a href="https://imoova.com" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a> and <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> for live deals.</p>
+  <p>Relocamp searches <a href="https://imoova.com/en?via=frank" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a> and <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
 </footer>
 
@@ -1055,7 +1055,7 @@ const AFFILIATE_LINKS = {
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
-  imoova:    (from, to) => `https://www.imoova.com/en`,             // → add ?ref=CODE
+  imoova:    (from, to) => `https://www.imoova.com/en?via=frank`,
   // Future: booking, hostelworld, airbnb
   // booking:    (from, to) => `https://www.booking.com`,
   // hostelworld: (from, to) => `https://www.hostelworld.com`,
@@ -1395,7 +1395,11 @@ function renderDealCard(deal, index) {
     : deal.provider?.toLowerCase().includes('imoova') ? 'provider-imoova'
     : 'provider-bunk';
 
-  const bookUrl = deal.url && deal.url.startsWith('http') ? deal.url : '#';
+  let bookUrl = deal.url && deal.url.startsWith('http') ? deal.url : '#';
+  // Add Imoova affiliate tracking
+  if (bookUrl !== '#' && bookUrl.includes('imoova.com')) {
+    bookUrl += (bookUrl.includes('?') ? '&' : '?') + 'via=frank';
+  }
 
   return `
     <div class="deal-card ${deal.direction_match ? 'direction-match' : ''}" style="animation-delay: ${index * 0.05}s">
