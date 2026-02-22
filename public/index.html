@@ -733,6 +733,12 @@
   .bridge-option.car-relocation {
     border-left: 3px solid #f59e0b;
   }
+  .bridge-option.flight {
+    border-left: 3px solid #0ea5e9;
+  }
+  .bridge-option.flight .transport-name {
+    color: #0369a1;
+  }
 
   .destination-bridge {
     background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
@@ -1071,9 +1077,42 @@ const BRIDGE_ALIASES = {
 };
 
 // Affiliate link builders — replace BASE_URLs with tracked affiliate links later
+// IATA airport codes for Kiwi.com deep links
+const CITY_IATA = {
+  'amsterdam': 'AMS', 'munich': 'MUC', 'münchen': 'MUC', 'munchen': 'MUC',
+  'hamburg': 'HAM', 'berlin': 'BER', 'frankfurt': 'FRA', 'barcelona': 'BCN',
+  'paris': 'CDG', 'lisbon': 'LIS', 'lissabon': 'LIS', 'london': 'LON',
+  'rome': 'FCO', 'roma': 'FCO', 'milan': 'MXP', 'milano': 'MXP',
+  'vienna': 'VIE', 'wien': 'VIE', 'prague': 'PRG', 'prag': 'PRG',
+  'copenhagen': 'CPH', 'kopenhagen': 'CPH', 'brussels': 'BRU', 'brussel': 'BRU',
+  'zurich': 'ZRH', 'madrid': 'MAD', 'dublin': 'DUB', 'oslo': 'OSL',
+  'stockholm': 'ARN', 'helsinki': 'HEL', 'athens': 'ATH', 'athene': 'ATH',
+  'budapest': 'BUD', 'warsaw': 'WAW', 'warschau': 'WAW',
+  'dusseldorf': 'DUS', 'düsseldorf': 'DUS', 'cologne': 'CGN', 'köln': 'CGN', 'keulen': 'CGN',
+  'lyon': 'LYS', 'marseille': 'MRS', 'edinburgh': 'EDI',
+  'zagreb': 'ZAG', 'porto': 'OPO', 'seville': 'SVQ', 'sevilla': 'SVQ',
+  'malaga': 'AGP', 'nice': 'NCE', 'bordeaux': 'BOD', 'toulouse': 'TLS',
+  'nuremberg': 'NUE', 'nürnberg': 'NUE', 'stuttgart': 'STR', 'hannover': 'HAJ',
+  'leipzig': 'LEJ', 'dresden': 'DRS', 'bremen': 'BRE', 'geneve': 'GVA', 'geneva': 'GVA',
+  'antwerp': 'ANR', 'antwerpen': 'ANR', 'rotterdam': 'RTM', 'eindhoven': 'EIN',
+  'bucharest': 'OTP', 'boekarest': 'OTP', 'sofia': 'SOF', 'belgrade': 'BEG',
+  'krakow': 'KRK', 'gdansk': 'GDN', 'split': 'SPU', 'dubrovnik': 'DBV',
+};
+
+function getKiwiUrl(from, to) {
+  const fromIata = CITY_IATA[from.toLowerCase().trim()];
+  const toIata = CITY_IATA[to.toLowerCase().trim()];
+  if (fromIata && toIata) {
+    return `https://www.kiwi.com/deep?from=${fromIata}&to=${toIata}`; // → wrap with Travelpayouts tracking after signup
+  }
+  // Fallback: Kiwi.com search page
+  return `https://www.kiwi.com/en/search/results/${encodeURIComponent(from.toLowerCase())}/${encodeURIComponent(to.toLowerCase())}/anytime/no-return`;
+}
+
 const AFFILIATE_LINKS = {
   trainline: (from, to) => `https://www.thetrainline.com`,          // → add ?affiliate=CODE
   flixbus:   (from, to) => `https://www.flixbus.com`,               // → add Awin tracking
+  kiwi:      (from, to) => getKiwiUrl(from, to),                    // → wrap with Travelpayouts shmarker after signup
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
@@ -1098,6 +1137,14 @@ function renderDestinationBridge(dealDestination, finalDestination) {
         Your deal gets you to ${from}. Here's how to continue to ${to}:
       </div>
       <div class="bridge-options">
+        <a href="${AFFILIATE_LINKS.kiwi(from, to)}" target="_blank" rel="noopener" class="bridge-option flight">
+          <span class="transport-icon">&#9992;&#65039;</span>
+          <div class="transport-info">
+            <div class="transport-name">Fly to ${to}</div>
+            <div class="transport-detail">Compare flights via Kiwi.com</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
         <a href="${AFFILIATE_LINKS.movacar(from, to)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
           <span class="transport-icon">&#128663;</span>
           <div class="transport-info">
@@ -1166,6 +1213,18 @@ function renderBridgeBlock(fromCity, dealCount) {
         <div class="transport-detail">Drive a rental car one-way via Movacar — same concept, regular cars</div>
       </div>
       <span class="transport-price">€1</span>
+    </a>
+  `;
+
+  // Flight (Kiwi.com)
+  html += `
+    <a href="${AFFILIATE_LINKS.kiwi(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option flight">
+      <span class="transport-icon">&#9992;&#65039;</span>
+      <div class="transport-info">
+        <div class="transport-name">Fly to ${hubInfo.label}</div>
+        <div class="transport-detail">Compare flights via Kiwi.com</div>
+      </div>
+      <span class="transport-price">Check prices</span>
     </a>
   `;
 
@@ -1476,6 +1535,14 @@ function renderResults(data) {
           No relocation deals from ${fromCity} heading towards ${toCity} at the moment. But here's how to get there:
         </div>
         <div class="bridge-options">
+          <a href="${AFFILIATE_LINKS.kiwi(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option flight">
+            <span class="transport-icon">&#9992;&#65039;</span>
+            <div class="transport-info">
+              <div class="transport-name">Fly to ${toCity}</div>
+              <div class="transport-detail">Compare flights via Kiwi.com</div>
+            </div>
+            <span class="transport-price">Check prices</span>
+          </a>
           <a href="${AFFILIATE_LINKS.movacar(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
             <span class="transport-icon">&#128663;</span>
             <div class="transport-info">
