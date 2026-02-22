@@ -1587,8 +1587,8 @@ function addToTrip(deal) {
     }
   }
 
-  // Clear heading towards for next leg
-  document.getElementById('headingTowards').value = '';
+  // Keep heading towards for next leg — the ultimate destination doesn't change
+  // (user wants Amsterdam → Barcelona, adding Hamburg as intermediate doesn't change that)
 
   // Scroll to search and auto-trigger search from destination
   document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
