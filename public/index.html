@@ -739,6 +739,12 @@
   .bridge-option.flight .transport-name {
     color: #0369a1;
   }
+  .bridge-option.rideshare {
+    border-left: 3px solid #00b4e6;
+  }
+  .bridge-option.rideshare .transport-name {
+    color: #0891b2;
+  }
 
   .destination-bridge {
     background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
@@ -1110,9 +1116,10 @@ function getKiwiUrl(from, to) {
 }
 
 const AFFILIATE_LINKS = {
-  trainline: (from, to) => `https://www.thetrainline.com`,          // → add ?affiliate=CODE
-  flixbus:   (from, to) => `https://www.flixbus.com`,               // → add Awin tracking
+  trainline: (from, to) => `https://www.thetrainline.com/book/results?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`,  // → add Partnerize tracking
+  flixbus:   (from, to) => `https://global.flixbus.com/bus-routes/bus-${from.toLowerCase().replace(/\s+/g,'-')}-${to.toLowerCase().replace(/\s+/g,'-')}`,  // → add Awin tracking
   kiwi:      (from, to) => getKiwiUrl(from, to),                    // → wrap with Travelpayouts shmarker after signup
+  blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
@@ -1168,6 +1175,14 @@ function renderDestinationBridge(dealDestination, finalDestination) {
             <div class="transport-detail">Budget-friendly, WiFi on board</div>
           </div>
           <span class="transport-price">Check prices</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.blablacar(from, to)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+          <span class="transport-icon">&#x1F44D;</span>
+          <div class="transport-info">
+            <div class="transport-name">Rideshare to ${to}</div>
+            <div class="transport-detail">Share a ride via BlaBlaCar</div>
+          </div>
+          <span class="transport-price">Check rides</span>
         </a>
       </div>
     </div>
@@ -1255,6 +1270,18 @@ function renderBridgeBlock(fromCity, dealCount) {
       </a>
     `;
   }
+
+  // Rideshare (BlaBlaCar)
+  html += `
+    <a href="${AFFILIATE_LINKS.blablacar(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+      <span class="transport-icon">&#x1F44D;</span>
+      <div class="transport-info">
+        <div class="transport-name">Rideshare to ${hubInfo.label}</div>
+        <div class="transport-detail">Share a ride via BlaBlaCar</div>
+      </div>
+      <span class="transport-price">Check rides</span>
+    </a>
+  `;
 
   // Day train
   if (bestRoute.train) {
@@ -1566,6 +1593,14 @@ function renderResults(data) {
               <div class="transport-detail">Budget-friendly, WiFi on board</div>
             </div>
             <span class="transport-price">Check prices</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.blablacar(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+            <span class="transport-icon">&#x1F44D;</span>
+            <div class="transport-info">
+              <div class="transport-name">Rideshare to ${toCity}</div>
+              <div class="transport-detail">Share a ride via BlaBlaCar</div>
+            </div>
+            <span class="transport-price">Check rides</span>
           </a>
         </div>
       </div>
