@@ -239,6 +239,66 @@
     box-shadow: none;
   }
 
+  .browse-all-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .browse-divider {
+    font-size: 0.82rem;
+    color: var(--warm);
+    flex-shrink: 0;
+  }
+
+  .browse-all-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1.5px solid var(--stone);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.01em;
+  }
+
+  .browse-all-btn:hover {
+    border-color: var(--rust);
+    color: var(--rust);
+    background: var(--rust-light);
+  }
+
+  .browse-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .browse-header h3 {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    margin-bottom: 6px;
+  }
+
+  .browse-header p {
+    color: var(--warm);
+    font-size: 0.88rem;
+  }
+
+  .browse-tip {
+    text-align: center;
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--rust-light);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    color: var(--warm);
+  }
+
   /* ─── TRIP BUILDER ─── */
   .trip-builder {
     margin-top: 32px;
@@ -1089,7 +1149,7 @@
   <section class="featured-section" id="featuredSection">
     <div class="featured-header">
       <h2><span class="live-dot"></span> Live deals right now</h2>
-      <button class="featured-cta" onclick="searchFromHub()">See all deals &rarr;</button>
+      <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
     </div>
     <div id="featuredContainer">
       <div class="featured-skeleton">
@@ -1146,6 +1206,10 @@
         </div>
       </div>
       <button class="search-btn" id="searchBtn" onclick="doSearch()">Search available deals</button>
+      <div class="browse-all-row">
+        <span class="browse-divider">or</span>
+        <button class="browse-all-btn" onclick="browseAll()">Browse all available deals across Europe</button>
+      </div>
     </div>
   </section>
 
@@ -1250,7 +1314,7 @@ function renderFeaturedDeals(data) {
 
   if (data.total_available > deals.length) {
     html += `
-      <div class="featured-card" onclick="searchFromHub()" style="display:flex;align-items:center;justify-content:center;text-align:center;color:var(--rust);font-weight:600;">
+      <div class="featured-card" onclick="searchFromHub('${featuredHub}')" style="display:flex;align-items:center;justify-content:center;text-align:center;color:var(--rust);font-weight:600;cursor:pointer;">
         +${data.total_available - deals.length} more deals from ${featuredHub}<br>
         <span style="font-weight:400;font-size:0.82rem;margin-top:4px;">Search all &rarr;</span>
       </div>
@@ -1259,11 +1323,6 @@ function renderFeaturedDeals(data) {
 
   html += '</div>';
   container.innerHTML = html;
-}
-
-function searchFromHub() {
-  document.getElementById('fromCity').value = featuredHub;
-  doSearch();
 }
 
 // Fire on page load
@@ -1627,6 +1686,51 @@ function renderBridgeBlock(fromCity, dealCount) {
 
   html += `</div>`;
   return html;
+}
+
+function browseAll() {
+  const resultsSection = document.getElementById('resultsSection');
+  resultsSection.style.display = 'block';
+  const container = document.getElementById('resultsContainer');
+  container.innerHTML = `
+    <div class="loading" id="loadingState">
+      <div class="loading-road"><div class="loading-van">&#x1F690;</div></div>
+      <div class="loading-text">Loading deals across Europe...</div>
+      <div class="loading-sub">This usually takes 2–5 seconds</div>
+    </div>
+  `;
+  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  fetch('/api/featured?limit=30')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.deals || data.deals.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x1F614;</div><h3>No deals available right now</h3><p>Try searching a specific city like Munich, Berlin, or London.</p></div>`;
+        return;
+      }
+      // Transform featured deals to match renderDealCard format
+      const deals = data.deals.map(d => {
+        const parts = d.route?.split(/→|➜/) || [];
+        return {
+          from: parts[0]?.trim() || '',
+          to: parts[1]?.trim() || '',
+          price: d.price || '€1/day',
+          date_range: d.dates || 'Flexible',
+          vehicle: d.vehicle || 'Campervan',
+          provider: d.provider || 'Imoova',
+          url: d.url || '#',
+          direction_match: false
+        };
+      });
+      currentDeals = deals;
+      let html = `<div class="browse-header"><h3>&#x1F30D; ${deals.length} deals available right now</h3><p>Live relocation deals from <strong>${data.hub || 'top European hubs'}</strong> via Imoova. Search a specific city above for results from all 5 providers.</p></div>`;
+      deals.forEach((deal, i) => { html += renderDealCard(deal, i); });
+      html += '<div class="browse-tip">💡 <strong>Want more results?</strong> Search a specific city above to get deals from all 5 providers including Roadsurfer, Indie Campers, and more.</div>';
+      container.innerHTML = html;
+    })
+    .catch(err => {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x26A0;&#xFE0F;</div><h3>Could not load deals</h3><p>${err.message}. Try searching a specific city instead.</p></div>`;
+    });
 }
 
 function searchFromHub(hubCity) {

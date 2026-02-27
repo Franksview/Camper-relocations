@@ -98,7 +98,7 @@ async function fetchImoovaDeals(city) {
       const routes = [...text.matchAll(routePattern)]
         .filter(r => !/sort|filter|map|menu|nav/i.test(r[1] + r[2]));
 
-      for (let i = 0; i < Math.min(routes.length, 8); i++) {
+      for (let i = 0; i < Math.min(routes.length, 30); i++) {
         deals.push({
           vehicle: 'Campervan',
           from: routes[i][1].trim(),
@@ -137,15 +137,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    const limit = parseInt(req.query?.limit) || 6;
+    
     // Fetch from top hub city (Munich has most deals)
     const deals = await fetchImoovaDeals('munich');
 
-    // Take top 6 diverse deals (different destinations)
+    // Take top N diverse deals (different destinations)
     const seen = new Set();
     const featured = [];
     for (const deal of deals) {
       const destKey = deal.to.toLowerCase();
-      if (!seen.has(destKey) && featured.length < 6) {
+      if (!seen.has(destKey) && featured.length < limit) {
         seen.add(destKey);
         featured.push(deal);
       }
@@ -156,7 +158,7 @@ export default async function handler(req, res) {
       const berlinDeals = await fetchImoovaDeals('berlin');
       for (const deal of berlinDeals) {
         const key = `${deal.from.toLowerCase()}-${deal.to.toLowerCase()}`;
-        if (!seen.has(key) && featured.length < 6) {
+        if (!seen.has(key) && featured.length < limit) {
           seen.add(key);
           featured.push(deal);
         }
