@@ -1047,6 +1047,11 @@
     white-space: nowrap;
   }
 
+  .free-note {
+    color: var(--rust);
+    font-weight: 600;
+  }
+
   /* ─── ALERT SIGNUP (empty state) ─── */
   .alert-signup {
     background: var(--cream);
@@ -1214,6 +1219,71 @@
     color: #ef9a9a;
   }
 
+  /* ─── TRUST / ABOUT SECTION ─── */
+  .trust-section {
+    background: var(--cream);
+    padding: 56px 20px;
+  }
+
+  .trust-inner {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .trust-block {
+    margin-bottom: 28px;
+  }
+
+  .trust-block h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .trust-block p {
+    font-size: 0.9rem;
+    color: var(--warm);
+    line-height: 1.65;
+    margin-bottom: 8px;
+  }
+
+  .trust-stats {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin: 32px 0;
+    padding: 24px;
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--sand);
+  }
+
+  .trust-stat {
+    text-align: center;
+    flex: 1;
+  }
+
+  .stat-number {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--rust);
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--warm);
+    margin-top: 2px;
+  }
+
+  .trust-made {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--stone);
+    font-style: italic;
+  }
+
   footer {
     text-align: center;
     padding: 40px 20px;
@@ -1273,6 +1343,11 @@
 
     .alert-btn {
       width: 100%;
+    }
+
+    .trust-stats {
+      flex-direction: column;
+      gap: 16px;
     }
   }
 
@@ -1340,6 +1415,7 @@
   <div class="provider-strip">
     <span>Searching:</span>
     <span>Imoova</span> · <span>Roadsurfer</span> · <span>Indie Campers</span> · <span>Bunk Campers</span> · <span>Movacar</span>
+    <span class="free-note">— 100% free for you</span>
   </div>
 
   <!-- SEARCH -->
@@ -1415,6 +1491,35 @@
       <button type="submit" class="alert-btn">Subscribe</button>
     </form>
     <div class="newsletter-status" style="display:none;"></div>
+  </div>
+</section>
+
+<section class="trust-section">
+  <div class="trust-inner">
+    <div class="trust-block">
+      <h3>What is Movacamper?</h3>
+      <p>Rental companies constantly need campervans and motorhomes moved between cities — after the summer rush, vehicles pile up in the south and need to go north. Instead of hiring drivers, they let travelers like you drive them for as little as €1 per day.</p>
+      <p>Movacamper searches five providers in real time so you don't have to check them all yourself. We built this because we kept missing deals scattered across different sites.</p>
+    </div>
+    <div class="trust-block">
+      <h3>Is it really free?</h3>
+      <p>Yes — for you. We earn a small commission when you book through a provider link. You never pay more than you would going directly. Most relocation deals cost between €1–5 per day, and some even include fuel allowances.</p>
+    </div>
+    <div class="trust-stats">
+      <div class="trust-stat">
+        <div class="stat-number">5</div>
+        <div class="stat-label">Providers searched</div>
+      </div>
+      <div class="trust-stat">
+        <div class="stat-number">12+</div>
+        <div class="stat-label">Countries covered</div>
+      </div>
+      <div class="trust-stat">
+        <div class="stat-number">€1/day</div>
+        <div class="stat-label">Typical deal price</div>
+      </div>
+    </div>
+    <p class="trust-made">Made in Amsterdam 🇳🇱 by a backpacker who couldn't afford rental cars.</p>
   </div>
 </section>
 
