@@ -1,7 +1,8 @@
 {
   "rewrites": [
     { "source": "/api/search", "destination": "/api/search" },
-    { "source": "/api/featured", "destination": "/api/featured" }
+    { "source": "/api/featured", "destination": "/api/featured" },
+    { "source": "/api/subscribe", "destination": "/api/subscribe" }
   ],
   "headers": [
     {

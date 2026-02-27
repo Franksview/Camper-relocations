@@ -1047,6 +1047,173 @@
     white-space: nowrap;
   }
 
+  /* ─── ALERT SIGNUP (empty state) ─── */
+  .alert-signup {
+    background: var(--cream);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    margin: 24px 0;
+  }
+
+  .alert-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+
+  .alert-signup h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin-bottom: 6px;
+  }
+
+  .alert-signup p {
+    color: var(--warm);
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+  }
+
+  .alert-form {
+    display: flex;
+    gap: 8px;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .alert-input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.9rem;
+    background: white;
+    transition: border-color var(--transition);
+  }
+
+  .alert-input:focus {
+    outline: none;
+    border-color: var(--rust);
+  }
+
+  .alert-btn {
+    padding: 12px 20px;
+    background: var(--rust);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition);
+  }
+
+  .alert-btn:hover {
+    background: var(--rust-dark);
+  }
+
+  .alert-btn:disabled {
+    background: var(--stone);
+    cursor: not-allowed;
+  }
+
+  .alert-privacy {
+    font-size: 0.75rem;
+    color: var(--stone);
+    margin-top: 10px;
+  }
+
+  .alert-status {
+    margin-top: 12px;
+    font-size: 0.88rem;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .alert-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .alert-status.error {
+    background: #fce4ec;
+    color: #c62828;
+  }
+
+  /* ─── NEWSLETTER SECTION ─── */
+  .newsletter-section {
+    background: var(--forest);
+    padding: 48px 20px;
+  }
+
+  .newsletter-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .newsletter-text h3 {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: white;
+    margin-bottom: 6px;
+  }
+
+  .newsletter-text p {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+
+  .newsletter-form {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .newsletter-form .alert-input {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+    color: white;
+  }
+
+  .newsletter-form .alert-input::placeholder {
+    color: rgba(255,255,255,0.5);
+  }
+
+  .newsletter-form .alert-input:focus {
+    border-color: var(--rust);
+    background: rgba(255,255,255,0.15);
+  }
+
+  .newsletter-form .alert-btn {
+    background: white;
+    color: var(--forest);
+  }
+
+  .newsletter-form .alert-btn:hover {
+    background: var(--cream);
+  }
+
+  .newsletter-status {
+    margin-top: 12px;
+    font-size: 0.88rem;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .newsletter-status.success {
+    color: #a5d6a7;
+  }
+
+  .newsletter-status.error {
+    color: #ef9a9a;
+  }
+
   footer {
     text-align: center;
     padding: 40px 20px;
@@ -1097,6 +1264,15 @@
 
     .deal-meta {
       gap: 10px;
+    }
+
+    .alert-form,
+    .newsletter-form {
+      flex-direction: column;
+    }
+
+    .alert-btn {
+      width: 100%;
     }
   }
 
@@ -1227,6 +1403,20 @@
     <div id="resultsContainer"></div>
   </section>
 </div>
+
+<section class="newsletter-section">
+  <div class="newsletter-inner">
+    <div class="newsletter-text">
+      <h3>&#x1F4E8; Never miss a deal</h3>
+      <p>Get weekly alerts with the best campervan relocation deals across Europe. Free, no spam.</p>
+    </div>
+    <form class="newsletter-form" onsubmit="submitNewsletter(event)">
+      <input type="email" placeholder="your@email.com" required class="alert-input" />
+      <button type="submit" class="alert-btn">Subscribe</button>
+    </form>
+    <div class="newsletter-status" style="display:none;"></div>
+  </div>
+</section>
 
 <footer>
   <p>Movacamper searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
@@ -1909,6 +2099,79 @@ async function doSearch() {
   }
 }
 
+// ─── EMAIL ALERTS ───
+async function submitAlert(event, city) {
+  event.preventDefault();
+  const form = event.target;
+  const input = form.querySelector('.alert-input');
+  const btn = form.querySelector('.alert-btn');
+  const statusEl = form.parentElement.querySelector('.alert-status');
+
+  btn.disabled = true;
+  btn.textContent = 'Subscribing...';
+
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: city || 'any',
+        date: document.getElementById('travelDate')?.value || null,
+        flexibility: flexibility || 7,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Subscription failed');
+
+    statusEl.className = 'alert-status success';
+    statusEl.textContent = '✅ Done! We\'ll email you when deals from ' + (displayCity(city) || 'Europe') + ' appear.';
+    statusEl.style.display = 'block';
+    form.style.display = 'none';
+  } catch (err) {
+    statusEl.className = 'alert-status error';
+    statusEl.textContent = '❌ ' + err.message + '. Please try again.';
+    statusEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Notify me';
+  }
+}
+
+async function submitNewsletter(event) {
+  event.preventDefault();
+  const form = event.target;
+  const input = form.querySelector('.alert-input');
+  const btn = form.querySelector('.alert-btn');
+  const statusEl = document.querySelector('.newsletter-status');
+
+  btn.disabled = true;
+  btn.textContent = 'Subscribing...';
+
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: 'any',
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Subscription failed');
+
+    statusEl.className = 'newsletter-status success';
+    statusEl.textContent = '✅ You\'re in! We\'ll send you the best deals weekly.';
+    statusEl.style.display = 'block';
+    form.style.display = 'none';
+  } catch (err) {
+    statusEl.className = 'newsletter-status error';
+    statusEl.textContent = '❌ ' + err.message;
+    statusEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Subscribe';
+  }
+}
+
 // ─── RENDER RESULTS ───
 function renderResults(data) {
   const container = document.getElementById('resultsContainer');
@@ -1916,11 +2179,23 @@ function renderResults(data) {
   const meta = data.meta || {};
 
   if (deals.length === 0) {
+    const cityName = displayCity(meta.from) || 'this city';
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">&#x1F6A3;</div>
-        <h3>No deals found from ${displayCity(meta.from) || 'this city'}</h3>
+        <h3>No deals found from ${cityName}</h3>
         <p>Try a nearby major city, different dates, or wider date flexibility.</p>
+      </div>
+      <div class="alert-signup">
+        <div class="alert-icon">&#x1F514;</div>
+        <h3>Get notified when deals from ${cityName} appear</h3>
+        <p>We'll check daily and email you as soon as a relocation deal pops up.</p>
+        <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || ''}')">
+          <input type="email" placeholder="your@email.com" required class="alert-input" />
+          <button type="submit" class="alert-btn">Notify me</button>
+        </form>
+        <div class="alert-status" style="display:none;"></div>
+        <div class="alert-privacy">No spam, ever. Unsubscribe anytime.</div>
       </div>
       ${renderBridgeBlock(meta.from, 0)}
     `;
