@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Relocamp — Find Campervan Relocation Deals Across Europe</title>
-<meta name="description" content="Chain cheap campervan relocation deals into the road trip of a lifetime. Search by origin, browse what's available, build your route.">
+<title>Movacamper — Campervan Relocation Deals Across Europe</title>
+<meta name="description" content="Drive campervans across Europe for €1/day. Rental companies need vehicles moved — you get an incredible road trip. Search live deals now.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -814,6 +814,179 @@
   }
 
   /* ─── FOOTER ─── */
+  /* ─── FEATURED DEALS ─── */
+  .featured-section {
+    margin-top: 28px;
+  }
+
+  .featured-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+
+  .featured-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+
+  .featured-header .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .featured-cta {
+    font-size: 0.82rem;
+    color: var(--rust);
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0;
+    transition: opacity var(--transition);
+  }
+
+  .featured-cta:hover { opacity: 0.7; }
+
+  .featured-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .featured-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0,0,0,0.04);
+    padding: 16px 18px;
+    transition: all var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .featured-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--rust);
+  }
+
+  .featured-route {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+  }
+
+  .featured-route .arrow { color: var(--rust); margin: 0 6px; }
+
+  .featured-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 10px;
+  }
+
+  .featured-details span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .featured-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .featured-price {
+    background: var(--rust-light);
+    color: var(--rust);
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 0.82rem;
+  }
+
+  .featured-provider {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #999;
+  }
+
+  /* Skeleton loading for featured deals */
+  .featured-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .skeleton-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0,0,0,0.04);
+    padding: 16px 18px;
+    height: 110px;
+  }
+
+  .skeleton-line {
+    height: 14px;
+    background: linear-gradient(90deg, var(--sand) 25%, #e8e5e0 50%, var(--sand) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .skeleton-line:first-child { width: 70%; height: 18px; }
+  .skeleton-line:nth-child(2) { width: 50%; }
+  .skeleton-line:nth-child(3) { width: 35%; }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ─── PROVIDER LOGOS ─── */
+  .provider-strip {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding: 12px 0;
+    font-size: 0.72rem;
+    color: var(--warm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    opacity: 0.7;
+  }
+
+  .provider-strip span {
+    white-space: nowrap;
+  }
+
   footer {
     text-align: center;
     padding: 40px 20px;
@@ -835,6 +1008,18 @@
     .how-it-works .steps {
       flex-direction: column;
       gap: 10px;
+    }
+
+    .featured-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .featured-skeleton {
+      grid-template-columns: 1fr;
+    }
+
+    .featured-skeleton .skeleton-card:nth-child(3) {
+      display: none;
     }
 
     .deal-top {
@@ -876,8 +1061,8 @@
 
 <header>
   <div class="container">
-    <div class="logo">Relo<span>camp</span></div>
-    <p class="tagline">Chain campervan relocation deals into the road trip of a lifetime</p>
+    <div class="logo">Mova<span>camper</span></div>
+    <p class="tagline">Drive campervans across Europe for €1/day</p>
   </div>
 </header>
 
@@ -898,6 +1083,27 @@
         <div><strong>Chain legs</strong> to build your route across Europe</div>
       </div>
     </div>
+  </div>
+
+  <!-- FEATURED DEALS -->
+  <section class="featured-section" id="featuredSection">
+    <div class="featured-header">
+      <h2><span class="live-dot"></span> Live deals right now</h2>
+      <button class="featured-cta" onclick="searchFromHub()">See all deals &rarr;</button>
+    </div>
+    <div id="featuredContainer">
+      <div class="featured-skeleton">
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVIDER STRIP -->
+  <div class="provider-strip">
+    <span>Searching:</span>
+    <span>Imoova</span> · <span>Roadsurfer</span> · <span>Indie Campers</span> · <span>Bunk Campers</span> · <span>Movacar</span>
   </div>
 
   <!-- SEARCH -->
@@ -959,7 +1165,7 @@
 </div>
 
 <footer>
-  <p>Relocamp searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
+  <p>Movacamper searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
 </footer>
 
@@ -968,6 +1174,100 @@
 let trip = [];
 let flexibility = 3;
 let currentDeals = [];
+
+// ─── FEATURED DEALS (auto-load on page open) ───
+let featuredHub = 'Munich';
+
+async function loadFeaturedDeals() {
+  const container = document.getElementById('featuredContainer');
+  try {
+    // Check localStorage cache first (instant)
+    const cached = localStorage.getItem('mc_featured');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        // Use cache if less than 2 hours old
+        if (Date.now() - parsed.time < 2 * 60 * 60 * 1000 && parsed.data.deals?.length > 0) {
+          renderFeaturedDeals(parsed.data);
+          // Still refresh in background
+          fetchFeaturedDeals();
+          return;
+        }
+      } catch(e) {}
+    }
+    await fetchFeaturedDeals();
+  } catch (err) {
+    console.error('Featured deals error:', err);
+    container.innerHTML = '';
+  }
+}
+
+async function fetchFeaturedDeals() {
+  try {
+    const res = await fetch('/api/featured');
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    if (data.deals?.length > 0) {
+      featuredHub = data.hub || 'Munich';
+      renderFeaturedDeals(data);
+      localStorage.setItem('mc_featured', JSON.stringify({ data, time: Date.now() }));
+    } else {
+      document.getElementById('featuredContainer').innerHTML = '';
+    }
+  } catch (err) {
+    console.error('Featured fetch error:', err);
+    document.getElementById('featuredContainer').innerHTML = '';
+  }
+}
+
+function renderFeaturedDeals(data) {
+  const container = document.getElementById('featuredContainer');
+  const deals = data.deals || [];
+  if (deals.length === 0) { container.innerHTML = ''; return; }
+
+  featuredHub = data.hub || deals[0]?.from || 'Munich';
+
+  let html = '<div class="featured-strip">';
+  deals.forEach(deal => {
+    const providerLabel = (deal.provider || 'Imoova').replace(' via Imoova', '');
+    html += `
+      <a href="${deal.url || '#'}" target="_blank" rel="noopener" class="featured-card">
+        <div class="featured-route">
+          ${deal.from}<span class="arrow">&rarr;</span>${deal.to}
+        </div>
+        <div class="featured-details">
+          <span>📅 ${deal.date_range || 'Flexible'}</span>
+          <span>🚐 ${deal.vehicle || 'Campervan'}</span>
+          ${deal.seats ? `<span>👤 ${deal.seats} seats</span>` : ''}
+        </div>
+        <div class="featured-bottom">
+          <span class="featured-price">${deal.price || '€1/day'}</span>
+          <span class="featured-provider">${providerLabel}</span>
+        </div>
+      </a>
+    `;
+  });
+
+  if (data.total_available > deals.length) {
+    html += `
+      <div class="featured-card" onclick="searchFromHub()" style="display:flex;align-items:center;justify-content:center;text-align:center;color:var(--rust);font-weight:600;">
+        +${data.total_available - deals.length} more deals from ${featuredHub}<br>
+        <span style="font-weight:400;font-size:0.82rem;margin-top:4px;">Search all &rarr;</span>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function searchFromHub() {
+  document.getElementById('fromCity').value = featuredHub;
+  doSearch();
+}
+
+// Fire on page load
+loadFeaturedDeals();
 
 // ─── CITY DISPLAY NAME ───
 const DISPLAY_NAMES = {

@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/search", "destination": "/api/search" }
+    { "source": "/api/search", "destination": "/api/search" },
+    { "source": "/api/featured", "destination": "/api/featured" }
   ],
   "headers": [
     {
