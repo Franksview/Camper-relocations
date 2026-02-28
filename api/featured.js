@@ -137,7 +137,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const limit = parseInt(req.query?.limit) || 6;
+    const limit = parseInt(req.query?.limit) || 3;
     
     // Fetch from top hub city (Munich has most deals)
     const deals = await fetchImoovaDeals('munich');

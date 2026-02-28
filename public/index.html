@@ -4,28 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movacamper — Campervan Relocation Deals Across Europe</title>
-<meta name="description" content="Drive campervans across Europe for €1/day. Rental companies need vehicles moved — you get an incredible road trip. Search live deals now.">
+<meta name="description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip. Search live deals from Imoova, Roadsurfer, Indie Campers and more.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #1a1a1a;
+    --ink-light: #333;
     --paper: #faf9f7;
     --sand: #f0ede8;
     --stone: #d4cfc7;
     --warm: #b8a99a;
     --rust: #c4704b;
+    --rust-hover: #b5623f;
     --rust-light: #f5e6de;
     --forest: #3d6b5e;
     --forest-light: #e4f0eb;
     --sky: #4a7fa5;
     --sky-light: #e3eef5;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-    --radius: 12px;
-    --radius-sm: 8px;
+    --cream: #f5f3ef;
+    --font-display: 'DM Serif Display', serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+    --shadow-hover: 0 8px 24px rgba(0,0,0,0.10);
+    --radius: 14px;
+    --radius-sm: 10px;
     --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -42,13 +47,13 @@
 
   /* ─── HEADER ─── */
   header {
-    padding: 24px 0 0;
+    padding: 14px 0 0;
     text-align: center;
   }
 
   .logo {
     font-family: 'DM Serif Display', serif;
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
     letter-spacing: -0.02em;
     color: var(--ink);
     margin-bottom: 4px;
@@ -57,10 +62,18 @@
   .logo span { color: var(--rust); }
 
   .tagline {
-    font-size: 0.95rem;
-    color: var(--warm);
-    font-weight: 300;
-    letter-spacing: 0.02em;
+    font-size: 0.92rem;
+    color: #555;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  .tagline strong {
+    color: var(--rust);
+    font-weight: 700;
   }
 
   /* ─── LAYOUT ─── */
@@ -70,17 +83,15 @@
     padding: 0 20px;
   }
 
-  /* ─── HOW IT WORKS ─── */
+  /* ─── HOW IT WORKS (compact inline) ─── */
   .how-it-works {
-    background: var(--sand);
-    border-radius: var(--radius);
-    padding: 20px 24px;
-    margin: 28px auto 0;
+    text-align: center;
+    padding: 12px 0 0;
     max-width: 860px;
-    font-size: 0.88rem;
-    color: #666;
-    line-height: 1.7;
-    position: relative;
+    margin: 0 auto;
+    font-size: 0.78rem;
+    color: var(--warm);
+    line-height: 1.5;
   }
 
   .how-it-works strong {
@@ -90,69 +101,122 @@
 
   .how-it-works .steps {
     display: flex;
-    gap: 24px;
-    margin-top: 12px;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
   }
 
   .how-it-works .step {
-    flex: 1;
     display: flex;
-    gap: 10px;
-    align-items: flex-start;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #777;
   }
 
   .step-num {
     flex-shrink: 0;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: var(--rust);
     color: white;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 2px;
+  }
+
+  /* ─── HERO SEARCH WRAPPER ─── */
+  .hero-search {
+    background: linear-gradient(180deg, var(--sand) 0%, var(--paper) 100%);
+    margin: 0 -20px;
+    padding: 0 20px 20px;
+  }
+
+  /* ─── PROVIDER HINT (inline) ─── */
+  .provider-hint {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--stone);
+    margin-top: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .provider-hint span {
+    white-space: nowrap;
+  }
+
+  /* ─── STICKY MOBILE SEARCH ─── */
+  .sticky-search-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: white;
+    padding: 12px 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    border-top: 1px solid var(--sand);
+  }
+
+  .sticky-search-bar.visible {
+    display: block;
+  }
+
+  .sticky-search-bar button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--rust);
+    color: white;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
   }
 
   /* ─── SEARCH FORM ─── */
   .search-section {
-    margin-top: 28px;
+    margin-top: 8px;
   }
 
   .search-card {
     background: white;
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
-    padding: 28px;
-    border: 1px solid rgba(0,0,0,0.04);
+    padding: 20px;
+    border: 1px solid rgba(0,0,0,0.03);
   }
 
   .search-card h2 {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.3rem;
-    margin-bottom: 20px;
+    font-size: 1.05rem;
+    margin-bottom: 12px;
     font-weight: 400;
+    color: var(--ink-light);
   }
 
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 10px;
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .form-group.full { grid-column: 1 / -1; }
 
   .form-group label {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -161,11 +225,11 @@
 
   .form-group input,
   .form-group select {
-    padding: 12px 14px;
+    padding: 10px 12px;
     border: 1.5px solid var(--stone);
     border-radius: var(--radius-sm);
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--ink);
     background: var(--paper);
     transition: border-color var(--transition);
@@ -190,12 +254,12 @@
 
   .flex-toggle button {
     flex: 1;
-    padding: 8px 0;
+    padding: 6px 0;
     border: 1.5px solid var(--stone);
     border-radius: 6px;
     background: white;
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: #888;
     cursor: pointer;
     transition: all var(--transition);
@@ -210,24 +274,24 @@
 
   .search-btn {
     width: 100%;
-    padding: 14px;
+    padding: 11px;
     border: none;
     border-radius: var(--radius-sm);
-    background: var(--ink);
+    background: var(--rust);
     color: white;
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition);
-    margin-top: 4px;
+    margin-top: 2px;
     letter-spacing: 0.01em;
   }
 
   .search-btn:hover {
-    background: #333;
+    background: var(--rust-hover);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(196, 112, 75, 0.3);
   }
 
   .search-btn:active { transform: translateY(0); }
@@ -243,7 +307,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 12px;
+    margin-top: 8px;
   }
 
   .browse-divider {
@@ -453,7 +517,7 @@
   }
 
   .deal-card:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-hover);
     transform: translateY(-2px);
   }
 
@@ -470,7 +534,7 @@
 
   .deal-route {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
   }
 
   .deal-route .arrow { color: var(--rust); margin: 0 8px; }
@@ -489,7 +553,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     color: #777;
     margin-bottom: 14px;
   }
@@ -525,17 +589,18 @@
     display: flex;
     gap: 10px;
     margin-top: 4px;
+    align-items: center;
   }
 
   .btn-book {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 18px;
+    padding: 10px 22px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition);
@@ -543,23 +608,29 @@
   }
 
   .btn-book-primary {
-    background: var(--ink);
+    background: var(--rust);
     color: white;
   }
 
   .btn-book-primary:hover {
-    background: #333;
+    background: var(--rust-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(196, 112, 75, 0.25);
   }
 
   .btn-next-leg {
-    background: var(--forest-light);
-    color: var(--forest);
-    border: 1.5px solid transparent;
+    background: transparent;
+    color: var(--warm);
+    border: 1px solid var(--stone);
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
   }
 
   .btn-next-leg:hover {
     border-color: var(--forest);
-    background: white;
+    color: var(--forest);
+    background: var(--forest-light);
   }
 
   /* ─── LOADING ─── */
@@ -876,19 +947,19 @@
   /* ─── FOOTER ─── */
   /* ─── FEATURED DEALS ─── */
   .featured-section {
-    margin-top: 28px;
+    margin-top: 16px;
   }
 
   .featured-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   .featured-header h2 {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     font-weight: 400;
   }
 
@@ -923,8 +994,8 @@
 
   .featured-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
   }
 
   .featured-card {
@@ -932,7 +1003,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0,0,0,0.04);
-    padding: 16px 18px;
+    padding: 14px 16px;
     transition: all var(--transition);
     cursor: pointer;
     text-decoration: none;
@@ -941,15 +1012,15 @@
   }
 
   .featured-card:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-hover);
     transform: translateY(-2px);
-    border-color: var(--rust);
+    border-color: rgba(196, 112, 75, 0.3);
   }
 
   .featured-route {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.05rem;
-    margin-bottom: 8px;
+    font-size: 0.95rem;
+    margin-bottom: 5px;
   }
 
   .featured-route .arrow { color: var(--rust); margin: 0 6px; }
@@ -957,10 +1028,10 @@
   .featured-details {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    font-size: 0.8rem;
+    gap: 6px;
+    font-size: 0.75rem;
     color: #888;
-    margin-bottom: 10px;
+    margin-bottom: 7px;
   }
 
   .featured-details span {
@@ -978,10 +1049,10 @@
   .featured-price {
     background: var(--rust-light);
     color: var(--rust);
-    padding: 3px 10px;
+    padding: 2px 8px;
     border-radius: 16px;
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 
   .featured-provider {
@@ -995,8 +1066,8 @@
   /* Skeleton loading for featured deals */
   .featured-skeleton {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
   }
 
   .skeleton-card {
@@ -1004,8 +1075,8 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0,0,0,0.04);
-    padding: 16px 18px;
-    height: 110px;
+    padding: 14px 16px;
+    height: 85px;
   }
 
   .skeleton-line {
@@ -1117,7 +1188,7 @@
   }
 
   .alert-btn:hover {
-    background: var(--rust-dark);
+    background: var(--rust-hover);
   }
 
   .alert-btn:disabled {
@@ -1152,6 +1223,7 @@
   .newsletter-section {
     background: var(--forest);
     padding: 48px 20px;
+    margin: 36px 0 0;
   }
 
   .newsletter-inner {
@@ -1162,9 +1234,10 @@
 
   .newsletter-text h3 {
     font-family: var(--font-display);
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     color: white;
     margin-bottom: 6px;
+    font-weight: 400;
   }
 
   .newsletter-text p {
@@ -1304,7 +1377,9 @@
 
     .how-it-works .steps {
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
+      align-items: flex-start;
+      padding-left: 20px;
     }
 
     .featured-strip {
@@ -1349,6 +1424,15 @@
       flex-direction: column;
       gap: 16px;
     }
+
+    .hero-search {
+      margin: 0 -20px;
+    }
+
+    /* Add bottom padding when sticky bar is visible */
+    body.has-sticky-bar {
+      padding-bottom: 72px;
+    }
   }
 
   /* ─── ANIMATIONS ─── */
@@ -1373,54 +1457,16 @@
 <header>
   <div class="container">
     <div class="logo">Mova<span>camper</span></div>
-    <p class="tagline">Drive campervans across Europe for €1/day</p>
+    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. Seriously — rental companies need them moved.</p>
   </div>
 </header>
 
-<div class="container">
-  <div class="how-it-works">
-    <strong>How it works</strong> — Rental companies need campervans moved between cities. You drive them for as little as 1 euro per day. Search by where you are, see what is available, and chain deals into a multi-stop trip.
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div>Enter your <strong>starting city</strong> to find available deals</div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div>Browse all <strong>available deals</strong> departing near you</div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div><strong>Chain legs</strong> to build your route across Europe</div>
-      </div>
-    </div>
-  </div>
+<div class="hero-search">
+  <div class="container">
 
-  <!-- FEATURED DEALS -->
-  <section class="featured-section" id="featuredSection">
-    <div class="featured-header">
-      <h2><span class="live-dot"></span> Live deals right now</h2>
-      <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
-    </div>
-    <div id="featuredContainer">
-      <div class="featured-skeleton">
-        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PROVIDER STRIP -->
-  <div class="provider-strip">
-    <span>Searching:</span>
-    <span>Imoova</span> · <span>Roadsurfer</span> · <span>Indie Campers</span> · <span>Bunk Campers</span> · <span>Movacar</span>
-    <span class="free-note">— 100% free for you</span>
-  </div>
-
-  <!-- SEARCH -->
+  <!-- SEARCH (hero position) -->
   <section class="search-section">
-    <div class="search-card">
+    <div class="search-card" id="searchCard">
       <h2 id="searchTitle">Where are you starting?</h2>
       <div class="form-row">
         <div class="form-group">
@@ -1463,7 +1509,49 @@
         <button class="browse-all-btn" onclick="browseAll()">Browse all available deals across Europe</button>
       </div>
     </div>
+    <div class="provider-hint">
+      Searching: Imoova · Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span style="color:var(--rust);font-weight:600;">100% free</span>
+    </div>
+
+    <!-- FEATURED DEALS (inside hero) -->
+    <section class="featured-section" id="featuredSection" style="margin-top:12px;">
+      <div class="featured-header">
+        <h2><span class="live-dot"></span> Live deals right now</h2>
+        <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
+      </div>
+      <div id="featuredContainer">
+        <div class="featured-skeleton">
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+        </div>
+      </div>
+    </section>
+
   </section>
+
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- HOW IT WORKS (condensed, pushed down) -->
+  <div class="how-it-works">
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>Search by <strong>city</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>Browse <strong>deals</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>Book on <strong>provider site</strong></div>
+      </div>
+    </div>
+  </div>
 
   <!-- TRIP BUILDER -->
   <section class="trip-builder" id="tripBuilder">
@@ -2550,7 +2638,39 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// ─── STICKY MOBILE SEARCH BAR ───
+(function() {
+  const stickyBar = document.getElementById('stickySearchBar');
+  const searchCard = document.getElementById('searchCard');
+  if (!stickyBar || !searchCard) return;
+
+  function checkSticky() {
+    if (window.innerWidth > 640) {
+      stickyBar.classList.remove('visible');
+      document.body.classList.remove('has-sticky-bar');
+      return;
+    }
+    const rect = searchCard.getBoundingClientRect();
+    const isSearchHidden = rect.bottom < 0;
+    stickyBar.classList.toggle('visible', isSearchHidden);
+    document.body.classList.toggle('has-sticky-bar', isSearchHidden);
+  }
+
+  window.addEventListener('scroll', checkSticky, { passive: true });
+  window.addEventListener('resize', checkSticky, { passive: true });
+})();
+
+function scrollToSearch() {
+  document.getElementById('searchCard').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => document.getElementById('fromCity').focus(), 500);
+}
 </script>
+
+<!-- Sticky mobile search bar -->
+<div class="sticky-search-bar" id="stickySearchBar">
+  <button onclick="scrollToSearch()">🔍 Modify search</button>
+</div>
 
 </body>
 </html>
