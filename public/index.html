@@ -1516,7 +1516,7 @@
     <!-- FEATURED DEALS (inside hero) -->
     <section class="featured-section" id="featuredSection" style="margin-top:12px;">
       <div class="featured-header">
-        <h2><span class="live-dot"></span> Live deals right now</h2>
+        <h2><span class="live-dot"></span> <span id="featuredTitle">Live deals right now</span></h2>
         <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
       </div>
       <div id="featuredContainer">
@@ -1568,20 +1568,6 @@
   </section>
 </div>
 
-<section class="newsletter-section">
-  <div class="newsletter-inner">
-    <div class="newsletter-text">
-      <h3>&#x1F4E8; Never miss a deal</h3>
-      <p>Get weekly alerts with the best campervan relocation deals across Europe. Free, no spam.</p>
-    </div>
-    <form class="newsletter-form" onsubmit="submitNewsletter(event)">
-      <input type="email" placeholder="your@email.com" required class="alert-input" />
-      <button type="submit" class="alert-btn">Subscribe</button>
-    </form>
-    <div class="newsletter-status" style="display:none;"></div>
-  </div>
-</section>
-
 <section class="trust-section">
   <div class="trust-inner">
     <div class="trust-block">
@@ -1595,19 +1581,33 @@
     </div>
     <div class="trust-stats">
       <div class="trust-stat">
+        <div class="stat-number" id="statDeals">—</div>
+        <div class="stat-label">Deals available now</div>
+      </div>
+      <div class="trust-stat">
         <div class="stat-number">5</div>
         <div class="stat-label">Providers searched</div>
       </div>
       <div class="trust-stat">
-        <div class="stat-number">12+</div>
-        <div class="stat-label">Countries covered</div>
-      </div>
-      <div class="trust-stat">
-        <div class="stat-number">€1/day</div>
+        <div class="stat-number">from €1/day</div>
         <div class="stat-label">Typical deal price</div>
       </div>
     </div>
     <p class="trust-made">Made in Amsterdam 🇳🇱 by a backpacker who couldn't afford rental cars.</p>
+  </div>
+</section>
+
+<section class="newsletter-section">
+  <div class="newsletter-inner">
+    <div class="newsletter-text">
+      <h3>&#x1F4E8; Never miss a deal</h3>
+      <p>Get weekly alerts with the best campervan relocation deals across Europe. Free, no spam.</p>
+    </div>
+    <form class="newsletter-form" onsubmit="submitNewsletter(event)">
+      <input type="email" placeholder="your@email.com" required class="alert-input" />
+      <button type="submit" class="alert-btn">Subscribe</button>
+    </form>
+    <div class="newsletter-status" style="display:none;"></div>
   </div>
 </section>
 
@@ -1673,6 +1673,17 @@ function renderFeaturedDeals(data) {
   if (deals.length === 0) { container.innerHTML = ''; return; }
 
   featuredHub = data.hub || deals[0]?.from || 'Munich';
+
+  // Update header with live count
+  const titleEl = document.getElementById('featuredTitle');
+  if (titleEl && data.total_available) {
+    titleEl.textContent = data.total_available + ' deals available right now';
+  }
+  // Update trust stats
+  const statEl = document.getElementById('statDeals');
+  if (statEl && data.total_available) {
+    statEl.textContent = data.total_available + '+';
+  }
 
   let html = '<div class="featured-strip">';
   deals.forEach(deal => {
