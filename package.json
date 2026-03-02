@@ -4,6 +4,7 @@
   "description": "Find cheap campervan relocation deals across Europe",
   "private": true,
   "dependencies": {
-    "@upstash/redis": "^1.34.3"
+    "@upstash/redis": "^1.34.3",
+    "ioredis": "^5.4.1"
   }
 }
