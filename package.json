@@ -2,5 +2,8 @@
   "name": "camper-relocations",
   "version": "1.0.0",
   "description": "Find cheap campervan relocation deals across Europe",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  }
 }

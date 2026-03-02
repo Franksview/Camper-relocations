@@ -1,15 +1,40 @@
 // Vercel Serverless — Movacamper Email Alert Subscription
-// Stores subscriber data for deal notifications
-// MVP: logs to Vercel console + in-memory store
-// TODO: Connect to Vercel KV, Supabase, or Notion for persistence
+// Persistent storage via Vercel KV (Redis)
+// Fallback: console logging if KV not configured
 
-const subscribers = new Map(); // In-memory (survives cold start period)
+let kv = null;
+
+async function getKV() {
+  if (kv) return kv;
+  try {
+    const mod = await import('@vercel/kv');
+    kv = mod.kv;
+    return kv;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const store = await getKV();
+
+  // GET: return subscriber count (no personal data exposed)
+  if (req.method === 'GET') {
+    if (!store) {
+      return res.status(200).json({ count: 0, storage: 'none', message: 'KV not configured' });
+    }
+    try {
+      const count = await store.scard('subscribers:emails') || 0;
+      return res.status(200).json({ count, storage: 'kv' });
+    } catch (err) {
+      return res.status(200).json({ count: 0, storage: 'error', detail: err.message });
+    }
+  }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -22,8 +47,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Valid email address required' });
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
   const subscription = {
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     city: city || 'any',
     date: date || null,
     flexibility: flexibility || 7,
@@ -31,21 +57,27 @@ export default async function handler(req, res) {
     source: 'movacamper.com',
   };
 
-  // Store in memory (survives for this function instance)
-  subscribers.set(subscription.email, subscription);
+  // Always log to Vercel console as backup
+  console.log('NEW SUBSCRIBER:', JSON.stringify(subscription));
 
-  // Log to Vercel console — check Runtime Logs in Vercel dashboard
-  console.log('📬 NEW SUBSCRIBER:', JSON.stringify(subscription));
-
-  // TODO: Add persistent storage here. Options:
-  // 1. Vercel KV: await kv.set(`sub:${email}`, subscription)
-  // 2. Supabase: await supabase.from('subscribers').insert(subscription)
-  // 3. Notion API: POST to Notion database
-  // 4. Google Sheets: Append via Sheets API
-  // 5. Resend/SendGrid: Send notification to hello@movacamper.com
+  // Store in Vercel KV if available
+  if (store) {
+    try {
+      // Store subscription data keyed by email
+      await store.set(`sub:${normalizedEmail}`, JSON.stringify(subscription));
+      // Add email to a set for easy counting/listing
+      await store.sadd('subscribers:emails', normalizedEmail);
+      console.log('Stored in KV:', normalizedEmail);
+    } catch (err) {
+      console.error('KV store error:', err.message);
+      // Don't fail the request — subscriber still gets a success response
+    }
+  } else {
+    console.warn('KV not configured — subscriber data only in logs');
+  }
 
   return res.status(200).json({
     success: true,
-    message: 'Subscribed! We\'ll email you when matching deals appear.',
+    message: "Subscribed! We'll email you when matching deals appear.",
   });
 }
