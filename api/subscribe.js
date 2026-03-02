@@ -1,15 +1,18 @@
 // Vercel Serverless — Movacamper Email Alert Subscription
-// Persistent storage via Vercel KV (Redis)
-// Fallback: console logging if KV not configured
+// Persistent storage via Upstash Redis (Vercel KV)
 
-let kv = null;
+import { Redis } from '@upstash/redis';
 
-async function getKV() {
-  if (kv) return kv;
+let redis = null;
+
+function getRedis() {
+  if (redis) return redis;
   try {
-    const mod = await import('@vercel/kv');
-    kv = mod.kv;
-    return kv;
+    redis = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+    return redis;
   } catch {
     return null;
   }
@@ -21,7 +24,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const store = await getKV();
+  const store = getRedis();
 
   // GET: return subscriber count (no personal data exposed)
   if (req.method === 'GET') {
@@ -60,17 +63,14 @@ export default async function handler(req, res) {
   // Always log to Vercel console as backup
   console.log('NEW SUBSCRIBER:', JSON.stringify(subscription));
 
-  // Store in Vercel KV if available
+  // Store in Redis if available
   if (store) {
     try {
-      // Store subscription data keyed by email
       await store.set(`sub:${normalizedEmail}`, JSON.stringify(subscription));
-      // Add email to a set for easy counting/listing
       await store.sadd('subscribers:emails', normalizedEmail);
       console.log('Stored in KV:', normalizedEmail);
     } catch (err) {
       console.error('KV store error:', err.message);
-      // Don't fail the request — subscriber still gets a success response
     }
   } else {
     console.warn('KV not configured — subscriber data only in logs');
