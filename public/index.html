@@ -305,6 +305,55 @@
     font-weight: 600;
   }
 
+  /* ─── ROUND TRIP TOGGLE ─── */
+  .round-trip-toggle {
+    margin: 8px 0 10px;
+  }
+
+  .round-trip-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--warm);
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color var(--transition);
+  }
+
+  .round-trip-btn:hover { color: var(--rust); }
+
+  .round-trip-btn.active { color: var(--forest); font-weight: 600; }
+
+  .round-trip-fields {
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    background: var(--forest-light);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(61,107,94,0.15);
+  }
+
+  .round-trip-fields .form-row { margin-bottom: 0; }
+
+  .trip-stat.tight .trip-stat-value { color: #d4820a; }
+  .trip-stat.over-budget .trip-stat-value { color: #c0392b; }
+  .return-home-block {
+    margin: 8px 0 4px 24px;
+    padding: 10px 14px;
+    background: rgba(61,107,94,0.04);
+    border: 1px dashed rgba(61,107,94,0.18);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--warm);
+  }
+  .return-home-block .return-title {
+    font-weight: 600;
+    color: var(--forest);
+    margin-bottom: 4px;
+    font-size: 0.82rem;
+  }
+  .return-home-block .gap-options { margin-top: 6px; }
+
   .search-btn {
     width: 100%;
     padding: 11px;
@@ -396,13 +445,20 @@
     color: var(--warm);
   }
 
-  /* ─── TRIP BUILDER ─── */
+  /* ─── TRIP BUILDER (ENHANCED TIMELINE) ─── */
   .trip-builder {
-    margin-top: 32px;
+    margin-top: 24px;
     display: none;
   }
 
-  .trip-builder.visible { display: block; }
+  .trip-builder.visible {
+    display: block;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(0,0,0,0.04);
+    padding: 24px;
+  }
 
   .trip-header {
     display: flex;
@@ -417,7 +473,12 @@
     font-weight: 400;
   }
 
-  .clear-trip {
+  .trip-header-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .clear-trip, .btn-share-trip {
     background: none;
     border: 1.5px solid var(--stone);
     border-radius: 6px;
@@ -429,48 +490,145 @@
     transition: all var(--transition);
   }
 
-  .clear-trip:hover {
+  .clear-trip:hover, .btn-share-trip:hover {
     border-color: var(--rust);
     color: var(--rust);
   }
 
-  .trip-legs {
+  /* Trip summary bar */
+  .trip-summary {
     display: flex;
-    flex-direction: column;
-    gap: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--forest-light) 0%, #e8f4ed 100%);
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
-  .trip-leg {
-    background: white;
-    border-radius: var(--radius);
-    padding: 16px 20px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(0,0,0,0.04);
+  .trip-summary-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .trip-stat { text-align: center; }
+
+  .trip-stat-value {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--forest);
+  }
+
+  .trip-stat-label {
+    font-size: 0.7rem;
+    color: var(--warm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .trip-route-visual {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .trip-route-visual .city-dot {
+    background: var(--forest);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .trip-route-visual .route-arrow {
+    color: var(--stone);
+    font-size: 0.85rem;
+  }
+
+  /* Timeline layout */
+  .trip-timeline {
     position: relative;
+    padding-left: 32px;
+  }
+
+  .trip-timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--stone);
+  }
+
+  /* Leg card in timeline */
+  .trip-leg {
+    position: relative;
+    margin-bottom: 0;
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    background: var(--paper);
+    border: 1.5px solid var(--sand);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
   }
 
-  .trip-leg .leg-info {
-    flex: 1;
+  .trip-leg::before {
+    content: '';
+    position: absolute;
+    left: -27px;
+    top: 18px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--forest);
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--forest);
+  }
+
+  .trip-leg .leg-info { flex: 1; }
+
+  .trip-leg .leg-number {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--forest);
+    margin-bottom: 2px;
   }
 
   .trip-leg .leg-route {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .trip-leg .leg-route .arrow {
     color: var(--rust);
-    margin: 0 6px;
+    margin: 0 5px;
   }
 
   .trip-leg .leg-details {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: #888;
     margin-top: 2px;
+  }
+
+  .trip-leg .leg-price {
+    background: var(--rust-light);
+    color: var(--rust);
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
 
   .trip-leg .remove-leg {
@@ -478,18 +636,133 @@
     border: none;
     color: var(--stone);
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     padding: 4px;
     transition: color var(--transition);
   }
 
   .trip-leg .remove-leg:hover { color: var(--rust); }
 
-  .trip-connector {
-    width: 2px;
-    height: 20px;
-    background: var(--stone);
-    margin-left: 32px;
+  /* Gap blocks between legs */
+  .trip-gap {
+    position: relative;
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    background: #fffbeb;
+    border: 1.5px dashed #f59e0b;
+  }
+
+  .trip-gap::before {
+    content: '';
+    position: absolute;
+    left: -27px;
+    top: 16px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #f59e0b;
+  }
+
+  .trip-gap.seamless {
+    background: var(--forest-light);
+    border: 1.5px solid var(--forest);
+    border-style: solid;
+    padding: 8px 18px;
+  }
+
+  .trip-gap.seamless::before {
+    background: var(--forest);
+    box-shadow: 0 0 0 2px var(--forest);
+  }
+
+  .trip-gap.overlap {
+    background: #fef2f2;
+    border-color: #ef4444;
+  }
+
+  .trip-gap.overlap::before {
+    background: #ef4444;
+    box-shadow: 0 0 0 2px #ef4444;
+  }
+
+  .trip-gap.city-mismatch {
+    background: var(--rust-light);
+    border-color: var(--rust);
+  }
+
+  .trip-gap.city-mismatch::before {
+    background: var(--rust);
+    box-shadow: 0 0 0 2px var(--rust);
+  }
+
+  .trip-gap .gap-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+  }
+
+  .trip-gap .gap-subtitle {
+    font-size: 0.78rem;
+    color: #888;
+    margin-bottom: 6px;
+  }
+
+  .gap-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .gap-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid var(--sand);
+    font-size: 0.73rem;
+    color: var(--ink-light);
+    text-decoration: none;
+    transition: all var(--transition);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .gap-option:hover {
+    border-color: var(--rust);
+    color: var(--rust);
+  }
+
+  /* Trip actions */
+  .trip-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--sand);
+  }
+
+  .trip-actions .btn-next-search {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--rust);
+    color: white;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .trip-actions .btn-next-search:hover {
+    background: var(--rust-hover);
+    transform: translateY(-1px);
   }
 
   /* ─── RESULTS ─── */
@@ -975,6 +1248,14 @@
   @media (max-width: 640px) {
     .bridge-block { padding: 18px; }
     .bridge-header { flex-wrap: wrap; }
+    .trip-builder.visible { padding: 16px; }
+    .trip-summary { flex-direction: column; text-align: center; padding: 12px 14px; }
+    .trip-summary-stats { gap: 16px; justify-content: center; }
+    .trip-timeline { padding-left: 28px; }
+    .trip-leg { padding: 12px 14px; }
+    .trip-gap { padding: 10px 14px; }
+    .trip-route-visual { justify-content: center; }
+    .trip-actions { flex-direction: column; }
   }
 
   /* ─── FOOTER ─── */
@@ -1484,6 +1765,11 @@
   .deal-card:nth-child(5) { animation-delay: 0.20s; }
   .deal-card:nth-child(6) { animation-delay: 0.25s; }
 </style>
+<!-- Vercel Web Analytics -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
@@ -1533,6 +1819,24 @@
             <button data-days="3" class="active">&plusmn;3 days</button>
             <button data-days="7">&plusmn;7 days</button>
             <button data-days="14">&plusmn;14 days</button>
+          </div>
+        </div>
+      </div>
+      <!-- Round trip goal (optional) -->
+      <div class="round-trip-toggle" id="roundTripToggle">
+        <button type="button" class="round-trip-btn" onclick="toggleRoundTrip()">
+          <span id="roundTripIcon">&#9675;</span> Round trip — I want to return home
+        </button>
+      </div>
+      <div class="round-trip-fields" id="roundTripFields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="returnCity">Return to</label>
+            <input type="text" id="returnCity" placeholder="e.g. Amsterdam">
+          </div>
+          <div class="form-group">
+            <label for="tripBudgetDays">Trip length (days)</label>
+            <input type="number" id="tripBudgetDays" placeholder="e.g. 20" min="3" max="90">
           </div>
         </div>
       </div>
@@ -1590,9 +1894,14 @@
   <section class="trip-builder" id="tripBuilder">
     <div class="trip-header">
       <h2>Your trip</h2>
-      <button class="clear-trip" onclick="clearTrip()">Clear trip</button>
+      <div class="trip-header-actions">
+        <button class="btn-share-trip" onclick="copyTripLink()">Share trip</button>
+        <button class="clear-trip" onclick="clearTrip()">Clear trip</button>
+      </div>
     </div>
-    <div class="trip-legs" id="tripLegs"></div>
+    <div id="tripSummary"></div>
+    <div class="trip-timeline" id="tripTimeline"></div>
+    <div id="tripActions"></div>
   </section>
 
   <!-- RESULTS -->
@@ -1654,6 +1963,37 @@
 let trip = [];
 let flexibility = 3;
 let currentDeals = [];
+let roundTripEnabled = false;
+
+function toggleRoundTrip() {
+  roundTripEnabled = !roundTripEnabled;
+  const fields = document.getElementById('roundTripFields');
+  const btn = document.querySelector('.round-trip-btn');
+  const icon = document.getElementById('roundTripIcon');
+  if (roundTripEnabled) {
+    fields.style.display = 'block';
+    btn.classList.add('active');
+    icon.innerHTML = '&#9679;';
+    // Default return city to fromCity if set
+    const from = document.getElementById('fromCity').value.trim();
+    if (from && !document.getElementById('returnCity').value) {
+      document.getElementById('returnCity').value = from;
+    }
+  } else {
+    fields.style.display = 'none';
+    btn.classList.remove('active');
+    icon.innerHTML = '&#9675;';
+  }
+  renderTrip(); // re-render to show/hide return block
+}
+
+function getRoundTripGoal() {
+  if (!roundTripEnabled) return null;
+  const returnCity = document.getElementById('returnCity').value.trim();
+  const budgetDays = parseInt(document.getElementById('tripBudgetDays').value) || 0;
+  if (!returnCity) return null;
+  return { returnCity, budgetDays };
+}
 
 // ─── FEATURED DEALS (auto-load on page open) ───
 let featuredHub = 'Munich';
@@ -1755,6 +2095,10 @@ function renderFeaturedDeals(data) {
 // Fire on page load
 loadFeaturedDeals();
 
+// Load saved trip (URL param takes precedence over localStorage)
+loadTripFromUrl();
+if (trip.length === 0) loadTrip();
+
 // ─── CITY DISPLAY NAME ───
 const DISPLAY_NAMES = {
   'munchen': 'Munich', 'münchen': 'Munich', 'muenchen': 'Munich',
@@ -1779,6 +2123,194 @@ function displayCity(input) {
   const key = input.toLowerCase().trim();
   if (DISPLAY_NAMES[key]) return DISPLAY_NAMES[key];
   return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+// ─── DATE PARSING & TRIP CALCULATIONS ───
+const MONTH_MAP = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function parseDateRange(dateRangeStr) {
+  const result = { startDate: null, endDate: null, startStr: '', endStr: '' };
+  if (!dateRangeStr || /unknown|flexible|tbd|tba/i.test(dateRangeStr)) return result;
+
+  const str = dateRangeStr.replace(/–/g, '-').trim();
+
+  // Pattern 1: "DD-DD Mon" (same month, e.g. "15-20 Mar")
+  const sameMonth = str.match(/(\d{1,2})\s*-\s*(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  if (sameMonth) {
+    const d1 = parseInt(sameMonth[1]), d2 = parseInt(sameMonth[2]);
+    const m = MONTH_MAP[sameMonth[3].toLowerCase().substring(0,3)];
+    if (m !== undefined) {
+      let year = new Date().getFullYear();
+      let start = new Date(year, m, d1);
+      let end = new Date(year, m, d2);
+      if (end < new Date(Date.now() - 30*24*60*60*1000)) { start.setFullYear(year+1); end.setFullYear(year+1); }
+      result.startDate = start; result.endDate = end;
+      result.startStr = `${d1} ${MONTH_NAMES[m]}`; result.endStr = `${d2} ${MONTH_NAMES[m]}`;
+    }
+    return result;
+  }
+
+  // Pattern 2: "DD Mon - DD Mon" (cross month, e.g. "28 Mar - 3 Apr")
+  const crossMonth = str.match(/(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*-\s*(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  if (crossMonth) {
+    const d1 = parseInt(crossMonth[1]), m1 = MONTH_MAP[crossMonth[2].toLowerCase().substring(0,3)];
+    const d2 = parseInt(crossMonth[3]), m2 = MONTH_MAP[crossMonth[4].toLowerCase().substring(0,3)];
+    if (m1 !== undefined && m2 !== undefined) {
+      let year = new Date().getFullYear();
+      let start = new Date(year, m1, d1);
+      let end = new Date(year, m2, d2);
+      if (end < start) end.setFullYear(year+1); // cross year
+      if (end < new Date(Date.now() - 30*24*60*60*1000)) { start.setFullYear(year+1); end.setFullYear(year+1); }
+      result.startDate = start; result.endDate = end;
+      result.startStr = `${d1} ${MONTH_NAMES[m1]}`; result.endStr = `${d2} ${MONTH_NAMES[m2]}`;
+    }
+    return result;
+  }
+
+  // Pattern 3: Single date "DD Mon" (treat as 1-day)
+  const single = str.match(/(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  if (single) {
+    const d = parseInt(single[1]), m = MONTH_MAP[single[2].toLowerCase().substring(0,3)];
+    if (m !== undefined) {
+      let year = new Date().getFullYear();
+      let dt = new Date(year, m, d);
+      if (dt < new Date(Date.now() - 30*24*60*60*1000)) dt.setFullYear(year+1);
+      result.startDate = dt; result.endDate = dt;
+      result.startStr = `${d} ${MONTH_NAMES[m]}`; result.endStr = `${d} ${MONTH_NAMES[m]}`;
+    }
+  }
+
+  return result;
+}
+
+function calculateGaps() {
+  const gaps = [];
+  for (let i = 0; i < trip.length - 1; i++) {
+    const currentEnd = trip[i]._endDate;
+    const nextStart = trip[i+1]._startDate;
+    const fromCity = (trip[i].to || '').trim();
+    const toCity = (trip[i+1].from || '').trim();
+    const sameCity = fromCity.toLowerCase() === toCity.toLowerCase();
+
+    if (currentEnd && nextStart) {
+      const diffDays = Math.round((nextStart - currentEnd) / (1000*60*60*24));
+      gaps.push({
+        afterLeg: i, days: diffDays, fromCity, toCity, sameCity,
+        startDate: currentEnd, endDate: nextStart,
+        type: diffDays < 0 ? 'overlap' : diffDays <= 1 ? 'seamless' : 'gap'
+      });
+    } else {
+      gaps.push({
+        afterLeg: i, days: null, fromCity, toCity, sameCity,
+        startDate: null, endDate: null, type: 'unknown'
+      });
+    }
+  }
+  return gaps;
+}
+
+function calculateTripSummary() {
+  if (trip.length === 0) return null;
+  let totalCost = 0, drivingDays = 0;
+  const cities = [displayCity(trip[0].from)];
+
+  trip.forEach(leg => {
+    cities.push(displayCity(leg.to));
+    const priceMatch = (leg.price || '').match(/([\d.]+)/);
+    if (priceMatch) {
+      const perDay = parseFloat(priceMatch[1]);
+      if (leg._startDate && leg._endDate) {
+        const days = Math.max(1, Math.round((leg._endDate - leg._startDate) / (1000*60*60*24)));
+        totalCost += perDay * days;
+        drivingDays += days;
+      } else {
+        totalCost += perDay;
+        drivingDays += 3; // estimate if no dates
+      }
+    }
+  });
+
+  const gaps = calculateGaps();
+  let gapDays = 0;
+  gaps.forEach(g => { if (g.days > 0) gapDays += g.days; });
+
+  return {
+    totalCost: Math.round(totalCost),
+    totalDays: drivingDays + gapDays,
+    drivingDays,
+    gapDays,
+    route: cities,
+    legCount: trip.length,
+    gapCount: gaps.filter(g => g.type === 'gap').length,
+  };
+}
+
+// ─── TRIP PERSISTENCE ───
+function saveTrip() {
+  try { localStorage.setItem('mc_trip', JSON.stringify(trip)); } catch(e) {}
+}
+
+function loadTrip() {
+  try {
+    const saved = localStorage.getItem('mc_trip');
+    if (saved) {
+      trip = JSON.parse(saved);
+      trip.forEach(leg => {
+        const parsed = parseDateRange(leg.date_range);
+        leg._startDate = parsed.startDate; leg._endDate = parsed.endDate;
+        leg._startStr = parsed.startStr; leg._endStr = parsed.endStr;
+      });
+      renderTrip();
+      if (trip.length > 0) {
+        const lastLeg = trip[trip.length - 1];
+        document.getElementById('fromCity').value = lastLeg.to;
+        document.getElementById('searchTitle').textContent = `Leg ${trip.length + 1}: What's next from ${lastLeg.to}?`;
+      }
+    }
+  } catch(e) {}
+}
+
+function loadTripFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const tripParam = params.get('trip');
+  if (tripParam) {
+    try {
+      const decoded = JSON.parse(atob(tripParam));
+      trip = decoded.map(l => ({
+        from: l.f, to: l.t, date_range: l.d, price: l.p,
+        vehicle: l.v, provider: l.pr, url: l.u
+      }));
+      trip.forEach(leg => {
+        const parsed = parseDateRange(leg.date_range);
+        leg._startDate = parsed.startDate; leg._endDate = parsed.endDate;
+        leg._startStr = parsed.startStr; leg._endStr = parsed.endStr;
+      });
+      renderTrip();
+      if (trip.length > 0) {
+        const lastLeg = trip[trip.length - 1];
+        document.getElementById('fromCity').value = lastLeg.to;
+      }
+    } catch(e) {}
+  }
+}
+
+function getTripUrl() {
+  if (trip.length === 0) return window.location.href;
+  const minimal = trip.map(l => ({
+    f: l.from, t: l.to, d: l.date_range, p: l.price, v: l.vehicle, pr: l.provider, u: l.url
+  }));
+  return window.location.origin + '?trip=' + btoa(JSON.stringify(minimal));
+}
+
+function copyTripLink() {
+  const url = getTripUrl();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.querySelector('.btn-share-trip');
+    if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = orig, 2000); }
+  }).catch(() => {
+    prompt('Copy this trip link:', url);
+  });
 }
 
 // ─── BRIDGE / "GET TO THE DEALS" DATA ───
@@ -1911,9 +2443,17 @@ const AFFILIATE_LINKS = {
   camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
   movacar:   (from, to) => to ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/` : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`,                // → add affiliate tracking (€12/lead)
-  // Future: booking, hostelworld, airbnb
-  // booking:    (from, to) => `https://www.booking.com`,
-  // hostelworld: (from, to) => `https://www.hostelworld.com`,
+  // ─── GAP DAY: Local experiences ───
+  getyourguide: (city) => `https://www.getyourguide.com/s/?q=${encodeURIComponent(city)}&et=cycling`,  // → add affiliate tracking
+  guruwalk:     (city) => `https://www.guruwalk.com/walks/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}`,
+  withlocals:   (city) => `https://www.withlocals.com/experiences/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
+  donkeyrepublic: (city) => `https://www.donkey.bike/cities/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
+  // ─── GAP DAY: Accommodation ───
+  hostelworld:  (city) => `https://www.hostelworld.com/st/hostels/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
+  booking:      (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,  // → add affiliate tracking
+  airbnb:       (city) => `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes`,
+  // ─── GAP DAY: Explore ───
+  googlemaps:   (city) => `https://www.google.com/maps/search/things+to+do+in+${encodeURIComponent(city)}/`,
 };
 
 function renderDestinationBridge(dealDestination, finalDestination) {
@@ -2568,7 +3108,7 @@ function renderDealCard(deal, index) {
           View deal &#8599;
         </a>
         <button class="btn-book btn-next-leg" onclick='addToTrip(${JSON.stringify(deal).replace(/'/g, "&#39;")})'>
-          ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as next leg'}
+          ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as leg ' + (trip.length + 1)}
         </button>
       </div>
     </div>
@@ -2577,47 +3117,70 @@ function renderDealCard(deal, index) {
 
 // ─── TRIP BUILDER ───
 function addToTrip(deal) {
+  // Parse and store dates on the deal
+  const parsed = parseDateRange(deal.date_range);
+  deal._startDate = parsed.startDate;
+  deal._endDate = parsed.endDate;
+  deal._startStr = parsed.startStr;
+  deal._endStr = parsed.endStr;
+
   trip.push(deal);
+  saveTrip();
   renderTrip();
 
   // Pre-fill next search with arrival city
   document.getElementById('fromCity').value = deal.to;
-  document.getElementById('searchTitle').textContent = `Next leg from ${deal.to}`;
+  document.getElementById('searchTitle').textContent = `Leg ${trip.length + 1}: What's next from ${displayCity(deal.to)}?`;
 
-  // Estimate next date: end of this deal's date range
-  // Try to parse the end date from date_range
-  const dateStr = deal.date_range || '';
-  const parts = dateStr.split('-');
-  if (parts.length === 2) {
-    // Try to parse "26 Apr" style
-    const endPart = parts[1].trim();
-    const match = endPart.match(/(\d+)\s*(\w+)/);
-    if (match) {
-      const day = parseInt(match[1]);
-      const monthNames = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
-      const month = monthNames[match[2].toLowerCase().substring(0, 3)];
-      if (month !== undefined) {
-        const year = new Date().getFullYear();
-        const nextDate = new Date(year, month, day);
-        if (nextDate < new Date()) nextDate.setFullYear(year + 1);
-        document.getElementById('travelDate').value = nextDate.toISOString().split('T')[0];
-      }
-    }
+  // Set next search date to end of this deal
+  if (deal._endDate) {
+    document.getElementById('travelDate').value = deal._endDate.toISOString().split('T')[0];
   }
 
   // Keep heading towards for next leg — the ultimate destination doesn't change
-  // (user wants Amsterdam → Barcelona, adding Hamburg as intermediate doesn't change that)
 
-  // Scroll to search and auto-trigger search from destination
-  document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // First leg: scroll to trip builder to see your trip forming
+  // Later legs: scroll to search for next deals
+  if (trip.length === 1) {
+    document.getElementById('tripBuilder').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => doSearch(), 800);
+  } else {
+    document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => doSearch(), 400);
+  }
+}
 
-  // Auto-search from the destination city after a brief delay for scroll
-  setTimeout(() => doSearch(), 400);
+function renderGapTransport(fromCity, toCity) {
+  const from = displayCity(fromCity);
+  const to = displayCity(toCity);
+  let html = '<div class="gap-options">';
+
+  html += `<a href="${AFFILIATE_LINKS.trainline(from, to)}" target="_blank" rel="noopener" class="gap-option">&#128646; Train</a>`;
+  html += `<a href="${AFFILIATE_LINKS.flixbus(from, to)}" target="_blank" rel="noopener" class="gap-option">&#128652; FlixBus</a>`;
+  html += `<a href="${AFFILIATE_LINKS.kiwi(from, to)}" target="_blank" rel="noopener" class="gap-option">&#9992;&#65039; Fly</a>`;
+  html += `<a href="${AFFILIATE_LINKS.blablacar(from, to)}" target="_blank" rel="noopener" class="gap-option">&#128077; Rideshare</a>`;
+  html += `<a href="${AFFILIATE_LINKS.movacar(from, to)}" target="_blank" rel="noopener" class="gap-option">&#128663; Movacar &euro;1</a>`;
+
+  // Check if we have specific route info with night trains
+  const routeKey = BRIDGE_ALIASES[from.toLowerCase()] || from.toLowerCase();
+  if (BRIDGE_ROUTES[routeKey]) {
+    const routeToHub = BRIDGE_ROUTES[routeKey].find(r =>
+      r.hub === to.toLowerCase() || (DEAL_HUBS[r.hub] && DEAL_HUBS[r.hub].label === to)
+    );
+    if (routeToHub && routeToHub.nightTrain) {
+      html += `<a href="${AFFILIATE_LINKS.nightjet(from, to)}" target="_blank" rel="noopener" class="gap-option">&#127769; Night train ${routeToHub.nightTrain.price}</a>`;
+    }
+  }
+
+  html += '</div>';
+  return html;
 }
 
 function renderTrip() {
   const builder = document.getElementById('tripBuilder');
-  const container = document.getElementById('tripLegs');
+  const summaryEl = document.getElementById('tripSummary');
+  const timelineEl = document.getElementById('tripTimeline');
+  const actionsEl = document.getElementById('tripActions');
 
   if (trip.length === 0) {
     builder.classList.remove('visible');
@@ -2626,38 +3189,183 @@ function renderTrip() {
   }
 
   builder.classList.add('visible');
-  let html = '';
+  const gaps = calculateGaps();
+  const summary = calculateTripSummary();
+
+  // ── Summary bar ──
+  let summaryHtml = '<div class="trip-summary">';
+  summaryHtml += '<div class="trip-summary-stats">';
+  summaryHtml += `<div class="trip-stat"><div class="trip-stat-value">${summary.legCount}</div><div class="trip-stat-label">${summary.legCount === 1 ? 'Leg' : 'Legs'}</div></div>`;
+  summaryHtml += `<div class="trip-stat"><div class="trip-stat-value">${summary.totalDays > 0 ? summary.totalDays : '?'}</div><div class="trip-stat-label">Days</div></div>`;
+  summaryHtml += `<div class="trip-stat"><div class="trip-stat-value">&euro;${summary.totalCost > 0 ? summary.totalCost : '?'}</div><div class="trip-stat-label">Est. cost</div></div>`;
+  if (summary.gapCount > 0) {
+    summaryHtml += `<div class="trip-stat"><div class="trip-stat-value">${summary.gapDays}</div><div class="trip-stat-label">Gap days</div></div>`;
+  }
+  const goal = getRoundTripGoal();
+  if (goal && goal.budgetDays > 0 && summary.totalDays > 0) {
+    const remaining = goal.budgetDays - summary.totalDays;
+    const daysClass = remaining < 0 ? 'over-budget' : remaining <= 3 ? 'tight' : '';
+    summaryHtml += `<div class="trip-stat ${daysClass}"><div class="trip-stat-value">${remaining}</div><div class="trip-stat-label">Days left</div></div>`;
+  }
+  summaryHtml += '</div>';
+
+  // Route visualization
+  summaryHtml += '<div class="trip-route-visual">';
+  summary.route.forEach((city, i) => {
+    if (i > 0) summaryHtml += '<span class="route-arrow">&rarr;</span>';
+    summaryHtml += `<span class="city-dot">${city}</span>`;
+  });
+  summaryHtml += '</div>';
+  summaryHtml += '</div>';
+  summaryEl.innerHTML = summaryHtml;
+
+  // ── Timeline ──
+  let timelineHtml = '';
 
   trip.forEach((leg, i) => {
-    if (i > 0) {
-      html += `<div class="trip-connector"></div>`;
-    }
-    html += `
+    // Render leg card
+    const dateInfo = leg._startStr && leg._endStr ? `${leg._startStr} &ndash; ${leg._endStr}` : (leg.date_range || '');
+    timelineHtml += `
       <div class="trip-leg">
         <div class="leg-info">
+          <div class="leg-number">Leg ${i + 1} &middot; ${leg.provider || 'Unknown'}</div>
           <div class="leg-route">
-            Leg ${i + 1}: ${leg.from}<span class="arrow">&rarr;</span>${leg.to}
+            ${displayCity(leg.from)}<span class="arrow">&rarr;</span>${displayCity(leg.to)}
           </div>
           <div class="leg-details">
-            ${leg.date_range || ''} &middot; ${leg.price || ''} &middot; ${leg.provider || ''}
+            ${dateInfo}${leg.vehicle && leg.vehicle !== 'Campervan' ? ' &middot; ' + leg.vehicle : ''}
           </div>
         </div>
+        <span class="leg-price">${leg.price || '?'}</span>
         <button class="remove-leg" onclick="removeLeg(${i})" title="Remove this leg">&times;</button>
       </div>
     `;
+
+    // Render gap block after this leg (if there's a next leg)
+    if (i < trip.length - 1) {
+      const gap = gaps[i];
+      if (!gap) return;
+
+      if (gap.type === 'seamless' && gap.sameCity) {
+        // Perfect connection
+        timelineHtml += `
+          <div class="trip-gap seamless">
+            <div class="gap-title">&#9989; Perfect connection</div>
+            <div class="gap-subtitle">${gap.days <= 0 ? 'Same day handoff' : '1 day gap'} in ${displayCity(gap.fromCity)}</div>
+          </div>
+        `;
+      } else if (gap.type === 'overlap') {
+        // Date overlap warning
+        timelineHtml += `
+          <div class="trip-gap overlap">
+            <div class="gap-title">&#9888;&#65039; Dates overlap by ${Math.abs(gap.days)} day${Math.abs(gap.days) !== 1 ? 's' : ''}</div>
+            <div class="gap-subtitle">Check if these dates work — you may need to adjust</div>
+          </div>
+        `;
+      } else if (!gap.sameCity) {
+        // Different cities — need transport
+        const daysNote = gap.days !== null ? `${gap.days} day${gap.days !== 1 ? 's' : ''} gap &middot; ` : '';
+        const mismatchCity = displayCity(gap.fromCity);
+        timelineHtml += `
+          <div class="trip-gap city-mismatch">
+            <div class="gap-title">&#128674; Get from ${mismatchCity} to ${displayCity(gap.toCity)}</div>
+            <div class="gap-subtitle">${daysNote}You need to get to the next pickup city</div>
+            ${renderGapTransport(gap.fromCity, gap.toCity)}
+            ${gap.days > 1 ? `<div class="gap-options" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.06);">
+              <a href="${AFFILIATE_LINKS.donkeyrepublic(mismatchCity)}" target="_blank" rel="noopener" class="gap-option">&#128690; Bike ${mismatchCity}</a>
+              <a href="${AFFILIATE_LINKS.guruwalk(mismatchCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Walking tour</a>
+              <a href="${AFFILIATE_LINKS.hostelworld(mismatchCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Stay in ${mismatchCity}</a>
+            </div>` : ''}
+          </div>
+        `;
+      } else if (gap.type === 'gap') {
+        // Same city, multi-day gap
+        const gapCity = displayCity(gap.fromCity);
+        timelineHtml += `
+          <div class="trip-gap">
+            <div class="gap-title">&#9200; ${gap.days} day${gap.days !== 1 ? 's' : ''} in ${gapCity}</div>
+            <div class="gap-subtitle">Explore the city before your next pickup</div>
+            <div class="gap-options">
+              <a href="${AFFILIATE_LINKS.donkeyrepublic(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128690; Rent a bike</a>
+              <a href="${AFFILIATE_LINKS.guruwalk(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Free walking tour</a>
+              <a href="${AFFILIATE_LINKS.getyourguide(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127903;&#65039; Local experiences</a>
+              <a href="${AFFILIATE_LINKS.withlocals(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#129489;&#8205;&#127859; Local guide</a>
+            </div>
+            <div class="gap-options" style="margin-top:4px;">
+              <a href="${AFFILIATE_LINKS.hostelworld(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
+              <a href="${AFFILIATE_LINKS.booking(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
+              <a href="${AFFILIATE_LINKS.airbnb(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128716;&#65039; Airbnb</a>
+            </div>
+          </div>
+        `;
+      } else {
+        // Unknown dates
+        const unknownCity = displayCity(gap.fromCity);
+        timelineHtml += `
+          <div class="trip-gap">
+            <div class="gap-title">${gap.sameCity ? unknownCity : unknownCity + ' &rarr; ' + displayCity(gap.toCity)}</div>
+            <div class="gap-subtitle">Dates unknown — check provider sites for availability</div>
+            ${!gap.sameCity ? renderGapTransport(gap.fromCity, gap.toCity) : `
+            <div class="gap-options">
+              <a href="${AFFILIATE_LINKS.donkeyrepublic(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128690; Rent a bike</a>
+              <a href="${AFFILIATE_LINKS.guruwalk(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Free walking tour</a>
+              <a href="${AFFILIATE_LINKS.getyourguide(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127903;&#65039; Local experiences</a>
+              <a href="${AFFILIATE_LINKS.hostelworld(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
+              <a href="${AFFILIATE_LINKS.booking(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
+            </div>`}
+          </div>
+        `;
+      }
+    }
   });
 
-  container.innerHTML = html;
+  // ── Return home block (subtle, after last leg) ──
+  if (goal && trip.length > 0) {
+    const lastCity = trip[trip.length - 1].to;
+    const returnCity = goal.returnCity;
+    const sameCity = lastCity.toLowerCase().replace(/\s+/g, '') === returnCity.toLowerCase().replace(/\s+/g, '');
+
+    if (!sameCity) {
+      timelineHtml += `
+        <div class="return-home-block">
+          <div class="return-title">&#127968; Get back to ${displayCity(returnCity)}</div>
+          <div style="margin-bottom:6px;color:var(--warm);font-size:0.78rem;">From ${displayCity(lastCity)} — here are your options:</div>
+          ${renderGapTransport(lastCity, returnCity)}
+        </div>
+      `;
+    } else {
+      timelineHtml += `
+        <div class="return-home-block">
+          <div class="return-title">&#127968; You're back in ${displayCity(returnCity)}!</div>
+          <div style="color:var(--warm);font-size:0.78rem;">Your last leg ends where you started. Nice loop!</div>
+        </div>
+      `;
+    }
+  }
+
+  timelineEl.innerHTML = timelineHtml;
+
+  // ── Actions ──
+  const lastLeg = trip[trip.length - 1];
+  let actionsHtml = `
+    <div class="trip-actions">
+      <button class="btn-next-search" onclick="document.querySelector('.search-section').scrollIntoView({behavior:'smooth',block:'start'})">
+        &#128270; Find leg ${trip.length + 1} from ${displayCity(lastLeg.to)}
+      </button>
+    </div>
+  `;
+  actionsEl.innerHTML = actionsHtml;
 }
 
 function removeLeg(index) {
-  trip.splice(index);
+  trip.splice(index, 1);
+  saveTrip();
   renderTrip();
 
   if (trip.length > 0) {
     const lastLeg = trip[trip.length - 1];
     document.getElementById('fromCity').value = lastLeg.to;
-    document.getElementById('searchTitle').textContent = `Next leg from ${lastLeg.to}`;
+    document.getElementById('searchTitle').textContent = `Leg ${trip.length + 1}: What's next from ${lastLeg.to}?`;
   } else {
     document.getElementById('fromCity').value = '';
     document.getElementById('searchTitle').textContent = 'Where are you starting?';
@@ -2666,6 +3374,7 @@ function removeLeg(index) {
 
 function clearTrip() {
   trip = [];
+  saveTrip();
   renderTrip();
   document.getElementById('fromCity').value = '';
   document.getElementById('searchTitle').textContent = 'Where are you starting?';
