@@ -3069,16 +3069,30 @@ function renderResults(data) {
 
   const directionDeals = dateMatchedDeals.filter(d => d.direction_match);
   const otherDeals = dateMatchedDeals.filter(d => !d.direction_match);
+  const hasDirection = !!meta.headingTowards;
 
-  let html = `
-    <div class="results-header">
-      <h2>Deals ${meta.from ? 'from' : 'to'} ${cityLabel}</h2>
-      <span class="results-count">${dateMatchedDeals.length} deal${dateMatchedDeals.length !== 1 ? 's' : ''} found${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' on other dates' : ''}</span>
-    </div>
-  `;
+  // ── Header: when searching with a direction, show direction-matched count prominently ──
+  let html = '';
+  if (hasDirection) {
+    const toCity = meta.headingTowards;
+    const fromLabel = meta.from ? ` from ${displayCity(meta.from)}` : '';
+    html += `
+      <div class="results-header">
+        <h2>&#x1F9ED; Deals towards ${displayCity(toCity)}${fromLabel}</h2>
+        <span class="results-count">${directionDeals.length} deal${directionDeals.length !== 1 ? 's' : ''} towards ${displayCity(toCity)}${otherDeals.length > 0 ? ' · ' + otherDeals.length + ' other' : ''}${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' other dates' : ''}</span>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="results-header">
+        <h2>Deals ${meta.from ? 'from' : 'to'} ${cityLabel}</h2>
+        <span class="results-count">${dateMatchedDeals.length} deal${dateMatchedDeals.length !== 1 ? 's' : ''} found${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' on other dates' : ''}</span>
+      </div>
+    `;
+  }
 
-  if (meta.headingTowards && directionDeals.length > 0) {
-    html += `<div class="direction-label">&#x1F9ED; Heading towards ${meta.headingTowards}</div>`;
+  // ── Direction-matched deals (shown first, prominently) ──
+  if (hasDirection && directionDeals.length > 0) {
     directionDeals.forEach((deal, i) => {
       html += renderDealCard(deal, i);
     });
@@ -3087,25 +3101,21 @@ function renderResults(data) {
     if (bestDeal.to && bestDeal.to.toLowerCase() !== meta.headingTowards.toLowerCase()) {
       html += renderDestinationBridge(bestDeal.to, meta.headingTowards);
     }
-    if (otherDeals.length > 0) {
-      html += `<div class="other-label">Other available departures</div>`;
-    }
   }
 
-  // No direction matches: show direct transport options to destination
-  if (meta.headingTowards && directionDeals.length === 0 && deals.length > 0) {
-    const fromCity = displayCity(meta.from);
+  // ── No direction matches: show message + transport options ──
+  if (hasDirection && directionDeals.length === 0) {
+    const fromCity = meta.from ? displayCity(meta.from) : null;
     const toCity = meta.headingTowards;
     html += `
-      <div class="direction-label">&#x1F9ED; Heading towards ${toCity}</div>
       <div class="destination-bridge" style="margin-top:0;">
         <div class="bridge-header">
           <h3>&#128663; No campervan deals towards ${toCity} right now</h3>
         </div>
         <div class="bridge-subtitle">
-          No relocation deals from ${fromCity} heading towards ${toCity} at the moment. But here's how to get there:
+          No relocation deals${fromCity ? ' from ' + fromCity : ''} heading towards ${toCity} at the moment.${fromCity ? " But here's how to get there:" : ''}
         </div>
-        <div class="bridge-options">
+        ${fromCity ? `<div class="bridge-options">
           <a href="${AFFILIATE_LINKS.kiwi(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option flight">
             <span class="transport-icon">&#9992;&#65039;</span>
             <div class="transport-info">
@@ -3146,16 +3156,30 @@ function renderResults(data) {
             </div>
             <span class="transport-price">Check rides</span>
           </a>
-        </div>
+        </div>` : ''}
       </div>
-      <div class="other-label">Other campervan deals from ${fromCity}</div>
     `;
   }
 
-  const remaining = meta.headingTowards ? otherDeals : dateMatchedDeals;
-  remaining.forEach((deal, i) => {
-    html += renderDealCard(deal, (directionDeals.length || 0) + i);
-  });
+  // ── Other deals: collapsible section when direction search, or regular list ──
+  if (hasDirection && otherDeals.length > 0) {
+    html += `
+      <div class="different-dates-section other-deals-section">
+        <div class="different-dates-header" onclick="this.parentElement.classList.toggle('expanded')">
+          <span>&#128203; ${otherDeals.length} other deal${otherDeals.length !== 1 ? 's' : ''} available${meta.from ? ' from ' + displayCity(meta.from) : ''}</span>
+          <span class="different-dates-toggle">&#9660;</span>
+        </div>
+        <div class="different-dates-list">
+    `;
+    otherDeals.forEach((deal, i) => {
+      html += renderDealCard(deal, directionDeals.length + i);
+    });
+    html += '</div></div>';
+  } else if (!hasDirection) {
+    dateMatchedDeals.forEach((deal, i) => {
+      html += renderDealCard(deal, i);
+    });
+  }
 
   // ── "Available on different dates" section ──
   if (differentDateDeals.length > 0) {
