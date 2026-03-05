@@ -2866,6 +2866,10 @@ async function doSearch() {
   btn.disabled = true;
   btn.textContent = 'Searching providers...';
 
+  // Hide homepage carousel so search results are immediately visible
+  const featuredEl = document.getElementById('featuredSection');
+  if (featuredEl) featuredEl.style.display = 'none';
+
   const resultsSection = document.getElementById('resultsSection');
   resultsSection.style.display = 'block';
 
@@ -2886,6 +2890,9 @@ async function doSearch() {
       <div class="loading-sub">This usually takes 15–30 seconds</div>
     </div>
   `;
+
+  // Scroll to results so user sees them immediately
+  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Animate provider pills lighting up
   const pills = container.querySelectorAll('.loading-provider');
