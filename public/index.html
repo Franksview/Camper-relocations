@@ -1764,6 +1764,35 @@
   .deal-card:nth-child(4) { animation-delay: 0.15s; }
   .deal-card:nth-child(5) { animation-delay: 0.20s; }
   .deal-card:nth-child(6) { animation-delay: 0.25s; }
+
+  .different-dates-section {
+    margin-top: 20px;
+    border: 1px dashed rgba(0,0,0,0.12);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .different-dates-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.02);
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--warm);
+    font-weight: 500;
+    user-select: none;
+  }
+  .different-dates-header:hover { background: rgba(0,0,0,0.04); }
+  .different-dates-toggle { transition: transform 0.2s; font-size: 0.7rem; }
+  .different-dates-section.expanded .different-dates-toggle { transform: rotate(180deg); }
+  .different-dates-list {
+    display: none;
+    padding: 12px;
+  }
+  .different-dates-section.expanded .different-dates-list { display: block; }
+  .different-dates-list .deal-card { opacity: 0.75; }
+  .different-dates-list .deal-card:hover { opacity: 1; }
 </style>
 <!-- Vercel Web Analytics -->
 <script>
@@ -1794,7 +1823,7 @@
         </div>
         <div class="form-group">
           <label for="travelDate">When (optional)</label>
-          <input type="date" id="travelDate" placeholder="Any date">
+          <input type="text" id="travelDate" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" autocomplete="off">
         </div>
       </div>
       <div class="form-row">
@@ -1964,6 +1993,34 @@ let trip = [];
 let flexibility = 3;
 let currentDeals = [];
 let roundTripEnabled = false;
+
+// ─── EU DATE INPUT (dd/mm/yyyy) ───
+(function() {
+  const dateInput = document.getElementById('travelDate');
+  if (!dateInput) return;
+
+  dateInput.addEventListener('input', function(e) {
+    let v = this.value.replace(/[^\d]/g, '');
+    if (v.length > 8) v = v.slice(0, 8);
+    if (v.length >= 5) {
+      this.value = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+    } else if (v.length >= 3) {
+      this.value = v.slice(0, 2) + '/' + v.slice(2);
+    } else {
+      this.value = v;
+    }
+  });
+})();
+
+// Parse dd/mm/yyyy to yyyy-mm-dd for API
+function parseEuDate(str) {
+  if (!str) return null;
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const day = m[1].padStart(2, '0');
+  const month = m[2].padStart(2, '0');
+  return `${m[3]}-${month}-${day}`;
+}
 
 function toggleRoundTrip() {
   roundTripEnabled = !roundTripEnabled;
@@ -2776,11 +2833,12 @@ document.querySelectorAll('#flexToggle button').forEach(btn => {
 // ─── SEARCH ───
 async function doSearch() {
   const from = document.getElementById('fromCity').value.trim();
-  const date = document.getElementById('travelDate').value;
+  const rawDate = document.getElementById('travelDate').value.trim();
+  const date = parseEuDate(rawDate) || (rawDate.match(/^\d{4}-\d{2}-\d{2}$/) ? rawDate : null);
   const headingTowards = document.getElementById('headingTowards').value.trim();
   const radius = document.getElementById('radius').value;
 
-  if (!from) {
+  if (!from && !headingTowards) {
     document.getElementById('fromCity').focus();
     return;
   }
@@ -2824,7 +2882,7 @@ async function doSearch() {
         <span class="loading-provider" data-p="bunk">Bunk Campers</span>
         <span class="loading-provider" data-p="movacar">Movacar</span>
       </div>
-      <div class="loading-text">Searching for deals from ${displayCity(from)}...</div>
+      <div class="loading-text">Searching for deals ${from ? 'from ' + displayCity(from) : 'to ' + displayCity(headingTowards)}...</div>
       <div class="loading-sub">This usually takes 15–30 seconds</div>
     </div>
   `;
@@ -2852,7 +2910,7 @@ async function doSearch() {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, date: date || null, flexibility: date ? flexibility : 0, headingTowards, radius: parseInt(radius) }),
+      body: JSON.stringify({ from: from || null, to: headingTowards || null, date: date || null, flexibility: date ? flexibility : 0, headingTowards, radius: parseInt(radius) }),
     });
 
     const data = await res.json();
@@ -2949,43 +3007,73 @@ async function submitNewsletter(event) {
   }
 }
 
+// ─── DATE MATCH HELPER ───
+function isDealInDateRange(deal, targetDateStr, flexDays) {
+  if (!targetDateStr || !flexDays && flexDays !== 0) return true; // no filter = always matches
+  const parsed = parseDateRange(deal.date_range);
+  if (!parsed.startDate) return null; // unknown date = can't tell
+  const target = new Date(targetDateStr + 'T00:00:00');
+  const msPerDay = 86400000;
+  const minDate = new Date(target.getTime() - flexDays * msPerDay);
+  const maxDate = new Date(target.getTime() + flexDays * msPerDay);
+  // Deal matches if its date range overlaps with the target range
+  const dealStart = parsed.startDate;
+  const dealEnd = parsed.endDate || parsed.startDate;
+  return dealStart <= maxDate && dealEnd >= minDate;
+}
+
 // ─── RENDER RESULTS ───
 function renderResults(data) {
   const container = document.getElementById('resultsContainer');
   const deals = data.deals || [];
   const meta = data.meta || {};
+  const cityLabel = meta.from ? displayCity(meta.from) : (meta.to ? displayCity(meta.to) : 'this city');
 
   if (deals.length === 0) {
-    const cityName = displayCity(meta.from) || 'this city';
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">&#x1F6A3;</div>
-        <h3>No deals found from ${cityName}</h3>
+        <h3>No deals found ${meta.from ? 'from' : 'to'} ${cityLabel}</h3>
         <p>Try a nearby major city, different dates, or wider date flexibility.</p>
       </div>
       <div class="alert-signup">
         <div class="alert-icon">&#x1F514;</div>
-        <h3>Get notified when deals from ${cityName} appear</h3>
+        <h3>Get notified when deals ${meta.from ? 'from' : 'to'} ${cityLabel} appear</h3>
         <p>We'll check daily and email you as soon as a relocation deal pops up.</p>
-        <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || ''}')">
+        <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
           <button type="submit" class="alert-btn">Notify me</button>
         </form>
         <div class="alert-status" style="display:none;"></div>
         <div class="alert-privacy">No spam, ever. Unsubscribe anytime.</div>
       </div>
-      ${renderBridgeBlock(meta.from, 0)}
+      ${meta.from ? renderBridgeBlock(meta.from, 0) : ''}
     `;
     return;
   }
 
-  const directionDeals = deals.filter(d => d.direction_match);
-  const otherDeals = deals.filter(d => !d.direction_match);
+  // ── Date filtering: split deals into date-matched and different-dates ──
+  let dateMatchedDeals = deals;
+  let differentDateDeals = [];
+
+  if (meta.date && meta.flexibility !== undefined) {
+    dateMatchedDeals = [];
+    differentDateDeals = [];
+    deals.forEach(d => {
+      const match = isDealInDateRange(d, meta.date, meta.flexibility);
+      if (match === true) dateMatchedDeals.push(d);
+      else if (match === false) differentDateDeals.push(d);
+      else dateMatchedDeals.push(d); // unknown dates go in main list
+    });
+  }
+
+  const directionDeals = dateMatchedDeals.filter(d => d.direction_match);
+  const otherDeals = dateMatchedDeals.filter(d => !d.direction_match);
 
   let html = `
     <div class="results-header">
-      <h2>Deals from ${displayCity(meta.from)}</h2>
-      <span class="results-count">${deals.length} deal${deals.length !== 1 ? 's' : ''} found</span>
+      <h2>Deals ${meta.from ? 'from' : 'to'} ${cityLabel}</h2>
+      <span class="results-count">${dateMatchedDeals.length} deal${dateMatchedDeals.length !== 1 ? 's' : ''} found${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' on other dates' : ''}</span>
     </div>
   `;
 
@@ -3029,7 +3117,7 @@ function renderResults(data) {
           <a href="${AFFILIATE_LINKS.movacar(fromCity, toCity)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
             <span class="transport-icon">&#128663;</span>
             <div class="transport-info">
-              <div class="transport-name">Relocate a car or camper · from €1</div>
+              <div class="transport-name">Relocate a car · from €1</div>
               <div class="transport-detail">Check Movacar for one-way deals ${fromCity} → ${toCity}</div>
             </div>
             <span class="transport-price">from €1</span>
@@ -3064,13 +3152,29 @@ function renderResults(data) {
     `;
   }
 
-  const remaining = meta.headingTowards ? otherDeals : deals;
+  const remaining = meta.headingTowards ? otherDeals : dateMatchedDeals;
   remaining.forEach((deal, i) => {
     html += renderDealCard(deal, (directionDeals.length || 0) + i);
   });
 
+  // ── "Available on different dates" section ──
+  if (differentDateDeals.length > 0) {
+    html += `
+      <div class="different-dates-section">
+        <div class="different-dates-header" onclick="this.parentElement.classList.toggle('expanded')">
+          <span>&#128197; ${differentDateDeals.length} deal${differentDateDeals.length !== 1 ? 's' : ''} available on different dates</span>
+          <span class="different-dates-toggle">&#9660;</span>
+        </div>
+        <div class="different-dates-list">
+    `;
+    differentDateDeals.forEach((deal, i) => {
+      html += renderDealCard(deal, dateMatchedDeals.length + i);
+    });
+    html += '</div></div>';
+  }
+
   // Show bridge block when few deals
-  html += renderBridgeBlock(meta.from, deals.length);
+  if (meta.from) html += renderBridgeBlock(meta.from, deals.length);
 
   container.innerHTML = html;
 }
@@ -3132,9 +3236,12 @@ function addToTrip(deal) {
   document.getElementById('fromCity').value = deal.to;
   document.getElementById('searchTitle').textContent = `Leg ${trip.length + 1}: What's next from ${displayCity(deal.to)}?`;
 
-  // Set next search date to end of this deal
+  // Set next search date to end of this deal (EU format dd/mm/yyyy)
   if (deal._endDate) {
-    document.getElementById('travelDate').value = deal._endDate.toISOString().split('T')[0];
+    const d = deal._endDate;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    document.getElementById('travelDate').value = `${dd}/${mm}/${d.getFullYear()}`;
   }
 
   // Keep heading towards for next leg — the ultimate destination doesn't change

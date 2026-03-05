@@ -168,11 +168,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { from, date, flexibility = 3, headingTowards = '', radius = 50 } = req.body;
-  if (!from) return res.status(400).json({ error: 'Missing: from' });
+  const { from, to, date, flexibility = 3, headingTowards = '', radius = 50 } = req.body;
+  if (!from && !to && !headingTowards) return res.status(400).json({ error: 'Missing: from or to' });
 
   const searchRadius = Math.min(Math.max(parseInt(radius) || 50, 0), 100);
-  const cacheKey = `${from.toLowerCase()}|${date || 'any'}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
+  const searchTo = to || headingTowards || '';
+  const cacheKey = `${(from||'').toLowerCase()}|${searchTo.toLowerCase()}|${date || 'any'}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.time < CACHE_TTL) {
     return res.status(200).json(cached.data);
@@ -182,8 +183,8 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    // === STEP 1: Direct Imoova fetch ===
-    const { text: imoovaText, dealUrlIds } = await fetchImoovaPage(from);
+    // === STEP 1: Direct Imoova fetch (only if we have a from city) ===
+    const { text: imoovaText, dealUrlIds } = from ? await fetchImoovaPage(from) : { text: null, dealUrlIds: [] };
     let imoovaDeals = [];
 
     if (imoovaText) {
@@ -264,18 +265,46 @@ If no deals: []` }],
 
     const imoovaFailed = !imoovaText || formattedImoovaDeals.length === 0;
 
-    const providerQueries = imoovaFailed
-      ? `Search for ALL of these providers:
+    let prompt;
+    if (!from && searchTo) {
+      // ── TO-ONLY search: find deals ARRIVING AT a destination ──
+      prompt = `Search for campervan AND car relocation deals ARRIVING IN or near ${searchTo}.
+
+Search for ALL of these providers:
+1. "imoova relocations to ${searchTo} Europe"
+2. "roadsurfer rally relocations to ${searchTo}"
+3. "bunk campers relocation deals to ${searchTo}"
+4. "movacar camper relocation to ${searchTo}" OR "movacar.com mietwagen ${searchTo}"
+
+IMPORTANT for Movacar:
+- Movacar has BOTH campervan/camper AND regular car relocations
+- Include ALL vehicle types (cars, campers, vans) from Movacar
+- Use provider "Movacar" for all Movacar deals
+
+DIRECTION FILTER:
+✅ INCLUDE: "[somewhere] to ${searchTo}"
+❌ EXCLUDE: "${searchTo} to [somewhere]"
+
+${dateClause}
+
+Respond with ONLY a JSON array:
+[{"from":"city","to":"city","date_range":"dates","price":"EUR X/day","vehicle":"type","seats":0,"provider":"source","url":"url","direction_match":true,"description":"summary"}]
+
+If nothing found: []`;
+    } else {
+      // ── FROM search (original logic) ──
+      const providerQueries = imoovaFailed
+        ? `Search for ALL of these providers:
 1. "imoova relocations departing from ${from} Europe"
 2. "roadsurfer rally relocations from ${from}"
 3. "bunk campers relocation deals ${from}"
 4. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`
-      : `Search for these providers ONLY (Imoova already handled):
+        : `Search for these providers ONLY (Imoova already handled):
 1. "roadsurfer rally relocations from ${from}"
 2. "bunk campers relocation deals ${from}"
 3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`;
 
-    const prompt = `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
+      prompt = `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
 
 ${providerQueries}
 
@@ -297,6 +326,7 @@ Respond with ONLY a JSON array:
 [{"from":"city","to":"city","date_range":"dates","price":"EUR X/day","vehicle":"type","seats":0,"provider":"source","url":"url","direction_match":false,"description":"summary"}]
 
 If nothing found: []`;
+    }
 
     let otherDeals = [];
 
@@ -365,7 +395,7 @@ If nothing found: []`;
     const result = {
       deals: allDeals,
       meta: {
-        from, date, flexibility,
+        from: from || null, to: searchTo || null, date, flexibility,
         headingTowards: headingTowards || null,
         radius: searchRadius,
         count: allDeals.length,
