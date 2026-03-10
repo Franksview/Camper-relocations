@@ -87,19 +87,6 @@ export default async function handler(req, res) {
     }
     try {
       const count = await redis.scard('subscribers:emails') || 0;
-
-      // Admin: list all subscribers (requires secret key)
-      const adminKey = req.query?.key;
-      if (adminKey === 'mova-frank-9x2q') {
-        const emails = await redis.smembers('subscribers:emails');
-        const details = [];
-        for (const em of emails) {
-          const raw = await redis.get(`sub:${em}`);
-          details.push(typeof raw === 'string' ? JSON.parse(raw) : raw);
-        }
-        return res.status(200).json({ count, subscribers: details, storage: storeType });
-      }
-
       return res.status(200).json({ count, storage: storeType });
     } catch (err) {
       return res.status(200).json({ count: 0, storage: 'error', type: storeType, detail: err.message });
