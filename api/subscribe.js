@@ -115,6 +115,15 @@ export default async function handler(req, res) {
 
   console.log('NEW SUBSCRIBER:', JSON.stringify(subscription));
 
+  // Push notification to Frank via ntfy.sh (free, no signup)
+  try {
+    await fetch('https://ntfy.sh/movacamper-subs-x7k', {
+      method: 'POST',
+      headers: { 'Title': 'New Movacamper subscriber!', 'Tags': 'envelope' },
+      body: `${normalizedEmail} subscribed (city: ${city || 'any'})`,
+    });
+  } catch (e) { /* notification is best-effort */ }
+
   if (redis) {
     try {
       await redis.set(`sub:${normalizedEmail}`, JSON.stringify(subscription));
