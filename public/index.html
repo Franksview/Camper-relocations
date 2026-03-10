@@ -2350,6 +2350,25 @@ function loadTripFromUrl() {
       }
     } catch(e) {}
   }
+
+  // Deep-link search params (from blog CTAs)
+  const fromParam = params.get('from');
+  const toParam = params.get('to');
+  const browseParam = params.get('browse');
+
+  if (fromParam) {
+    document.getElementById('fromCity').value = fromParam;
+    if (toParam) document.getElementById('headingTowards').value = toParam;
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(() => doSearch(), 300);
+    return;
+  }
+
+  if (browseParam) {
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(() => browseAll(), 300);
+    return;
+  }
 }
 
 function getTripUrl() {
