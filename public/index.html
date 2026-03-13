@@ -1030,9 +1030,10 @@
     padding: 36px 24px 28px;
     color: #999;
     background: linear-gradient(180deg, #faf8f5 0%, white 100%);
-    border: 1.5px solid var(--sand);
+    border: 2px solid #d5cbbf;
     border-radius: var(--radius);
     margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
 
   .empty-state .empty-icon {
@@ -1883,7 +1884,7 @@
 <header>
   <div class="container">
     <div class="logo">Mova<span>camper</span></div>
-    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. Seriously — rental companies need them moved.</p>
+    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. <strong>Seriously</strong> — rental companies need them moved.</p>
   </div>
 </header>
 
@@ -3183,11 +3184,15 @@ function renderResults(data) {
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
         <h3>No deals ${meta.from ? 'from' : 'to'} ${cityLabel} right now</h3>
-        <p>${hubLabel ? "But don't worry — we found deals nearby you might like." : 'Try a major city like Munich, Lisbon or Berlin for the best selection.'}</p>
+        <p><strong>But don't worry</strong> — here's what you can do:</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+          <a href="#fallbackDeals" class="bridge-search-btn" style="font-size:0.9em;padding:9px 20px;text-decoration:none;">&#x1F69A; View other available deals</a>
+          <a href="#emptyNotify" class="bridge-search-btn" style="font-size:0.9em;padding:9px 20px;text-decoration:none;">&#x1F514; Get notified when deals appear</a>
+        </div>
       </div>
-      <div class="alert-signup-compact">
+      <div class="alert-signup-compact" id="emptyNotify">
         <span class="alert-bell">&#x1F514;</span>
-        <span class="alert-label">Get notified when ${cityLabel} deals appear</span>
+        <span class="alert-label">Email me when ${cityLabel} deals appear</span>
         <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
           <button type="submit" class="alert-btn">Notify me</button>
