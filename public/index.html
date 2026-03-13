@@ -1027,21 +1027,20 @@
   /* ─── EMPTY / ERROR ─── */
   .empty-state {
     text-align: center;
-    padding: 32px 24px 24px;
+    padding: 36px 24px 28px;
     color: #999;
-    background: white;
+    background: linear-gradient(180deg, #faf8f5 0%, white 100%);
     border: 1.5px solid var(--sand);
     border-radius: var(--radius);
     margin-bottom: 16px;
   }
 
   .empty-state .empty-icon {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
   .empty-state .empty-icon svg {
-    width: 80px;
-    height: 56px;
-    opacity: 0.55;
+    width: 140px;
+    height: 90px;
   }
 
   .empty-state h3 {
@@ -3180,24 +3179,49 @@ function renderResults(data) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">
-          <svg viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Dead-end sign -->
-            <rect x="85" y="8" width="4" height="40" rx="1.5" fill="#b5a28a"/>
-            <rect x="74" y="4" width="26" height="18" rx="3" fill="#c0392b"/>
-            <rect x="78" y="11" width="18" height="4" rx="1" fill="white"/>
+          <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Road -->
+            <rect x="0" y="78" width="160" height="6" rx="3" fill="#e8e0d4"/>
+            <rect x="15" y="80" width="12" height="2" rx="1" fill="#d4cbbf"/>
+            <rect x="40" y="80" width="12" height="2" rx="1" fill="#d4cbbf"/>
+            <rect x="65" y="80" width="12" height="2" rx="1" fill="#d4cbbf"/>
+            <rect x="90" y="80" width="12" height="2" rx="1" fill="#d4cbbf"/>
+
+            <!-- Map pin with X -->
+            <path d="M130 22 C130 12, 148 12, 148 22 C148 30, 139 42, 139 42 C139 42, 130 30, 130 22Z" fill="#c4704b" opacity="0.85"/>
+            <line x1="135" y1="17" x2="143" y2="27" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="143" y1="17" x2="135" y2="27" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+
+            <!-- Dashed path to pin -->
+            <path d="M88 65 Q110 60, 120 50 Q128 42, 134 38" stroke="#c4704b" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4" fill="none"/>
+
             <!-- Van body -->
-            <rect x="8" y="34" width="52" height="28" rx="5" fill="#c0784a"/>
-            <rect x="42" y="38" width="14" height="12" rx="2" fill="#e8ddd0"/>
-            <rect x="12" y="38" width="12" height="12" rx="2" fill="#e8ddd0"/>
-            <rect x="27" y="38" width="12" height="12" rx="2" fill="#e8ddd0"/>
-            <!-- Wheels -->
-            <circle cx="22" cy="64" r="7" fill="#444"/>
-            <circle cx="22" cy="64" r="3" fill="#888"/>
-            <circle cx="48" cy="64" r="7" fill="#444"/>
-            <circle cx="48" cy="64" r="3" fill="#888"/>
+            <rect x="14" y="48" width="48" height="26" rx="4" fill="#c4704b" opacity="0.9"/>
+            <!-- Pop-top roof -->
+            <path d="M18 48 L18 42 Q18 39, 21 39 L45 39 Q48 39, 48 42 L48 48" fill="#b5623e" opacity="0.9"/>
+            <!-- Windows -->
+            <rect x="20" y="53" width="10" height="8" rx="2" fill="#f5efe8"/>
+            <rect x="33" y="53" width="10" height="8" rx="2" fill="#f5efe8"/>
             <!-- Cab -->
-            <path d="M52 42 L68 42 Q72 42 72 46 L72 58 Q72 62 68 62 L60 62 L60 55 Q60 51 56 51 L52 51 Z" fill="#a8633a"/>
-            <rect x="58" y="44" width="10" height="8" rx="2" fill="#e8ddd0"/>
+            <path d="M56 52 L68 52 Q74 52, 74 58 L74 70 Q74 74, 70 74 L62 74 L56 74 Z" fill="#a85e38" opacity="0.9"/>
+            <!-- Cab window -->
+            <path d="M60 54 L68 54 Q72 54, 72 58 L72 62 L60 62 Z" fill="#f5efe8"/>
+            <!-- Headlight -->
+            <rect x="72" y="64" width="3" height="4" rx="1" fill="#f0d68a"/>
+            <!-- Wheels -->
+            <circle cx="28" cy="76" r="6.5" fill="#5a5249"/>
+            <circle cx="28" cy="76" r="3" fill="#8a8078"/>
+            <circle cx="28" cy="76" r="1.2" fill="#5a5249"/>
+            <circle cx="62" cy="76" r="6.5" fill="#5a5249"/>
+            <circle cx="62" cy="76" r="3" fill="#8a8078"/>
+            <circle cx="62" cy="76" r="1.2" fill="#5a5249"/>
+            <!-- Bumper -->
+            <rect x="72" y="70" width="4" height="6" rx="1" fill="#8a7262"/>
+
+            <!-- Small clouds -->
+            <ellipse cx="25" cy="18" rx="12" ry="5" fill="#ede7df" opacity="0.6"/>
+            <ellipse cx="18" cy="16" rx="8" ry="4" fill="#ede7df" opacity="0.5"/>
+            <ellipse cx="70" cy="12" rx="10" ry="4" fill="#ede7df" opacity="0.4"/>
           </svg>
         </div>
         <h3>No deals ${meta.from ? 'from' : 'to'} ${cityLabel} right now</h3>
