@@ -1074,6 +1074,20 @@
     white-space: nowrap;
   }
 
+  .return-search-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .return-search-form .alert-input {
+    flex: 1;
+    min-width: 180px;
+  }
+  .return-search-form .alert-btn {
+    white-space: nowrap;
+  }
+
   .empty-state p {
     color: var(--warm);
     font-size: 0.9rem;
@@ -2683,19 +2697,24 @@ function renderDestinationBridge(dealDestination, finalDestination) {
 
 function renderReturnBridge(dealDestination, departureCity) {
   if (!dealDestination || !departureCity) return '';
+  const from = displayCity(departureCity);
   const dest = displayCity(dealDestination);
-  const home = displayCity(departureCity);
-  if (dest.toLowerCase() === home.toLowerCase()) return '';
+  if (dest.toLowerCase() === from.toLowerCase()) return '';
 
   return `
     <div class="destination-bridge return-bridge">
       <div class="bridge-header">
-        <h3>&#x1F504; Back to ${home}</h3>
+        <h3>&#x1F504; Other options from ${from}</h3>
       </div>
       <div class="bridge-subtitle">
-        Your deal drops you off in ${dest}. Here's how to continue or get back:
+        Not taking the camper? Where do you want to go from ${from}?
       </div>
-      <div class="bridge-options">
+      <form class="return-search-form" onsubmit="showReturnOptions(event, '${from}')">
+        <input type="text" id="returnDestInput" placeholder="e.g. Amsterdam, Paris, Barcelona" class="alert-input" />
+        <button type="submit" class="alert-btn">Show options &#x2192;</button>
+      </form>
+      <div id="returnOptions"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);">
         <a href="javascript:void(0)" onclick="document.getElementById('fromCity').value='${dest}';document.getElementById('headingTowards').value='';doSearch();" class="bridge-option" style="border-left-color:var(--terracotta);">
           <span class="transport-icon">&#x1F690;</span>
           <div class="transport-info">
@@ -2704,47 +2723,60 @@ function renderReturnBridge(dealDestination, departureCity) {
           </div>
           <span class="transport-price">Search &#x2192;</span>
         </a>
-        <a href="${AFFILIATE_LINKS.kiwi(dest, home)}" target="_blank" rel="noopener" class="bridge-option flight">
-          <span class="transport-icon">&#9992;&#65039;</span>
-          <div class="transport-info">
-            <div class="transport-name">Fly ${dest} &#x2192; ${home}</div>
-            <div class="transport-detail">Compare flights via Kiwi.com</div>
-          </div>
-          <span class="transport-price">Check prices</span>
-        </a>
-        <a href="${AFFILIATE_LINKS.movacar(dest, home)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
-          <span class="transport-icon">&#128663;</span>
-          <div class="transport-info">
-            <div class="transport-name">Relocate a car &#183; &#8364;1</div>
-            <div class="transport-detail">One-way via Movacar ${dest} &#x2192; ${home}</div>
-          </div>
-          <span class="transport-price">&#8364;1</span>
-        </a>
-        <a href="${AFFILIATE_LINKS.trainline(dest, home)}" target="_blank" rel="noopener" class="bridge-option train">
-          <span class="transport-icon">&#128646;</span>
-          <div class="transport-info">
-            <div class="transport-name">Train ${dest} &#x2192; ${home}</div>
-            <div class="transport-detail">Find connections via Trainline</div>
-          </div>
-          <span class="transport-price">Check prices</span>
-        </a>
-        <a href="${AFFILIATE_LINKS.flixbus(dest, home)}" target="_blank" rel="noopener" class="bridge-option bus">
-          <span class="transport-icon">&#128652;</span>
-          <div class="transport-info">
-            <div class="transport-name">FlixBus ${dest} &#x2192; ${home}</div>
-            <div class="transport-detail">Budget-friendly, WiFi on board</div>
-          </div>
-          <span class="transport-price">Check prices</span>
-        </a>
-        <a href="${AFFILIATE_LINKS.blablacar(dest, home)}" target="_blank" rel="noopener" class="bridge-option rideshare">
-          <span class="transport-icon">&#x1F44D;</span>
-          <div class="transport-info">
-            <div class="transport-name">Rideshare ${dest} &#x2192; ${home}</div>
-            <div class="transport-detail">Share a ride via BlaBlaCar</div>
-          </div>
-          <span class="transport-price">Check rides</span>
-        </a>
       </div>
+    </div>
+  `;
+}
+
+function showReturnOptions(event, fromCity) {
+  event.preventDefault();
+  const input = document.getElementById('returnDestInput');
+  const toCity = input.value.trim();
+  if (!toCity) { input.focus(); return; }
+  const to = displayCity(toCity);
+  const container = document.getElementById('returnOptions');
+  container.innerHTML = `
+    <div class="bridge-options" style="margin-top:12px;">
+      <a href="${AFFILIATE_LINKS.kiwi(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option flight">
+        <span class="transport-icon">&#9992;&#65039;</span>
+        <div class="transport-info">
+          <div class="transport-name">Fly ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Compare flights via Kiwi.com</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.movacar(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+        <span class="transport-icon">&#128663;</span>
+        <div class="transport-info">
+          <div class="transport-name">Relocate a car &#183; &#8364;1</div>
+          <div class="transport-detail">One-way via Movacar ${fromCity} &#x2192; ${to}</div>
+        </div>
+        <span class="transport-price">&#8364;1</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.trainline(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option train">
+        <span class="transport-icon">&#128646;</span>
+        <div class="transport-info">
+          <div class="transport-name">Train ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Find connections via Trainline</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.flixbus(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option bus">
+        <span class="transport-icon">&#128652;</span>
+        <div class="transport-info">
+          <div class="transport-name">FlixBus ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Budget-friendly, WiFi on board</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.blablacar(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+        <span class="transport-icon">&#x1F44D;</span>
+        <div class="transport-info">
+          <div class="transport-name">Rideshare ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Share a ride via BlaBlaCar</div>
+        </div>
+        <span class="transport-price">Check rides</span>
+      </a>
     </div>
   `;
 }
