@@ -975,7 +975,6 @@
   .loading-van img {
     width: 52px;
     height: auto;
-    transform: scaleX(-1);
   }
 
   @keyframes drive {
@@ -2256,9 +2255,10 @@ function renderFeaturedDeals(data) {
 // Fire on page load
 loadFeaturedDeals();
 
-// Load saved trip (URL param takes precedence over localStorage)
+// Load trip from URL param only (shared trip links); fresh start on every visit
 loadTripFromUrl();
-if (trip.length === 0) loadTrip();
+// Clear any stale trip from localStorage on fresh page load
+try { localStorage.removeItem('mc_trip'); } catch(e) {}
 
 // ─── CITY DISPLAY NAME ───
 const DISPLAY_NAMES = {
