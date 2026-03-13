@@ -2470,7 +2470,7 @@ const BRIDGE_ALIASES = {
   'köln': 'brussels', 'cologne': 'brussels', 'keulen': 'brussels',
   'düsseldorf': 'amsterdam', 'dusseldorf': 'amsterdam',
   'hannover': 'hamburg', 'hanover': 'hamburg', 'bremen': 'hamburg',
-  'nurnberg': 'munich', 'nürnberg': 'munich', 'nuremberg': 'munich', 'stuttgart': 'munich', 'salzburg': 'munich', 'innsbruck': 'munich',
+  'nurnberg': 'munich', 'nürnberg': 'munich', 'nuremberg': 'munich', 'stuttgart': 'munich', 'salzburg': 'munich', 'innsbruck': 'munich', 'freiburg': 'zurich', 'konstanz': 'zurich', 'strasbourg': 'zurich', 'strasburg': 'zurich',
   'warsaw': 'prague', 'warszawa': 'prague', 'warschau': 'prague', 'krakow': 'prague', 'kraków': 'prague',
   'stockholm': 'copenhagen', 'oslo': 'copenhagen', 'malmö': 'copenhagen', 'malmo': 'copenhagen', 'gothenburg': 'copenhagen',
   'barcelona': 'paris', 'madrid': 'paris', 'sevilla': 'paris', 'seville': 'paris', 'valencia': 'paris',
@@ -3048,6 +3048,53 @@ function isDealInDateRange(deal, targetDateStr, flexDays) {
   return dealStart <= maxDate && dealEnd >= minDate;
 }
 
+// ─── FALLBACK DEALS (when searched city has no results) ───
+async function loadFallbackDeals(nearestHub, searchedCity) {
+  const fallbackEl = document.getElementById('fallbackDeals');
+  if (!fallbackEl) return;
+
+  let deals = [];
+
+  // 1. Try featured deals from localStorage cache (instant)
+  const cached = localStorage.getItem('mc_featured');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.time < 2 * 60 * 60 * 1000 && parsed.data.deals?.length > 0) {
+        deals = parsed.data.deals;
+      }
+    } catch(e) {}
+  }
+
+  // 2. If no cache, fetch from featured API (~2-3 seconds)
+  if (deals.length === 0) {
+    fallbackEl.innerHTML = '<div style="text-align:center;padding:16px;color:#888;">Loading available deals...</div>';
+    try {
+      const res = await fetch('/api/featured');
+      if (res.ok) {
+        const data = await res.json();
+        deals = data.deals || [];
+      }
+    } catch(e) {}
+  }
+
+  const top3 = deals.slice(0, 3);
+  if (top3.length === 0) { fallbackEl.innerHTML = ''; return; }
+
+  const hubName = nearestHub ? displayCity(nearestHub) : (top3[0]?.from || 'Europe');
+  fallbackEl.innerHTML = `
+    <div style="margin:24px 0 8px;padding:0 4px;">
+      <h3 style="margin:0 0 4px;font-size:1.15em;">&#x1F69A; ${top3.length} deals available right now</h3>
+      <p style="margin:0 0 16px;color:#777;font-size:0.95em;">No deals from ${searchedCity} — here's what's available nearby:</p>
+    </div>
+    ${top3.map((d, i) => renderDealCard(d, i)).join('')}
+    <div style="text-align:center;margin:16px 0 24px;">
+      <button onclick="browseAll();" class="bridge-search-btn" style="font-size:1em;padding:10px 24px;">Browse all deals across Europe &rarr;</button>
+      ${nearestHub ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:1em;padding:10px 24px;margin-left:8px;">Search from ${hubName}</button>` : ''}
+    </div>
+  `;
+}
+
 // ─── RENDER RESULTS ───
 function renderResults(data) {
   const container = document.getElementById('resultsContainer');
@@ -3056,12 +3103,19 @@ function renderResults(data) {
   const cityLabel = meta.from ? displayCity(meta.from) : (meta.to ? displayCity(meta.to) : 'this city');
 
   if (deals.length === 0) {
+    // Find nearest hub for this city
+    const fromKey = (meta.from || '').toLowerCase().trim();
+    const hubKey = BRIDGE_ALIASES[fromKey] || (BRIDGE_ROUTES[fromKey] ? fromKey : null);
+    const nearestHub = hubKey && BRIDGE_ROUTES[hubKey] ? BRIDGE_ROUTES[hubKey][0].hub : null;
+    const hubLabel = nearestHub ? displayCity(nearestHub) : null;
+
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">&#x1F6A3;</div>
         <h3>No deals found ${meta.from ? 'from' : 'to'} ${cityLabel}</h3>
-        <p>Try a nearby major city, different dates, or wider date flexibility.</p>
+        <p>${hubLabel ? `${cityLabel} doesn't have deals right now — showing what's available nearby.` : 'Try a nearby major city, different dates, or wider date flexibility.'}</p>
       </div>
+      <div id="fallbackDeals"></div>
       <div class="alert-signup">
         <div class="alert-icon">&#x1F514;</div>
         <h3>Get notified when deals ${meta.from ? 'from' : 'to'} ${cityLabel} appear</h3>
@@ -3075,6 +3129,9 @@ function renderResults(data) {
       </div>
       ${meta.from ? renderBridgeBlock(meta.from, 0) : ''}
     `;
+
+    // Auto-load fallback deals from featured cache or API
+    loadFallbackDeals(nearestHub, cityLabel);
     return;
   }
 
