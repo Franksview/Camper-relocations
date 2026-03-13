@@ -968,10 +968,13 @@
 
   .loading-van {
     position: absolute;
-    bottom: 12px;
-    font-size: 1.6rem;
+    bottom: 4px;
     animation: drive 3s ease-in-out infinite;
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+  }
+  .loading-van img {
+    width: 52px;
+    height: auto;
     transform: scaleX(-1);
   }
 
@@ -1051,6 +1054,24 @@
     color: var(--espresso);
     margin-bottom: 6px;
     font-size: 1.2rem;
+  }
+
+  .empty-notify-form {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .empty-notify-form .alert-input {
+    flex: 1;
+    min-width: 180px;
+  }
+  .empty-notify-form .alert-btn {
+    white-space: nowrap;
   }
 
   .empty-state p {
@@ -2806,7 +2827,7 @@ function browseAll() {
   const container = document.getElementById('resultsContainer');
   container.innerHTML = `
     <div class="loading" id="loadingState">
-      <div class="loading-road"><div class="loading-van">&#x1F690;</div></div>
+      <div class="loading-road"><div class="loading-van"><img src="/empty-van.png" alt="campervan" /></div></div>
       <div class="loading-text">Loading deals across Europe...</div>
       <div class="loading-sub">This usually takes 2–5 seconds</div>
     </div>
@@ -2965,7 +2986,7 @@ async function doSearch() {
   container.innerHTML = `
     <div class="loading" id="loadingState">
       <div class="loading-road">
-        <div class="loading-van">&#x1F690;</div>
+        <div class="loading-van"><img src="/empty-van.png" alt="campervan" /></div>
       </div>
       <div class="loading-providers" id="loadingProviders">
         <span class="loading-provider" data-p="imoova">Imoova</span>
@@ -3152,9 +3173,8 @@ async function loadFallbackDeals(nearestHub, searchedCity) {
 
   const hubName = nearestHub ? displayCity(nearestHub) : (top3[0]?.from || 'Europe');
   fallbackEl.innerHTML = `
-    <div style="margin:8px 0 12px;padding:0 4px;">
-      <h3 style="margin:0 0 4px;font-size:1.1em;color:var(--espresso);">We suggest these deals instead</h3>
-      <p style="margin:0 0 14px;color:#888;font-size:0.9em;">${top3.length} relocation deals available right now across Europe:</p>
+    <div style="margin:16px 0 12px;padding:0 4px;">
+      <h3 style="margin:0 0 4px;font-size:1.1em;color:var(--espresso);">&#x1F69A; Available deals across Europe</h3>
     </div>
     ${top3.map((d, i) => renderDealCard(d, i)).join('')}
     <div style="text-align:center;margin:16px 0 24px;">
@@ -3184,18 +3204,10 @@ function renderResults(data) {
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
         <h3>No deals ${meta.from ? 'from' : 'to'} ${cityLabel} right now</h3>
-        <p><strong>But don't worry</strong> — here's what you can do:</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-          <a href="#fallbackDeals" class="bridge-search-btn" style="font-size:0.9em;padding:9px 20px;text-decoration:none;">&#x1F69A; View other available deals</a>
-          <a href="#emptyNotify" class="bridge-search-btn" style="font-size:0.9em;padding:9px 20px;text-decoration:none;">&#x1F514; Get notified when deals appear</a>
-        </div>
-      </div>
-      <div class="alert-signup-compact" id="emptyNotify">
-        <span class="alert-bell">&#x1F514;</span>
-        <span class="alert-label">Email me when ${cityLabel} deals appear</span>
-        <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
+        <p><strong>But don't worry</strong> — get notified when they appear:</p>
+        <form class="empty-notify-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
-          <button type="submit" class="alert-btn">Notify me</button>
+          <button type="submit" class="alert-btn">&#x1F514; Notify me</button>
         </form>
         <div class="alert-status" style="display:none;"></div>
       </div>
