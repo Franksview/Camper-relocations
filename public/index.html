@@ -2781,6 +2781,84 @@ function showReturnOptions(event, fromCity) {
   `;
 }
 
+function renderEmptyOtherOptions(fromCity, suggestedDest) {
+  if (!fromCity) return '';
+  const from = displayCity(fromCity);
+  const prefill = suggestedDest ? ` value="${suggestedDest}"` : '';
+  const hint = suggestedDest
+    ? `Want to continue to ${suggestedDest}? Or enter another destination below.`
+    : `Where do you want to go from ${from}?`;
+
+  return `
+    <div class="destination-bridge return-bridge" style="margin-top:20px;">
+      <div class="bridge-header">
+        <h3>&#x1F6E4;&#65039; Other ways to travel from ${from}</h3>
+      </div>
+      <div class="bridge-subtitle">
+        No camper deals right now — but you can still get there! ${hint}
+      </div>
+      <form class="return-search-form" onsubmit="showEmptyOptions(event, '${from}')">
+        <input type="text" id="emptyDestInput"${prefill} placeholder="e.g. Amsterdam, Paris, Barcelona" class="alert-input" />
+        <button type="submit" class="alert-btn">Show options &#x2192;</button>
+      </form>
+      <div id="emptyOptions"></div>
+    </div>
+  `;
+}
+
+function showEmptyOptions(event, fromCity) {
+  event.preventDefault();
+  const input = document.getElementById('emptyDestInput');
+  const toCity = input.value.trim();
+  if (!toCity) { input.focus(); return; }
+  const to = displayCity(toCity);
+  const container = document.getElementById('emptyOptions');
+  container.innerHTML = `
+    <div class="bridge-options" style="margin-top:12px;">
+      <a href="${AFFILIATE_LINKS.kiwi(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option flight">
+        <span class="transport-icon">&#9992;&#65039;</span>
+        <div class="transport-info">
+          <div class="transport-name">Fly ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Compare flights via Kiwi.com</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.movacar(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+        <span class="transport-icon">&#128663;</span>
+        <div class="transport-info">
+          <div class="transport-name">Relocate a car &#183; &#8364;1</div>
+          <div class="transport-detail">One-way via Movacar ${fromCity} &#x2192; ${to}</div>
+        </div>
+        <span class="transport-price">&#8364;1</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.trainline(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option train">
+        <span class="transport-icon">&#128646;</span>
+        <div class="transport-info">
+          <div class="transport-name">Train ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Find connections via Trainline</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.flixbus(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option bus">
+        <span class="transport-icon">&#128652;</span>
+        <div class="transport-info">
+          <div class="transport-name">FlixBus ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Budget-friendly, WiFi on board</div>
+        </div>
+        <span class="transport-price">Check prices</span>
+      </a>
+      <a href="${AFFILIATE_LINKS.blablacar(fromCity, to)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+        <span class="transport-icon">&#x1F44D;</span>
+        <div class="transport-info">
+          <div class="transport-name">Rideshare ${fromCity} &#x2192; ${to}</div>
+          <div class="transport-detail">Share a ride via BlaBlaCar</div>
+        </div>
+        <span class="transport-price">Check rides</span>
+      </a>
+    </div>
+  `;
+}
+
 function renderBridgeBlock(fromCity, dealCount) {
   const key = fromCity.toLowerCase().trim();
   const routeKey = BRIDGE_ROUTES[key] ? key : (BRIDGE_ALIASES[key] || null);
@@ -3298,12 +3376,14 @@ function renderResults(data) {
     const nearestHub = hubKey && BRIDGE_ROUTES[hubKey] ? BRIDGE_ROUTES[hubKey][0].hub : null;
     const hubLabel = nearestHub ? displayCity(nearestHub) : null;
 
+    const suggestedDest = meta.headingTowards ? displayCity(meta.headingTowards) : '';
+
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
-        <h3>No deals ${meta.from ? 'from' : 'to'} ${cityLabel} right now</h3>
+        <h3>No camper deals from ${cityLabel} right now</h3>
         <p><strong>But don't worry</strong> — get notified when they appear:</p>
         <form class="empty-notify-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
@@ -3311,8 +3391,8 @@ function renderResults(data) {
         </form>
         <div class="alert-status" style="display:none;"></div>
       </div>
+      ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
-      ${meta.from ? renderBridgeBlock(meta.from, 0) : ''}
     `;
 
     // Auto-load fallback deals from featured cache or API
