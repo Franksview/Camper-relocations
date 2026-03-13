@@ -1516,6 +1516,51 @@
     margin-top: 10px;
   }
 
+  /* Compact inline variant for fallback/empty state */
+  .alert-signup-compact {
+    background: var(--cream);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .alert-signup-compact .alert-bell {
+    font-size: 1.4rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .alert-signup-compact .alert-label {
+    font-size: 0.9rem;
+    color: var(--espresso);
+    flex: 1;
+    min-width: 140px;
+  }
+  .alert-signup-compact .alert-form {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    max-width: none;
+    flex-shrink: 0;
+  }
+  .alert-signup-compact .alert-input {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    width: 180px;
+  }
+  .alert-signup-compact .alert-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+  .alert-signup-compact .alert-status {
+    width: 100%;
+    margin-top: 4px;
+    text-align: center;
+  }
+
   .alert-status {
     margin-top: 12px;
     font-size: 0.88rem;
@@ -1732,6 +1777,20 @@
 
     .alert-btn {
       width: 100%;
+    }
+
+    .alert-signup-compact {
+      flex-direction: column;
+      text-align: center;
+      padding: 12px 14px;
+    }
+    .alert-signup-compact .alert-form {
+      flex-direction: row;
+      width: 100%;
+    }
+    .alert-signup-compact .alert-input {
+      width: auto;
+      flex: 1;
     }
 
     .trust-stats {
@@ -3115,18 +3174,16 @@ function renderResults(data) {
         <h3>No deals found ${meta.from ? 'from' : 'to'} ${cityLabel}</h3>
         <p>${hubLabel ? `${cityLabel} doesn't have deals right now — showing what's available nearby.` : 'Try a nearby major city, different dates, or wider date flexibility.'}</p>
       </div>
-      <div id="fallbackDeals"></div>
-      <div class="alert-signup">
-        <div class="alert-icon">&#x1F514;</div>
-        <h3>Get notified when deals ${meta.from ? 'from' : 'to'} ${cityLabel} appear</h3>
-        <p>We'll check daily and email you as soon as a relocation deal pops up.</p>
+      <div class="alert-signup-compact">
+        <span class="alert-bell">&#x1F514;</span>
+        <span class="alert-label">Get notified when deals ${meta.from ? 'from' : 'to'} ${cityLabel} appear</span>
         <form class="alert-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
           <button type="submit" class="alert-btn">Notify me</button>
         </form>
         <div class="alert-status" style="display:none;"></div>
-        <div class="alert-privacy">No spam, ever. Unsubscribe anytime.</div>
       </div>
+      <div id="fallbackDeals"></div>
       ${meta.from ? renderBridgeBlock(meta.from, 0) : ''}
     `;
 
