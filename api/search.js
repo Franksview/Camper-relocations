@@ -153,6 +153,19 @@ function parseImoovaText(text, dealUrlIds) {
   return deals;
 }
 
+function cleanCityName(name) {
+  if (!name) return name;
+  let clean = name
+    // Remove "Available Relocations" or truncated prefix (e.g. "ailable Relocations")
+    .replace(/^.*?relocations\s+/i, '')
+    // Remove date suffixes: "Available 16 Mar - 19" or "Available 16 Mar - 19 Mar"
+    .replace(/\s+available\s+\d{1,2}\s+\w{3}.*$/i, '')
+    // Remove standalone date patterns: "16 Mar - 19 Mar 2025"
+    .replace(/\s+\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*[-–]\s*\d{1,2}.*$/i, '')
+    .trim();
+  return clean || name.trim();
+}
+
 function identifyProvider(vehicleName) {
   const name = (vehicleName || '').toLowerCase();
   if (/eu\s*(active|comfort|standard)|vw\s*california|atlas|nomad|etrusco|comfort\s*family|selena/i.test(name)) {
@@ -240,10 +253,10 @@ If no deals: []` }],
       }
     }
 
-    // Format Imoova deals
+    // Format Imoova deals (clean city names to strip scraper noise)
     const formattedImoovaDeals = imoovaDeals.map(d => ({
-      from: d.from,
-      to: d.to,
+      from: cleanCityName(d.from),
+      to: cleanCityName(d.to),
       date_range: d.date_range || 'unknown',
       price: d.price || '€1.00/night',
       vehicle: d.vehicle || 'Campervan',

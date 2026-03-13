@@ -2625,7 +2625,7 @@ const AFFILIATE_LINKS = {
 function renderDestinationBridge(dealDestination, finalDestination) {
   if (!dealDestination || !finalDestination) return '';
   const from = displayCity(dealDestination);
-  const to = finalDestination;
+  const to = displayCity(finalDestination);
 
   return `
     <div class="destination-bridge">
