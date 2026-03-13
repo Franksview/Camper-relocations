@@ -2681,6 +2681,74 @@ function renderDestinationBridge(dealDestination, finalDestination) {
   `;
 }
 
+function renderReturnBridge(dealDestination, departureCity) {
+  if (!dealDestination || !departureCity) return '';
+  const dest = displayCity(dealDestination);
+  const home = displayCity(departureCity);
+  if (dest.toLowerCase() === home.toLowerCase()) return '';
+
+  return `
+    <div class="destination-bridge return-bridge">
+      <div class="bridge-header">
+        <h3>&#x1F504; Back to ${home}</h3>
+      </div>
+      <div class="bridge-subtitle">
+        Your deal drops you off in ${dest}. Here's how to continue or get back:
+      </div>
+      <div class="bridge-options">
+        <a href="javascript:void(0)" onclick="document.getElementById('fromCity').value='${dest}';document.getElementById('headingTowards').value='';doSearch();" class="bridge-option" style="border-left-color:var(--terracotta);">
+          <span class="transport-icon">&#x1F690;</span>
+          <div class="transport-info">
+            <div class="transport-name">Find camper deal from ${dest}</div>
+            <div class="transport-detail">Search for the next leg departing ${dest}</div>
+          </div>
+          <span class="transport-price">Search &#x2192;</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.kiwi(dest, home)}" target="_blank" rel="noopener" class="bridge-option flight">
+          <span class="transport-icon">&#9992;&#65039;</span>
+          <div class="transport-info">
+            <div class="transport-name">Fly ${dest} &#x2192; ${home}</div>
+            <div class="transport-detail">Compare flights via Kiwi.com</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.movacar(dest, home)}" target="_blank" rel="noopener" class="bridge-option car-relocation">
+          <span class="transport-icon">&#128663;</span>
+          <div class="transport-info">
+            <div class="transport-name">Relocate a car &#183; &#8364;1</div>
+            <div class="transport-detail">One-way via Movacar ${dest} &#x2192; ${home}</div>
+          </div>
+          <span class="transport-price">&#8364;1</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.trainline(dest, home)}" target="_blank" rel="noopener" class="bridge-option train">
+          <span class="transport-icon">&#128646;</span>
+          <div class="transport-info">
+            <div class="transport-name">Train ${dest} &#x2192; ${home}</div>
+            <div class="transport-detail">Find connections via Trainline</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.flixbus(dest, home)}" target="_blank" rel="noopener" class="bridge-option bus">
+          <span class="transport-icon">&#128652;</span>
+          <div class="transport-info">
+            <div class="transport-name">FlixBus ${dest} &#x2192; ${home}</div>
+            <div class="transport-detail">Budget-friendly, WiFi on board</div>
+          </div>
+          <span class="transport-price">Check prices</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.blablacar(dest, home)}" target="_blank" rel="noopener" class="bridge-option rideshare">
+          <span class="transport-icon">&#x1F44D;</span>
+          <div class="transport-info">
+            <div class="transport-name">Rideshare ${dest} &#x2192; ${home}</div>
+            <div class="transport-detail">Share a ride via BlaBlaCar</div>
+          </div>
+          <span class="transport-price">Check rides</span>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
 function renderBridgeBlock(fromCity, dealCount) {
   const key = fromCity.toLowerCase().trim();
   const routeKey = BRIDGE_ROUTES[key] ? key : (BRIDGE_ALIASES[key] || null);
@@ -3363,6 +3431,15 @@ function renderResults(data) {
       html += renderDealCard(deal, dateMatchedDeals.length + i);
     });
     html += '</div></div>';
+  }
+
+  // ── Return to starting point: show transport options from deal destination back to departure ──
+  if (meta.from && dateMatchedDeals.length > 0) {
+    // Pick the "main" destination: direction-matched deal if heading towards, otherwise first deal
+    const mainDeal = (hasDirection && directionDeals.length > 0) ? directionDeals[0] : dateMatchedDeals[0];
+    if (mainDeal && mainDeal.to) {
+      html += renderReturnBridge(mainDeal.to, meta.from);
+    }
   }
 
   // Show bridge block when few deals
