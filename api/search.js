@@ -1,8 +1,12 @@
-// Vercel Serverless Function — Movacamper v6.0
+// Vercel Serverless Function — Movacamper v6.1
 // Hybrid: direct Imoova fetch (primary + nearby cities) + Claude Haiku for other providers
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const ANTHROPIC_VERSION = '2023-06-01';
+const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/en/relocations?region=EU';
+const DEFAULT_PRICE = '€1.00/night';
 
 // Imoova uses English city names in URLs
 const CITY_SLUGS = {
@@ -308,25 +312,45 @@ const NEARBY_CITIES = {
   ],
 };
 
+// ── Shared helpers ──
+
+function normalizeCitySlug(city) {
+  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
+  return CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Extract JSON array from Haiku API response
+function extractJsonArray(responseData) {
+  let text = '';
+  for (const block of responseData.content || []) {
+    if (block.type === 'text') text += block.text;
+  }
+  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+  const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+  return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+}
+
 // Get nearby cities within a given radius (direct + reverse lookup)
 function getNearbyCities(city, radiusKm) {
   if (!radiusKm || radiusKm <= 0) return [];
-  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
-  const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
-  const searchKey = slug || normalized;
+  const slug = normalizeCitySlug(city);
 
   // Direct lookup: cities listed as neighbors of this city
-  const direct = NEARBY_CITIES[searchKey] || NEARBY_CITIES[normalized] || NEARBY_CITIES[normalized.replace(/-/g, ' ')] || [];
+  const direct = NEARBY_CITIES[slug] || [];
   const result = [...direct];
   const seen = new Set(result.map(n => n.city));
 
   // Reverse lookup: cities that list THIS city as their neighbor
   // (e.g. searching from Augsburg finds Munich, because Munich lists Augsburg)
   for (const [otherCity, otherNeighbors] of Object.entries(NEARBY_CITIES)) {
-    if (otherCity === searchKey || otherCity === normalized) continue;
+    if (otherCity === slug) continue;
     if (seen.has(otherCity)) continue;
     for (const n of otherNeighbors) {
-      if (n.city === searchKey || n.city === normalized || n.city === normalized.replace(/-/g, ' ')) {
+      if (n.city === slug) {
         result.push({ city: otherCity, distance: n.distance });
         seen.add(otherCity);
         break;
@@ -338,8 +362,7 @@ function getNearbyCities(city, radiusKm) {
 }
 
 async function fetchImoovaPage(city, timeoutMs = 10000) {
-  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
-  const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
+  const slug = normalizeCitySlug(city);
   const url = `https://www.imoova.com/en/relocations?region=EU&departure_city=${encodeURIComponent(slug)}`;
   console.log('Fetching Imoova:', url);
 
@@ -387,7 +410,6 @@ function formatDateRange(fromStr, toStr) {
 function parseImoovaHtml(html) {
   const deals = [];
 
-  // 1. Build URL map: reference code → full deal URL
   const urlMap = {};
   const urlRegex = /href="\/en\/relocations\/deal\/([^"]+)"/g;
   let um;
@@ -399,7 +421,6 @@ function parseImoovaHtml(html) {
     }
   }
 
-  // 2. Extract deal data from Imoova SSR ($R[] objects)
   const refs = [...html.matchAll(/reference:"(RLC\d+)",created_at:"[^"]*",name:"([^"]+)"/g)];
   const dates = [...html.matchAll(/available_from_date:"(\d{4}-\d{2}-\d{2})",available_to_date:"(\d{4}-\d{2}-\d{2})"/g)];
   const rates = [...html.matchAll(/,hire_unit_rate:(\d+)/g)];
@@ -425,10 +446,10 @@ function parseImoovaHtml(html) {
       from: routeMatch[1].trim(),
       to: routeMatch[2].trim(),
       seats,
-      transmission: trans.charAt(0).toUpperCase() + trans.slice(1).toLowerCase(),
+      transmission: capitalize(trans.toLowerCase()),
       price: '€' + (rate / 100).toFixed(2) + '/night',
       date_range: fromDate && toDate ? formatDateRange(fromDate, toDate) : 'unknown',
-      url: urlMap[ref] || 'https://www.imoova.com/en/relocations?region=EU',
+      url: urlMap[ref] || IMOOVA_FALLBACK_URL,
     });
   }
 
@@ -463,7 +484,9 @@ export default async function handler(req, res) {
   const { from, to, date, flexibility = 3, headingTowards = '', radius = 75 } = req.body;
   if (!from && !to && !headingTowards) return res.status(400).json({ error: 'Missing: from or to' });
 
-  const searchRadius = Math.min(Math.max(parseInt(radius) || 75, 0), 200);
+  // FIX: parseInt(0) is falsy, so `|| 75` would override radius=0. Use explicit NaN check.
+  const parsed = parseInt(radius);
+  const searchRadius = Math.min(Math.max(Number.isNaN(parsed) ? 75 : parsed, 0), 200);
   const searchTo = to || headingTowards || '';
   const cacheKey = `${(from||'').toLowerCase()}|${searchTo.toLowerCase()}|${date || 'any'}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
   const cached = cache.get(cacheKey);
@@ -471,27 +494,37 @@ export default async function handler(req, res) {
     return res.status(200).json(cached.data);
   }
 
+  // Prune expired cache entries when cache grows large
+  if (cache.size > 100) {
+    const now = Date.now();
+    for (const [k, v] of cache) {
+      if (now - v.time >= CACHE_TTL) cache.delete(k);
+    }
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    // === STEP 1: Direct Imoova fetch — primary city + nearby cities in parallel ===
-    let imoovaDeals = [];
+    // Pre-compute nearby cities once (used by both Imoova fetch and Haiku prompt)
+    const nearby = from ? getNearbyCities(from, searchRadius) : [];
+
+    // === STEP 1 & 2: Run Imoova fetches AND Haiku web_search IN PARALLEL ===
+
+    // -- Build Imoova fetch promises --
+    let imoovaPromise;
     const nearbyCitiesSearched = [];
 
     if (from) {
-      const nearby = getNearbyCities(from, searchRadius);
       const citiesToFetch = [
         { city: from, distance: 0 },
-        ...nearby.slice(0, 3), // cap at 3 nearby to stay within timeout
+        ...nearby.slice(0, 3),
       ];
-
       console.log(`Imoova fetching: ${citiesToFetch.map(c => `${c.city} (${c.distance}km)`).join(', ')}`);
 
-      // Fetch all cities in parallel with a shorter timeout
-      const fetchResults = await Promise.all(
+      imoovaPromise = Promise.all(
         citiesToFetch.map(({ city, distance }) =>
-          fetchImoovaPage(city, 6000) // 6s per city
+          fetchImoovaPage(city, 5000)
             .then(({ html }) => ({
               city, distance, html,
               deals: html ? parseImoovaHtml(html) : [],
@@ -499,122 +532,24 @@ export default async function handler(req, res) {
             .catch(() => ({ city, distance, html: null, deals: [] }))
         )
       );
-
-      for (const result of fetchResults) {
-        if (result.deals.length > 0) {
-          // Track which nearby cities returned results
-          if (result.distance > 0) {
-            nearbyCitiesSearched.push({ city: result.city, distance: result.distance });
-          }
-          // Tag every deal with its source info
-          for (const deal of result.deals) {
-            deal._nearbyDistance = result.distance;
-            deal._nearbyCity = result.distance > 0 ? result.city : null;
-          }
-          imoovaDeals.push(...result.deals);
-        }
-      }
-
-      console.log(`Imoova total deals: ${imoovaDeals.length} (${fetchResults[0]?.deals?.length || 0} primary + ${imoovaDeals.length - (fetchResults[0]?.deals?.length || 0)} nearby)`);
-
-      // Haiku fallback: only for primary city if SSR parsing found nothing
-      const primaryHtml = fetchResults[0]?.html;
-      const primaryDeals = fetchResults[0]?.deals || [];
-      if (primaryHtml && primaryDeals.length === 0 && primaryHtml.length > 500) {
-        console.log('SSR parsing found nothing for primary city, trying Haiku parser...');
-        const imoovaText = primaryHtml
-          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&[a-z]+;/gi, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        const truncated = imoovaText.substring(0, 6000);
-
-        try {
-          const parseResp = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-haiku-4-5-20251001',
-              max_tokens: 2000,
-              messages: [{ role: 'user', content: `Extract campervan relocation deals from this Imoova page. Only deals DEPARTING FROM ${from}.
-
-PAGE TEXT:
-${truncated}
-
-Return ONLY a JSON array:
-[{"from":"city","to":"city","date_range":"dates","price":"price","vehicle":"name","seats":0,"provider":"Imoova","url":"url","description":"summary"}]
-
-If no deals: []` }],
-              system: 'Data extraction API. Output ONLY valid JSON arrays. No commentary.',
-            }),
-          });
-
-          if (parseResp.ok) {
-            const parseData = await parseResp.json();
-            let pText = '';
-            for (const block of parseData.content || []) {
-              if (block.type === 'text') pText += block.text;
-            }
-            const cleaned = pText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-              const fallbackDeals = JSON.parse(jsonMatch[0]);
-              // Tag as primary city (distance 0)
-              for (const d of fallbackDeals) {
-                d._nearbyDistance = 0;
-                d._nearbyCity = null;
-              }
-              imoovaDeals.push(...fallbackDeals);
-              console.log('Haiku parsed Imoova deals:', fallbackDeals.length);
-            }
-          }
-        } catch (e) {
-          console.error('Haiku Imoova parse error:', e.message);
-        }
-      }
+    } else {
+      imoovaPromise = Promise.resolve([]);
     }
 
-    // Format Imoova deals (clean city names, add nearby metadata)
-    const formattedImoovaDeals = imoovaDeals.map(d => ({
-      from: cleanCityName(d.from),
-      to: cleanCityName(d.to),
-      date_range: d.date_range || 'unknown',
-      price: d.price || '€1.00/night',
-      vehicle: d.vehicle || 'Campervan',
-      seats: d.seats || 0,
-      provider: d.provider || identifyProvider(d.vehicle),
-      url: d.url || 'https://www.imoova.com/en/relocations?region=EU',
-      direction_match: false,
-      description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || '€1/night'),
-      nearby_distance: d._nearbyDistance || 0,
-      nearby_from: d._nearbyCity || null,
-    }));
-
-    // === STEP 2: Haiku web_search for other providers ===
+    // -- Build Haiku prompt (optimistically assume Imoova will succeed → skip Imoova in Haiku) --
     const dirClause = headingTowards
       ? `Heading towards "${headingTowards}". Mark matching deals "direction_match":true, but include ALL deals.`
       : 'No direction filter. "direction_match":false for all.';
     const dateClause = date
       ? `Date target: around ${date} ±${flexibility} days.`
       : 'No date filter — include ALL deals regardless of date.';
-
-    const imoovaFailed = formattedImoovaDeals.length === 0;
-
-    // Build nearby city names for Haiku prompt
-    const nearby = from ? getNearbyCities(from, searchRadius) : [];
-    const nearbyCityNames = nearby.map(n => n.city.charAt(0).toUpperCase() + n.city.slice(1)).slice(0, 5);
+    const nearbyCityNames = nearby.map(n => capitalize(n.city)).slice(0, 5);
 
     let prompt;
     if (!from && searchTo) {
       // ── TO-ONLY search ──
       const nearbyTo = getNearbyCities(searchTo, searchRadius);
-      const nearbyToNames = nearbyTo.map(n => n.city.charAt(0).toUpperCase() + n.city.slice(1)).slice(0, 5);
+      const nearbyToNames = nearbyTo.map(n => capitalize(n.city)).slice(0, 5);
       const nearbyToNote = nearbyToNames.length > 0
         ? `\nAlso search for deals arriving in these nearby cities: ${nearbyToNames.join(', ')}.`
         : '';
@@ -643,25 +578,17 @@ Respond with ONLY a JSON array:
 
 If nothing found: []`;
     } else {
-      // ── FROM search ──
+      // ── FROM search (skip Imoova in Haiku — direct fetch handles it) ──
       const nearbyNote = nearbyCityNames.length > 0
         ? `\nAlso search for deals departing from these nearby cities: ${nearbyCityNames.join(', ')}. Use the actual departure city name in the "from" field.`
         : '';
 
-      const providerQueries = imoovaFailed
-        ? `Search for ALL of these providers:
-1. "imoova relocations departing from ${from} Europe"
-2. "roadsurfer rally relocations from ${from}"
-3. "bunk campers relocation deals ${from}"
-4. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`
-        : `Search for these providers ONLY (Imoova already handled):
-1. "roadsurfer rally relocations from ${from}"
-2. "bunk campers relocation deals ${from}"
-3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"`;
-
       prompt = `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
 
-${providerQueries}
+Search for these providers ONLY (Imoova already handled separately):
+1. "roadsurfer rally relocations from ${from}"
+2. "bunk campers relocation deals ${from}"
+3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"
 
 IMPORTANT for Movacar:
 - Movacar has BOTH campervan/camper AND regular car relocations
@@ -682,58 +609,143 @@ Respond with ONLY a JSON array:
 If nothing found: []`;
     }
 
-    let otherDeals = [];
-
-    async function callAPI(attempt = 1) {
+    // -- Fire Haiku web_search in parallel with Imoova --
+    async function callHaikuAPI(attempt = 1) {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'anthropic-version': ANTHROPIC_VERSION,
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: HAIKU_MODEL,
           max_tokens: 3000,
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: imoovaFailed ? 6 : 4 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
           messages: [{ role: 'user', content: prompt }],
           system: 'Web scraping API. Output ONLY valid JSON arrays. No commentary. Use "unknown" for missing fields.',
         }),
       });
 
+      // Short retry on rate limit (2s, not 15s — must fit within Vercel timeout)
       if (response.status === 429 && attempt <= 2) {
-        await new Promise(r => setTimeout(r, attempt * 15000));
-        return callAPI(attempt + 1);
+        await new Promise(r => setTimeout(r, 2000));
+        return callHaikuAPI(attempt + 1);
       }
       return response;
     }
 
-    const response = await callAPI();
-    if (response.ok) {
-      const data = await response.json();
-      let text = '';
-      for (const block of data.content || []) {
-        if (block.type === 'text') text += block.text;
+    const haikuPromise = callHaikuAPI();
+
+    // -- Await both in parallel --
+    const [fetchResults, haikuResponse] = await Promise.all([imoovaPromise, haikuPromise]);
+
+    // -- Process Imoova results --
+    let imoovaDeals = [];
+    for (const result of fetchResults) {
+      if (result.deals.length > 0) {
+        if (result.distance > 0) {
+          nearbyCitiesSearched.push({ city: result.city, distance: result.distance });
+        }
+        for (const deal of result.deals) {
+          deal._nearbyDistance = result.distance;
+          deal._nearbyCity = result.distance > 0 ? result.city : null;
+        }
+        imoovaDeals.push(...result.deals);
       }
+    }
+
+    console.log(`Imoova total deals: ${imoovaDeals.length} (${fetchResults[0]?.deals?.length || 0} primary + ${imoovaDeals.length - (fetchResults[0]?.deals?.length || 0)} nearby)`);
+
+    // Haiku fallback: only for primary city if SSR parsing found nothing
+    const primaryHtml = fetchResults[0]?.html;
+    const primaryDeals = fetchResults[0]?.deals || [];
+    if (primaryHtml && primaryDeals.length === 0 && primaryHtml.length > 500) {
+      console.log('SSR parsing found nothing for primary city, trying Haiku parser...');
+      const imoovaText = primaryHtml
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z]+;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 6000);
+
       try {
-        const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-        const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-        if (jsonMatch) otherDeals = JSON.parse(jsonMatch[0]);
+        const parseResp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': ANTHROPIC_VERSION,
+          },
+          body: JSON.stringify({
+            model: HAIKU_MODEL,
+            max_tokens: 2000,
+            messages: [{ role: 'user', content: `Extract campervan relocation deals from this Imoova page. Only deals DEPARTING FROM ${from}.
+
+PAGE TEXT:
+${imoovaText}
+
+Return ONLY a JSON array:
+[{"from":"city","to":"city","date_range":"dates","price":"price","vehicle":"name","seats":0,"provider":"Imoova","url":"url","description":"summary"}]
+
+If no deals: []` }],
+            system: 'Data extraction API. Output ONLY valid JSON arrays. No commentary.',
+          }),
+        });
+
+        if (parseResp.ok) {
+          const fallbackDeals = extractJsonArray(await parseResp.json());
+          for (const d of fallbackDeals) {
+            d._nearbyDistance = 0;
+            d._nearbyCity = null;
+          }
+          imoovaDeals.push(...fallbackDeals);
+          console.log('Haiku parsed Imoova deals:', fallbackDeals.length);
+        }
+      } catch (e) {
+        console.error('Haiku Imoova parse error:', e.message);
+      }
+    }
+
+    // Format Imoova deals (clean city names, add nearby metadata)
+    const formattedImoovaDeals = imoovaDeals.map(d => ({
+      from: cleanCityName(d.from),
+      to: cleanCityName(d.to),
+      date_range: d.date_range || 'unknown',
+      price: d.price || DEFAULT_PRICE,
+      vehicle: d.vehicle || 'Campervan',
+      seats: d.seats || 0,
+      provider: d.provider || identifyProvider(d.vehicle),
+      url: d.url || IMOOVA_FALLBACK_URL,
+      direction_match: false,
+      description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || DEFAULT_PRICE),
+      nearby_distance: d._nearbyDistance || 0,
+      nearby_from: d._nearbyCity || null,
+    }));
+
+    // -- Process Haiku results --
+    let otherDeals = [];
+    if (haikuResponse.ok) {
+      try {
+        otherDeals = extractJsonArray(await haikuResponse.json());
       } catch (e) {
         console.error('Haiku web_search parse error:', e.message);
       }
     }
 
-    // Post-process Haiku deals: tag nearby city distances
+    // Tag Haiku deals with nearby city distances
     if (from && nearby.length > 0) {
       const nearbyLookup = {};
       for (const n of nearby) {
         nearbyLookup[n.city.toLowerCase()] = n.distance;
       }
+      const fromLower = from.toLowerCase().trim();
       otherDeals = otherDeals.map(d => {
         const dealFrom = (d.from || '').toLowerCase().trim();
         const dist = nearbyLookup[dealFrom];
-        if (dist !== undefined && dealFrom !== from.toLowerCase().trim()) {
+        if (dist !== undefined && dealFrom !== fromLower) {
           return { ...d, nearby_distance: dist, nearby_from: d.from };
         }
         return { ...d, nearby_distance: 0, nearby_from: null };
@@ -752,7 +764,9 @@ If nothing found: []`;
       }));
     }
 
-    // Sort: primary city first (distance 0), then closer nearby cities, then direction_match
+    // Sort: primary city first (distance 0), then closer nearby, then direction_match.
+    // IMPORTANT: this ordering is required for cross-city dedup below to work correctly —
+    // primary city deals must come first so they "claim" the cross-city key.
     allDeals.sort((a, b) => {
       const distA = a.nearby_distance || 0;
       const distB = b.nearby_distance || 0;
@@ -773,7 +787,6 @@ If nothing found: []`;
       // (same destination + vehicle + price + dates = likely same physical vehicle)
       const crossKey = `${(d.to||'').toLowerCase()}|${(d.vehicle||'').toLowerCase()}|${(d.price||'').toLowerCase()}|${(d.date_range||'').toLowerCase()}`;
       if ((d.nearby_distance || 0) > 0) {
-        // Nearby city deal: skip if we already have this from primary city
         if (seenCrossCity.has(crossKey)) return false;
       }
       seenCrossCity.add(crossKey);
@@ -781,6 +794,7 @@ If nothing found: []`;
       return true;
     });
 
+    const nearbyDealCount = formattedImoovaDeals.filter(d => d.nearby_from).length;
     const result = {
       deals: allDeals,
       meta: {
@@ -795,10 +809,10 @@ If nothing found: []`;
       },
       debug: {
         imoovaFetched: true,
-        imoovaPrimaryDeals: formattedImoovaDeals.filter(d => !d.nearby_from).length,
+        imoovaPrimaryDeals: formattedImoovaDeals.length - nearbyDealCount,
         imoovaNearbyCities: nearbyCitiesSearched.length,
-        imoovaNearbyCityDeals: formattedImoovaDeals.filter(d => d.nearby_from).length,
-        imoovaFallbackUsed: imoovaFailed,
+        imoovaNearbyCityDeals: nearbyDealCount,
+        imoovaFallbackUsed: formattedImoovaDeals.length === 0,
         otherParsed: otherDeals.length,
       },
     };
