@@ -537,6 +537,7 @@ function renderDashboard(data) {
 
 function renderCountryTable(countries) {
   if (!countries || countries.length === 0) return '';
+  countries.sort((a, b) => b.count - a.count);
   const maxVal = Math.max(...countries.map(c => c.count));
   return countries.slice(0, 10).map((c, i) => {
     const pct = Math.max(8, (c.count / maxVal) * 100);
