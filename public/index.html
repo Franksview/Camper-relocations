@@ -3545,6 +3545,12 @@ function renderResults(data) {
     html += '</div></div>';
   }
 
+  // ── No date-matched deals? Show alternative transport options ──
+  if (meta.from && dateMatchedDeals.length === 0 && differentDateDeals.length > 0) {
+    const suggestedDest = meta.headingTowards ? displayCity(meta.headingTowards) : '';
+    html += renderEmptyOtherOptions(cityLabel, suggestedDest);
+  }
+
   // ── Return to starting point: show transport options from deal destination back to departure ──
   if (meta.from && dateMatchedDeals.length > 0) {
     // Pick the "main" destination: direction-matched deal if heading towards, otherwise first deal
@@ -3555,7 +3561,7 @@ function renderResults(data) {
   }
 
   // Show bridge block when few deals
-  if (meta.from) html += renderBridgeBlock(meta.from, deals.length);
+  if (meta.from) html += renderBridgeBlock(meta.from, dateMatchedDeals.length);
 
   container.innerHTML = html;
 }
