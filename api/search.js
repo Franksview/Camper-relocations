@@ -1,5 +1,5 @@
-// Vercel Serverless Function — Movacamper v5.0
-// Hybrid: direct Imoova fetch + Claude Haiku for other providers (incl. Movacar)
+// Vercel Serverless Function — Movacamper v6.0
+// Hybrid: direct Imoova fetch (primary + nearby cities) + Claude Haiku for other providers
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -30,7 +30,295 @@ const CITY_SLUGS = {
   'edinburg': 'edinburgh',
 };
 
-async function fetchImoovaPage(city) {
+// Nearby cities with approximate driving distances (km)
+// Used to expand searches when radius > 0
+const NEARBY_CITIES = {
+  // ── Germany ──
+  'munich': [
+    { city: 'augsburg', distance: 70 },
+    { city: 'salzburg', distance: 145 },
+    { city: 'innsbruck', distance: 190 },
+    { city: 'nuremberg', distance: 170 },
+    { city: 'stuttgart', distance: 230 },
+  ],
+  'berlin': [
+    { city: 'potsdam', distance: 35 },
+    { city: 'leipzig', distance: 190 },
+    { city: 'dresden', distance: 195 },
+    { city: 'hamburg', distance: 290 },
+  ],
+  'hamburg': [
+    { city: 'bremen', distance: 120 },
+    { city: 'hanover', distance: 150 },
+    { city: 'kiel', distance: 100 },
+    { city: 'berlin', distance: 290 },
+  ],
+  'frankfurt': [
+    { city: 'mainz', distance: 40 },
+    { city: 'darmstadt', distance: 35 },
+    { city: 'wiesbaden', distance: 40 },
+    { city: 'cologne', distance: 190 },
+    { city: 'stuttgart', distance: 210 },
+    { city: 'nuremberg', distance: 230 },
+  ],
+  'cologne': [
+    { city: 'bonn', distance: 30 },
+    { city: 'dusseldorf', distance: 40 },
+    { city: 'essen', distance: 75 },
+    { city: 'dortmund', distance: 95 },
+    { city: 'frankfurt', distance: 190 },
+  ],
+  'dusseldorf': [
+    { city: 'cologne', distance: 40 },
+    { city: 'essen', distance: 35 },
+    { city: 'dortmund', distance: 70 },
+    { city: 'bochum', distance: 50 },
+    { city: 'duisburg', distance: 25 },
+    { city: 'bonn', distance: 70 },
+  ],
+  'dortmund': [
+    { city: 'bochum', distance: 20 },
+    { city: 'essen', distance: 35 },
+    { city: 'dusseldorf', distance: 70 },
+    { city: 'cologne', distance: 95 },
+    { city: 'hanover', distance: 260 },
+  ],
+  'bochum': [
+    { city: 'dortmund', distance: 20 },
+    { city: 'essen', distance: 15 },
+    { city: 'dusseldorf', distance: 50 },
+    { city: 'cologne', distance: 75 },
+  ],
+  'essen': [
+    { city: 'bochum', distance: 15 },
+    { city: 'dortmund', distance: 35 },
+    { city: 'dusseldorf', distance: 35 },
+    { city: 'duisburg', distance: 20 },
+    { city: 'cologne', distance: 75 },
+  ],
+  'stuttgart': [
+    { city: 'karlsruhe', distance: 80 },
+    { city: 'munich', distance: 230 },
+    { city: 'frankfurt', distance: 210 },
+    { city: 'nuremberg', distance: 210 },
+    { city: 'freiburg', distance: 200 },
+  ],
+  'nuremberg': [
+    { city: 'munich', distance: 170 },
+    { city: 'frankfurt', distance: 230 },
+    { city: 'stuttgart', distance: 210 },
+  ],
+  'hanover': [
+    { city: 'hamburg', distance: 150 },
+    { city: 'bremen', distance: 125 },
+    { city: 'berlin', distance: 290 },
+  ],
+  'leipzig': [
+    { city: 'dresden', distance: 120 },
+    { city: 'berlin', distance: 190 },
+    { city: 'nuremberg', distance: 280 },
+  ],
+  'dresden': [
+    { city: 'leipzig', distance: 120 },
+    { city: 'berlin', distance: 195 },
+    { city: 'prague', distance: 150 },
+  ],
+  'freiburg': [
+    { city: 'basel', distance: 70 },
+    { city: 'strasbourg', distance: 85 },
+    { city: 'zurich', distance: 170 },
+    { city: 'karlsruhe', distance: 130 },
+    { city: 'stuttgart', distance: 200 },
+  ],
+
+  // ── Netherlands ──
+  'amsterdam': [
+    { city: 'utrecht', distance: 45 },
+    { city: 'the-hague', distance: 60 },
+    { city: 'rotterdam', distance: 75 },
+    { city: 'eindhoven', distance: 125 },
+  ],
+  'rotterdam': [
+    { city: 'the-hague', distance: 25 },
+    { city: 'amsterdam', distance: 75 },
+    { city: 'utrecht', distance: 60 },
+    { city: 'antwerp', distance: 100 },
+  ],
+  'eindhoven': [
+    { city: 'antwerp', distance: 90 },
+    { city: 'amsterdam', distance: 125 },
+    { city: 'cologne', distance: 200 },
+    { city: 'dusseldorf', distance: 130 },
+  ],
+  'utrecht': [
+    { city: 'amsterdam', distance: 45 },
+    { city: 'rotterdam', distance: 60 },
+    { city: 'eindhoven', distance: 100 },
+  ],
+
+  // ── Belgium ──
+  'brussels': [
+    { city: 'antwerp', distance: 50 },
+    { city: 'ghent', distance: 55 },
+    { city: 'liege', distance: 100 },
+    { city: 'cologne', distance: 220 },
+  ],
+  'antwerp': [
+    { city: 'brussels', distance: 50 },
+    { city: 'rotterdam', distance: 100 },
+    { city: 'eindhoven', distance: 90 },
+    { city: 'ghent', distance: 60 },
+  ],
+
+  // ── Austria ──
+  'vienna': [
+    { city: 'bratislava', distance: 80 },
+    { city: 'graz', distance: 200 },
+    { city: 'linz', distance: 185 },
+  ],
+  'salzburg': [
+    { city: 'munich', distance: 145 },
+    { city: 'innsbruck', distance: 190 },
+    { city: 'linz', distance: 130 },
+  ],
+  'innsbruck': [
+    { city: 'munich', distance: 190 },
+    { city: 'salzburg', distance: 190 },
+    { city: 'zurich', distance: 290 },
+  ],
+
+  // ── Switzerland ──
+  'zurich': [
+    { city: 'basel', distance: 85 },
+    { city: 'bern', distance: 125 },
+    { city: 'lucerne', distance: 55 },
+    { city: 'stuttgart', distance: 210 },
+  ],
+  'geneva': [
+    { city: 'lausanne', distance: 65 },
+    { city: 'lyon', distance: 150 },
+    { city: 'bern', distance: 160 },
+  ],
+  'basel': [
+    { city: 'zurich', distance: 85 },
+    { city: 'freiburg', distance: 70 },
+    { city: 'strasbourg', distance: 150 },
+    { city: 'bern', distance: 100 },
+  ],
+
+  // ── France ──
+  'paris': [
+    { city: 'lille', distance: 225 },
+    { city: 'rouen', distance: 135 },
+    { city: 'orleans', distance: 130 },
+    { city: 'brussels', distance: 310 },
+  ],
+  'lyon': [
+    { city: 'geneva', distance: 150 },
+    { city: 'grenoble', distance: 115 },
+    { city: 'marseille', distance: 315 },
+  ],
+  'marseille': [
+    { city: 'nice', distance: 200 },
+    { city: 'montpellier', distance: 170 },
+    { city: 'lyon', distance: 315 },
+    { city: 'toulouse', distance: 400 },
+  ],
+  'nice': [
+    { city: 'marseille', distance: 200 },
+    { city: 'monaco', distance: 20 },
+    { city: 'genoa', distance: 195 },
+  ],
+  'toulouse': [
+    { city: 'bordeaux', distance: 245 },
+    { city: 'montpellier', distance: 245 },
+    { city: 'marseille', distance: 400 },
+  ],
+  'bordeaux': [
+    { city: 'toulouse', distance: 245 },
+    { city: 'nantes', distance: 345 },
+    { city: 'bilbao', distance: 230 },
+  ],
+
+  // ── Italy ──
+  'milan': [
+    { city: 'turin', distance: 140 },
+    { city: 'bologna', distance: 215 },
+    { city: 'genoa', distance: 145 },
+    { city: 'zurich', distance: 290 },
+  ],
+  'rome': [
+    { city: 'naples', distance: 230 },
+    { city: 'florence', distance: 275 },
+    { city: 'bari', distance: 450 },
+  ],
+  'venice': [
+    { city: 'bologna', distance: 155 },
+    { city: 'milan', distance: 270 },
+    { city: 'vienna', distance: 600 },
+  ],
+
+  // ── Spain ──
+  'barcelona': [
+    { city: 'valencia', distance: 350 },
+    { city: 'zaragoza', distance: 310 },
+    { city: 'montpellier', distance: 340 },
+  ],
+  'madrid': [
+    { city: 'toledo', distance: 75 },
+    { city: 'zaragoza', distance: 325 },
+    { city: 'seville', distance: 530 },
+  ],
+  'malaga': [
+    { city: 'seville', distance: 210 },
+    { city: 'granada', distance: 130 },
+    { city: 'cordoba', distance: 160 },
+  ],
+
+  // ── Portugal ──
+  'lisbon': [
+    { city: 'porto', distance: 315 },
+    { city: 'faro', distance: 280 },
+  ],
+
+  // ── UK ──
+  'london': [
+    { city: 'birmingham', distance: 190 },
+    { city: 'bristol', distance: 190 },
+    { city: 'cambridge', distance: 100 },
+    { city: 'manchester', distance: 330 },
+  ],
+  'edinburgh': [
+    { city: 'glasgow', distance: 75 },
+    { city: 'newcastle', distance: 200 },
+  ],
+
+  // ── Scandinavia ──
+  'copenhagen': [
+    { city: 'malmo', distance: 30 },
+    { city: 'hamburg', distance: 320 },
+  ],
+  'stockholm': [
+    { city: 'gothenburg', distance: 470 },
+    { city: 'malmo', distance: 615 },
+  ],
+  'malmo': [
+    { city: 'copenhagen', distance: 30 },
+    { city: 'gothenburg', distance: 270 },
+  ],
+};
+
+// Get nearby cities within a given radius
+function getNearbyCities(city, radiusKm) {
+  if (!radiusKm || radiusKm <= 0) return [];
+  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
+  const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
+  // Try slug first (e.g. 'munich'), then original normalized (e.g. 'dusseldorf')
+  const neighbors = NEARBY_CITIES[slug] || NEARBY_CITIES[normalized] || NEARBY_CITIES[normalized.replace(/-/g, ' ')] || [];
+  return neighbors.filter(n => n.distance <= radiusKm);
+}
+
+async function fetchImoovaPage(city, timeoutMs = 10000) {
   const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
   const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
   const url = `https://www.imoova.com/en/relocations?region=EU&departure_city=${encodeURIComponent(slug)}`;
@@ -44,7 +332,7 @@ async function fetchImoovaPage(city) {
         'Accept-Language': 'en-US,en;q=0.9',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!resp.ok) {
@@ -53,10 +341,10 @@ async function fetchImoovaPage(city) {
     }
 
     const html = await resp.text();
-    console.log('Imoova HTML length:', html.length);
+    console.log(`Imoova ${city} HTML length:`, html.length);
     return { html };
   } catch (err) {
-    console.log('Imoova fetch error:', err.message);
+    console.log(`Imoova ${city} fetch error:`, err.message);
     return { html: null };
   }
 }
@@ -91,10 +379,8 @@ function parseImoovaHtml(html) {
       urlMap[refMatch[1]] = 'https://www.imoova.com/en/relocations/deal/' + slug;
     }
   }
-  console.log('Deal URLs found:', Object.keys(urlMap).length);
 
   // 2. Extract deal data from Imoova SSR ($R[] objects)
-  //    Fields appear in consistent order: reference, created_at, name, ..., dates, ..., rate
   const refs = [...html.matchAll(/reference:"(RLC\d+)",created_at:"[^"]*",name:"([^"]+)"/g)];
   const dates = [...html.matchAll(/available_from_date:"(\d{4}-\d{2}-\d{2})",available_to_date:"(\d{4}-\d{2}-\d{2})"/g)];
   const rates = [...html.matchAll(/,hire_unit_rate:(\d+)/g)];
@@ -106,7 +392,6 @@ function parseImoovaHtml(html) {
     const ref = refs[i][1];
     const name = refs[i][2];
 
-    // Parse from/to from name: "Munich to Palma"
     const routeMatch = name.match(/^(.+?)\s+to\s+(.+)$/i);
     if (!routeMatch) continue;
 
@@ -134,11 +419,8 @@ function parseImoovaHtml(html) {
 function cleanCityName(name) {
   if (!name) return name;
   let clean = name
-    // Remove "Available Relocations" or truncated prefix (e.g. "ailable Relocations")
     .replace(/^.*?relocations\s+/i, '')
-    // Remove date suffixes: "Available 16 Mar - 19" or "Available 16 Mar - 19 Mar"
     .replace(/\s+available\s+\d{1,2}\s+\w{3}.*$/i, '')
-    // Remove standalone date patterns: "16 Mar - 19 Mar 2025"
     .replace(/\s+\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*[-–]\s*\d{1,2}.*$/i, '')
     .trim();
   return clean || name.trim();
@@ -159,10 +441,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { from, to, date, flexibility = 3, headingTowards = '', radius = 50 } = req.body;
+  const { from, to, date, flexibility = 3, headingTowards = '', radius = 75 } = req.body;
   if (!from && !to && !headingTowards) return res.status(400).json({ error: 'Missing: from or to' });
 
-  const searchRadius = Math.min(Math.max(parseInt(radius) || 50, 0), 100);
+  const searchRadius = Math.min(Math.max(parseInt(radius) || 75, 0), 200);
   const searchTo = to || headingTowards || '';
   const cacheKey = `${(from||'').toLowerCase()}|${searchTo.toLowerCase()}|${date || 'any'}|${flexibility}|${headingTowards.toLowerCase()}|${searchRadius}`;
   const cached = cache.get(cacheKey);
@@ -174,20 +456,54 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    // === STEP 1: Direct Imoova fetch (only if we have a from city) ===
-    const { html: imoovaHtml } = from ? await fetchImoovaPage(from) : { html: null };
+    // === STEP 1: Direct Imoova fetch — primary city + nearby cities in parallel ===
     let imoovaDeals = [];
+    const nearbyCitiesSearched = [];
 
-    if (imoovaHtml) {
-      // Parse deal data from Imoova's SSR-rendered HTML
-      imoovaDeals = parseImoovaHtml(imoovaHtml);
-      console.log('SSR parsed Imoova deals:', imoovaDeals.length);
+    if (from) {
+      const nearby = getNearbyCities(from, searchRadius);
+      const citiesToFetch = [
+        { city: from, distance: 0 },
+        ...nearby.slice(0, 3), // cap at 3 nearby to stay within timeout
+      ];
 
-      // Fallback: if SSR parsing found nothing but page has content, use Haiku to parse
-      if (imoovaDeals.length === 0 && imoovaHtml.length > 500) {
-        console.log('SSR parsing found nothing, trying Haiku parser...');
-        // Strip HTML to plain text for Haiku
-        const imoovaText = imoovaHtml
+      console.log(`Imoova fetching: ${citiesToFetch.map(c => `${c.city} (${c.distance}km)`).join(', ')}`);
+
+      // Fetch all cities in parallel with a shorter timeout
+      const fetchResults = await Promise.all(
+        citiesToFetch.map(({ city, distance }) =>
+          fetchImoovaPage(city, 6000) // 6s per city
+            .then(({ html }) => ({
+              city, distance, html,
+              deals: html ? parseImoovaHtml(html) : [],
+            }))
+            .catch(() => ({ city, distance, html: null, deals: [] }))
+        )
+      );
+
+      for (const result of fetchResults) {
+        if (result.deals.length > 0) {
+          // Track which nearby cities returned results
+          if (result.distance > 0) {
+            nearbyCitiesSearched.push({ city: result.city, distance: result.distance });
+          }
+          // Tag every deal with its source info
+          for (const deal of result.deals) {
+            deal._nearbyDistance = result.distance;
+            deal._nearbyCity = result.distance > 0 ? result.city : null;
+          }
+          imoovaDeals.push(...result.deals);
+        }
+      }
+
+      console.log(`Imoova total deals: ${imoovaDeals.length} (${fetchResults[0]?.deals?.length || 0} primary + ${imoovaDeals.length - (fetchResults[0]?.deals?.length || 0)} nearby)`);
+
+      // Haiku fallback: only for primary city if SSR parsing found nothing
+      const primaryHtml = fetchResults[0]?.html;
+      const primaryDeals = fetchResults[0]?.deals || [];
+      if (primaryHtml && primaryDeals.length === 0 && primaryHtml.length > 500) {
+        console.log('SSR parsing found nothing for primary city, trying Haiku parser...');
+        const imoovaText = primaryHtml
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
           .replace(/<[^>]+>/g, ' ')
@@ -229,8 +545,14 @@ If no deals: []` }],
             const cleaned = pText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
             const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
-              imoovaDeals = JSON.parse(jsonMatch[0]);
-              console.log('Haiku parsed Imoova deals:', imoovaDeals.length);
+              const fallbackDeals = JSON.parse(jsonMatch[0]);
+              // Tag as primary city (distance 0)
+              for (const d of fallbackDeals) {
+                d._nearbyDistance = 0;
+                d._nearbyCity = null;
+              }
+              imoovaDeals.push(...fallbackDeals);
+              console.log('Haiku parsed Imoova deals:', fallbackDeals.length);
             }
           }
         } catch (e) {
@@ -239,7 +561,7 @@ If no deals: []` }],
       }
     }
 
-    // Format Imoova deals (clean city names to strip scraper noise)
+    // Format Imoova deals (clean city names, add nearby metadata)
     const formattedImoovaDeals = imoovaDeals.map(d => ({
       from: cleanCityName(d.from),
       to: cleanCityName(d.to),
@@ -251,22 +573,33 @@ If no deals: []` }],
       url: d.url || 'https://www.imoova.com/en/relocations?region=EU',
       direction_match: false,
       description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || '€1/night'),
+      nearby_distance: d._nearbyDistance || 0,
+      nearby_from: d._nearbyCity || null,
     }));
 
     // === STEP 2: Haiku web_search for other providers ===
     const dirClause = headingTowards
       ? `Heading towards "${headingTowards}". Mark matching deals "direction_match":true, but include ALL deals.`
       : 'No direction filter. "direction_match":false for all.';
-    const radiusNote = searchRadius === 0 ? 'exact city only' : `within ${searchRadius}km`;
     const dateClause = date
       ? `Date target: around ${date} ±${flexibility} days.`
       : 'No date filter — include ALL deals regardless of date.';
 
-    const imoovaFailed = !imoovaHtml || formattedImoovaDeals.length === 0;
+    const imoovaFailed = formattedImoovaDeals.length === 0;
+
+    // Build nearby city names for Haiku prompt
+    const nearby = from ? getNearbyCities(from, searchRadius) : [];
+    const nearbyCityNames = nearby.map(n => n.city.charAt(0).toUpperCase() + n.city.slice(1)).slice(0, 5);
 
     let prompt;
     if (!from && searchTo) {
-      // ── TO-ONLY search: find deals ARRIVING AT a destination ──
+      // ── TO-ONLY search ──
+      const nearbyTo = getNearbyCities(searchTo, searchRadius);
+      const nearbyToNames = nearbyTo.map(n => n.city.charAt(0).toUpperCase() + n.city.slice(1)).slice(0, 5);
+      const nearbyToNote = nearbyToNames.length > 0
+        ? `\nAlso search for deals arriving in these nearby cities: ${nearbyToNames.join(', ')}.`
+        : '';
+
       prompt = `Search for campervan AND car relocation deals ARRIVING IN or near ${searchTo}.
 
 Search for ALL of these providers:
@@ -283,7 +616,7 @@ IMPORTANT for Movacar:
 DIRECTION FILTER:
 ✅ INCLUDE: "[somewhere] to ${searchTo}"
 ❌ EXCLUDE: "${searchTo} to [somewhere]"
-
+${nearbyToNote}
 ${dateClause}
 
 Respond with ONLY a JSON array:
@@ -291,7 +624,11 @@ Respond with ONLY a JSON array:
 
 If nothing found: []`;
     } else {
-      // ── FROM search (original logic) ──
+      // ── FROM search ──
+      const nearbyNote = nearbyCityNames.length > 0
+        ? `\nAlso search for deals departing from these nearby cities: ${nearbyCityNames.join(', ')}. Use the actual departure city name in the "from" field.`
+        : '';
+
       const providerQueries = imoovaFailed
         ? `Search for ALL of these providers:
 1. "imoova relocations departing from ${from} Europe"
@@ -316,8 +653,7 @@ IMPORTANT for Movacar:
 DIRECTION FILTER:
 ✅ INCLUDE: "${from} to [somewhere]"
 ❌ EXCLUDE: "[somewhere] to ${from}"
-
-Also include deals within ${radiusNote} of "${from}".
+${nearbyNote}
 ${dateClause}
 ${dirClause}
 
@@ -369,7 +705,23 @@ If nothing found: []`;
       }
     }
 
-    // === STEP 3: Merge ===
+    // Post-process Haiku deals: tag nearby city distances
+    if (from && nearby.length > 0) {
+      const nearbyLookup = {};
+      for (const n of nearby) {
+        nearbyLookup[n.city.toLowerCase()] = n.distance;
+      }
+      otherDeals = otherDeals.map(d => {
+        const dealFrom = (d.from || '').toLowerCase().trim();
+        const dist = nearbyLookup[dealFrom];
+        if (dist !== undefined && dealFrom !== from.toLowerCase().trim()) {
+          return { ...d, nearby_distance: dist, nearby_from: d.from };
+        }
+        return { ...d, nearby_distance: 0, nearby_from: null };
+      });
+    }
+
+    // === STEP 3: Merge, sort & deduplicate ===
     let allDeals = [...formattedImoovaDeals, ...otherDeals];
 
     if (headingTowards) {
@@ -381,13 +733,32 @@ If nothing found: []`;
       }));
     }
 
-    allDeals.sort((a, b) => (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0));
+    // Sort: primary city first (distance 0), then closer nearby cities, then direction_match
+    allDeals.sort((a, b) => {
+      const distA = a.nearby_distance || 0;
+      const distB = b.nearby_distance || 0;
+      if (distA !== distB) return distA - distB;
+      return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
+    });
 
+    // Deduplicate: standard key + cross-city dedup
     const seen = new Set();
+    const seenCrossCity = new Set();
     allDeals = allDeals.filter(d => {
+      // Standard dedup: exact same from/to/vehicle
       const key = `${(d.from||'').toLowerCase()}|${(d.to||'').toLowerCase()}|${(d.vehicle||'').toLowerCase()}`;
       if (seen.has(key)) return false;
       seen.add(key);
+
+      // Cross-city dedup: same deal listed from a nearby city
+      // (same destination + vehicle + price + dates = likely same physical vehicle)
+      const crossKey = `${(d.to||'').toLowerCase()}|${(d.vehicle||'').toLowerCase()}|${(d.price||'').toLowerCase()}|${(d.date_range||'').toLowerCase()}`;
+      if ((d.nearby_distance || 0) > 0) {
+        // Nearby city deal: skip if we already have this from primary city
+        if (seenCrossCity.has(crossKey)) return false;
+      }
+      seenCrossCity.add(crossKey);
+
       return true;
     });
 
@@ -397,15 +768,17 @@ If nothing found: []`;
         from: from || null, to: searchTo || null, date, flexibility,
         headingTowards: headingTowards || null,
         radius: searchRadius,
+        nearby_cities_searched: nearbyCitiesSearched,
         count: allDeals.length,
         cached: false,
         timestamp: new Date().toISOString(),
         sources: { imoova_direct: formattedImoovaDeals.length, web_search: otherDeals.length },
       },
       debug: {
-        imoovaFetched: !!imoovaHtml,
-        imoovaHtmlLength: imoovaHtml ? imoovaHtml.length : 0,
-        imoovaParsed: imoovaDeals.length,
+        imoovaFetched: true,
+        imoovaPrimaryDeals: formattedImoovaDeals.filter(d => !d.nearby_from).length,
+        imoovaNearbyCities: nearbyCitiesSearched.length,
+        imoovaNearbyCityDeals: formattedImoovaDeals.filter(d => d.nearby_from).length,
         imoovaFallbackUsed: imoovaFailed,
         otherParsed: otherDeals.length,
       },

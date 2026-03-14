@@ -893,6 +893,20 @@
   .provider-bunk { background: #f0e6f6; color: #6a3d7d; }
   .provider-movacar { background: #d1fae5; color: #065f46; }
 
+  .nearby-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    background: #e0f2fe;
+    color: #0369a1;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+  }
+
   .deal-actions {
     display: flex;
     gap: 10px;
@@ -1948,8 +1962,8 @@
           <label for="radius">Search radius</label>
           <select id="radius">
             <option value="0">Exact city only</option>
-            <option value="50" selected>Within 50 km</option>
-            <option value="100">Within 100 km</option>
+            <option value="75" selected>Within 75 km</option>
+            <option value="150">Within 150 km</option>
           </select>
         </div>
       </div>
@@ -3419,6 +3433,12 @@ function renderResults(data) {
   const otherDeals = dateMatchedDeals.filter(d => !d.direction_match);
   const hasDirection = !!meta.headingTowards;
 
+  // Nearby cities note for header
+  const searchedNearby = meta.nearby_cities_searched || [];
+  const nearbyNote = searchedNearby.length > 0
+    ? ` <span style="font-size:0.75rem;color:#888;font-weight:400;">+ ${searchedNearby.length} nearby</span>`
+    : '';
+
   // ── Header: when searching with a direction, show direction-matched count prominently ──
   let html = '';
   if (hasDirection) {
@@ -3426,14 +3446,14 @@ function renderResults(data) {
     const fromLabel = meta.from ? ` from ${displayCity(meta.from)}` : '';
     html += `
       <div class="results-header">
-        <h2>&#x1F9ED; Deals towards ${displayCity(toCity)}${fromLabel}</h2>
+        <h2>&#x1F9ED; Deals towards ${displayCity(toCity)}${fromLabel}${nearbyNote}</h2>
         <span class="results-count">${directionDeals.length} deal${directionDeals.length !== 1 ? 's' : ''} towards ${displayCity(toCity)}${otherDeals.length > 0 ? ' · ' + otherDeals.length + ' other' : ''}${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' other dates' : ''}</span>
       </div>
     `;
   } else {
     html += `
       <div class="results-header">
-        <h2>Deals ${meta.from ? 'from' : 'to'} ${cityLabel}</h2>
+        <h2>Deals ${meta.from ? 'from' : 'to'} ${cityLabel}${nearbyNote}</h2>
         <span class="results-count">${dateMatchedDeals.length} deal${dateMatchedDeals.length !== 1 ? 's' : ''} found${differentDateDeals.length > 0 ? ' · ' + differentDateDeals.length + ' on other dates' : ''}</span>
       </div>
     `;
@@ -3579,11 +3599,15 @@ function renderDealCard(deal, index) {
     bookUrl += (bookUrl.includes('?') ? '&' : '?') + 'via=relocamp';
   }
 
+  const nearbyBadge = deal.nearby_distance > 0
+    ? `<span class="nearby-badge">${deal.nearby_distance}km away</span>`
+    : '';
+
   return `
     <div class="deal-card ${deal.direction_match ? 'direction-match' : ''}" style="animation-delay: ${index * 0.05}s">
       <div class="deal-top">
         <div class="deal-route">
-          ${deal.from}<span class="arrow">&rarr;</span>${deal.to}
+          ${deal.from}<span class="arrow">&rarr;</span>${deal.to}${nearbyBadge}
         </div>
         <div class="deal-price">${deal.price || 'See provider'}</div>
       </div>
