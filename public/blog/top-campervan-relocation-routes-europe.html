@@ -319,6 +319,7 @@ Not all campervan relocation deals in Europe are equal. Some routes take you thr
 <!-- Movacamper Analytics Beacon -->
 <script>
 (function() {
+  try { if (localStorage.getItem('movacamper_notrack') === '1') return; } catch(e) {}
   try {
     fetch('/api/track', {
       method: 'POST',

@@ -462,6 +462,7 @@ Campervan relocation in Europe is one of the best-kept secrets in budget travel.
 <!-- Movacamper Analytics Beacon -->
 <script>
 (function() {
+  try { if (localStorage.getItem('movacamper_notrack') === '1') return; } catch(e) {}
   try {
     fetch('/api/track', {
       method: 'POST',

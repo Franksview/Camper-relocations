@@ -472,6 +472,7 @@ Timing is everything when it comes to <a href="/blog/what-is-campervan-relocatio
 <!-- Movacamper Analytics Beacon -->
 <script>
 (function() {
+  try { if (localStorage.getItem('movacamper_notrack') === '1') return; } catch(e) {}
   try {
     fetch('/api/track', {
       method: 'POST',

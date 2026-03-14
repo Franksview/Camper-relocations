@@ -374,6 +374,7 @@ Campervan relocation in Europe already starts at €1 per day — making it one 
 <!-- Movacamper Analytics Beacon -->
 <script>
 (function() {
+  try { if (localStorage.getItem('movacamper_notrack') === '1') return; } catch(e) {}
   try {
     fetch('/api/track', {
       method: 'POST',

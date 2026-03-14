@@ -3951,6 +3951,9 @@ function scrollToSearch() {
 <!-- Movacamper Analytics Beacon (privacy-friendly, no cookies) -->
 <script>
 (function() {
+  // Skip tracking for site owner (flag set by visiting /dashboard)
+  try { if (localStorage.getItem('movacamper_notrack') === '1') return; } catch(e) {}
+
   function track(data) {
     try {
       fetch('/api/track', {

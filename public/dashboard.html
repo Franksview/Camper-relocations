@@ -249,6 +249,9 @@ document.querySelectorAll('.period-btn').forEach(btn => {
   });
 });
 
+// Auto-exclude dashboard visitors from tracking
+try { localStorage.setItem('movacamper_notrack', '1'); } catch(e) {}
+
 async function loadDashboard(days) {
   const content = document.getElementById('content');
   content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading analytics...</div></div>';
