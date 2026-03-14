@@ -43,111 +43,89 @@ async function fetchImoovaPage(city) {
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9',
       },
+      redirect: 'follow',
       signal: AbortSignal.timeout(10000),
     });
 
     if (!resp.ok) {
       console.log('Imoova fetch failed:', resp.status);
-      return { text: null, dealUrlIds: [] };
+      return { html: null };
     }
 
     const html = await resp.text();
     console.log('Imoova HTML length:', html.length);
-
-    // Extract deal URLs from href BEFORE stripping tags
-    const hrefPattern = /href="\/en\/relocations\/(\d+)"/g;
-    const dealUrlIds = [];
-    let hm;
-    while ((hm = hrefPattern.exec(html)) !== null) {
-      dealUrlIds.push(hm[1]);
-    }
-    console.log('Deal URL IDs from href:', dealUrlIds.length);
-
-    // Strip HTML to plain text
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&rarr;/g, '→').replace(/&#8594;/g, '→').replace(/&#x2192;/g, '→')
-      .replace(/&amp;/g, '&').replace(/&euro;/g, '€').replace(/&#x20AC;/g, '€')
-      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    console.log('Stripped text length:', text.length);
-    console.log('Text sample:', text.substring(0, 300));
-
-    // Check if we got the generic Europe page instead of city-filtered results
-    const hasCity = text.toLowerCase().includes('relocations in ' + slug) || 
-                    text.toLowerCase().includes('relocations in ' + city.toLowerCase());
-    if (!hasCity && text.includes('Relocations In Europe')) {
-      console.log('Got generic Europe page, city filter not applied for:', slug);
-      return { text: null, dealUrlIds: [] };
-    }
-
-    return { text, dealUrlIds };
+    return { html };
   } catch (err) {
     console.log('Imoova fetch error:', err.message);
-    return { text: null, dealUrlIds: [] };
+    return { html: null };
   }
 }
 
-function parseImoovaText(text, dealUrlIds) {
+function formatDateRange(fromStr, toStr) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  try {
+    const f = new Date(fromStr + 'T00:00:00Z');
+    const t = new Date(toStr + 'T00:00:00Z');
+    if (isNaN(f) || isNaN(t)) return 'unknown';
+    const fd = f.getUTCDate();
+    const fm = MONTHS[f.getUTCMonth()];
+    const td = t.getUTCDate();
+    const tm = MONTHS[t.getUTCMonth()];
+    return fm === tm ? `${fd}-${td} ${fm}` : `${fd} ${fm} - ${td} ${tm}`;
+  } catch(e) {
+    return 'unknown';
+  }
+}
+
+function parseImoovaHtml(html) {
   const deals = [];
 
-  // Generic vehicle pattern: captures any vehicle name before "available for one-way rental"
-  // The lazy quantifier (.*?) grabs minimal text, anchored by "available for one-way rental from"
-  // which is Imoova's standard phrasing for all deal listings
-  const dealPattern = /([\w][\w\s]*?)\s+available for one-way rental from\s+([A-Za-zÀ-ÿ\s\-\.]+?)\s+to\s+([A-Za-zÀ-ÿ\s\-\.]+?)\.\s*Flexible relocation with\s+(\d+)\s+seats?,\s*(Automatic|Manual)\s+transmission\.\s*Starting\s+([€$£][\d.]+)\s+per\s+(?:night|day)/gi;
+  // 1. Build URL map: reference code → full deal URL
+  const urlMap = {};
+  const urlRegex = /href="\/en\/relocations\/deal\/([^"]+)"/g;
+  let um;
+  while ((um = urlRegex.exec(html)) !== null) {
+    const slug = um[1];
+    const refMatch = slug.match(/(RLC\d+)$/);
+    if (refMatch) {
+      urlMap[refMatch[1]] = 'https://www.imoova.com/en/relocations/deal/' + slug;
+    }
+  }
+  console.log('Deal URLs found:', Object.keys(urlMap).length);
 
-  let match;
-  while ((match = dealPattern.exec(text)) !== null) {
-    const vehicle = match[1].trim();
-    if (vehicle.length < 3) continue;
+  // 2. Extract deal data from Imoova SSR ($R[] objects)
+  //    Fields appear in consistent order: reference, created_at, name, ..., dates, ..., rate
+  const refs = [...html.matchAll(/reference:"(RLC\d+)",created_at:"[^"]*",name:"([^"]+)"/g)];
+  const dates = [...html.matchAll(/available_from_date:"(\d{4}-\d{2}-\d{2})",available_to_date:"(\d{4}-\d{2}-\d{2})"/g)];
+  const rates = [...html.matchAll(/,hire_unit_rate:(\d+)/g)];
+  const vehicles = [...html.matchAll(/seatbelts:(\d+),sleeps:[^,]*,transmission:"(\w+)"/g)];
+
+  console.log(`SSR extracted: ${refs.length} refs, ${dates.length} dates, ${rates.length} rates, ${vehicles.length} vehicles`);
+
+  for (let i = 0; i < refs.length; i++) {
+    const ref = refs[i][1];
+    const name = refs[i][2];
+
+    // Parse from/to from name: "Munich to Palma"
+    const routeMatch = name.match(/^(.+?)\s+to\s+(.+)$/i);
+    if (!routeMatch) continue;
+
+    const fromDate = dates[i] ? dates[i][1] : null;
+    const toDate = dates[i] ? dates[i][2] : null;
+    const rate = rates[i] ? parseInt(rates[i][1]) : 100;
+    const seats = vehicles[i] ? parseInt(vehicles[i][1]) : 0;
+    const trans = vehicles[i] ? vehicles[i][2] : 'Unknown';
 
     deals.push({
-      vehicle,
-      from: match[2].trim(),
-      to: match[3].trim(),
-      seats: parseInt(match[4]),
-      transmission: match[5],
-      price: match[6] + '/night',
+      vehicle: 'Campervan',
+      from: routeMatch[1].trim(),
+      to: routeMatch[2].trim(),
+      seats,
+      transmission: trans.charAt(0).toUpperCase() + trans.slice(1).toLowerCase(),
+      price: '€' + (rate / 100).toFixed(2) + '/night',
+      date_range: fromDate && toDate ? formatDateRange(fromDate, toDate) : 'unknown',
+      url: urlMap[ref] || 'https://www.imoova.com/en/relocations?region=EU',
     });
-  }
-
-  // Extract dates
-  const datePattern = /(\d{1,2})\s*(?:-|–)\s*(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/gi;
-  const allDates = [...text.matchAll(datePattern)].map(m => m[1] + '-' + m[2] + ' ' + m[3]);
-
-  // Assign URLs and dates
-  for (let i = 0; i < deals.length; i++) {
-    deals[i].date_range = allDates[i] || 'unknown';
-    deals[i].url = dealUrlIds[i]
-      ? 'https://www.imoova.com/en/relocations/' + dealUrlIds[i]
-      : 'https://www.imoova.com/en/relocations?region=EU';
-  }
-
-  // Fallback: route arrow pattern if regex missed
-  if (deals.length === 0) {
-    const routePattern = /([A-Za-zÀ-ÿ][\w\s\-\.]{1,28})\s*→\s*([A-Za-zÀ-ÿ][\w\s\-\.]{1,28})/g;
-    const routes = [...text.matchAll(routePattern)]
-      .filter(r => !/sort|filter|map|menu|nav/i.test(r[1] + r[2]));
-
-    for (let i = 0; i < routes.length; i++) {
-      deals.push({
-        vehicle: 'Campervan',
-        from: routes[i][1].trim(),
-        to: routes[i][2].trim(),
-        seats: 0,
-        transmission: 'unknown',
-        price: '€1.00/night',
-        date_range: allDates[i] || 'unknown',
-        url: dealUrlIds[i]
-          ? 'https://www.imoova.com/en/relocations/' + dealUrlIds[i]
-          : 'https://www.imoova.com/en/relocations?region=EU',
-      });
-    }
   }
 
   return deals;
@@ -197,17 +175,25 @@ export default async function handler(req, res) {
 
   try {
     // === STEP 1: Direct Imoova fetch (only if we have a from city) ===
-    const { text: imoovaText, dealUrlIds } = from ? await fetchImoovaPage(from) : { text: null, dealUrlIds: [] };
+    const { html: imoovaHtml } = from ? await fetchImoovaPage(from) : { html: null };
     let imoovaDeals = [];
 
-    if (imoovaText) {
-      // Try regex parsing first
-      imoovaDeals = parseImoovaText(imoovaText, dealUrlIds);
-      console.log('Regex parsed Imoova deals:', imoovaDeals.length);
+    if (imoovaHtml) {
+      // Parse deal data from Imoova's SSR-rendered HTML
+      imoovaDeals = parseImoovaHtml(imoovaHtml);
+      console.log('SSR parsed Imoova deals:', imoovaDeals.length);
 
-      // Fallback: if regex found nothing but page has content, use Haiku to parse
-      if (imoovaDeals.length === 0 && imoovaText.length > 500) {
-        console.log('Regex found nothing, trying Haiku parser...');
+      // Fallback: if SSR parsing found nothing but page has content, use Haiku to parse
+      if (imoovaDeals.length === 0 && imoovaHtml.length > 500) {
+        console.log('SSR parsing found nothing, trying Haiku parser...');
+        // Strip HTML to plain text for Haiku
+        const imoovaText = imoovaHtml
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&[a-z]+;/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
         const truncated = imoovaText.substring(0, 6000);
 
         try {
@@ -276,7 +262,7 @@ If no deals: []` }],
       ? `Date target: around ${date} ±${flexibility} days.`
       : 'No date filter — include ALL deals regardless of date.';
 
-    const imoovaFailed = !imoovaText || formattedImoovaDeals.length === 0;
+    const imoovaFailed = !imoovaHtml || formattedImoovaDeals.length === 0;
 
     let prompt;
     if (!from && searchTo) {
@@ -417,8 +403,8 @@ If nothing found: []`;
         sources: { imoova_direct: formattedImoovaDeals.length, web_search: otherDeals.length },
       },
       debug: {
-        imoovaFetched: !!imoovaText,
-        imoovaTextLength: imoovaText ? imoovaText.length : 0,
+        imoovaFetched: !!imoovaHtml,
+        imoovaHtmlLength: imoovaHtml ? imoovaHtml.length : 0,
         imoovaParsed: imoovaDeals.length,
         imoovaFallbackUsed: imoovaFailed,
         otherParsed: otherDeals.length,
