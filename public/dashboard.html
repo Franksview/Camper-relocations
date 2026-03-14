@@ -352,8 +352,27 @@ function miniSparkSVG(data, color) {
 }
 
 // ─── RENDER ───
+const COUNTRY_NAMES = {
+  NL:'Netherlands',DE:'Germany',ES:'Spain',FR:'France',IT:'Italy',US:'United States',
+  GB:'United Kingdom',BE:'Belgium',CH:'Switzerland',AT:'Austria',PT:'Portugal',
+  BR:'Brazil',CA:'Canada',IE:'Ireland',RO:'Romania',HU:'Hungary',SI:'Slovenia',
+  AD:'Andorra',FI:'Finland',IS:'Iceland',SE:'Sweden',DK:'Denmark',NO:'Norway',
+  PL:'Poland',CZ:'Czechia',GR:'Greece',HR:'Croatia',BG:'Bulgaria',RS:'Serbia',
+  SK:'Slovakia',UA:'Ukraine',TR:'Turkey',AU:'Australia',NZ:'New Zealand',
+  IN:'India',JP:'Japan',KR:'South Korea',MX:'Mexico',AR:'Argentina',CL:'Chile',
+  ZA:'South Africa',IL:'Israel',AE:'UAE',SG:'Singapore',TH:'Thailand',
+};
+const COUNTRY_FLAGS = {
+  NL:'🇳🇱',DE:'🇩🇪',ES:'🇪🇸',FR:'🇫🇷',IT:'🇮🇹',US:'🇺🇸',GB:'🇬🇧',BE:'🇧🇪',
+  CH:'🇨🇭',AT:'🇦🇹',PT:'🇵🇹',BR:'🇧🇷',CA:'🇨🇦',IE:'🇮🇪',RO:'🇷🇴',HU:'🇭🇺',
+  SI:'🇸🇮',AD:'🇦🇩',FI:'🇫🇮',IS:'🇮🇸',SE:'🇸🇪',DK:'🇩🇰',NO:'🇳🇴',PL:'🇵🇱',
+  CZ:'🇨🇿',GR:'🇬🇷',HR:'🇭🇷',BG:'🇧🇬',RS:'🇷🇸',SK:'🇸🇰',UA:'🇺🇦',TR:'🇹🇷',
+  AU:'🇦🇺',NZ:'🇳🇿',IN:'🇮🇳',JP:'🇯🇵',KR:'🇰🇷',MX:'🇲🇽',AR:'🇦🇷',CL:'🇨🇱',
+  ZA:'🇿🇦',IL:'🇮🇱',AE:'🇦🇪',SG:'🇸🇬',TH:'🇹🇭',
+};
+
 function renderDashboard(data) {
-  const { totals, timeseries, top_referrers, top_pages, top_search_cities } = data;
+  const { totals, timeseries, top_referrers, top_pages, top_search_cities, countries, devices } = data;
   const content = document.getElementById('content');
   const hasData = totals.pageviews > 0 || totals.searches > 0;
 
@@ -475,12 +494,27 @@ function renderDashboard(data) {
         ${renderBarTable(top_pages, 'path', 'count', '#38bdf8')}
       </div>
       <div class="table-card">
-        <h2>Top Search Cities</h2>
-        ${renderBarTable(top_search_cities, 'city', 'count', '#4ade80')}
-      </div>
-      <div class="table-card">
         <h2>Top Referrers</h2>
         ${renderBarTable(top_referrers, 'source', 'count', '#a78bfa')}
+      </div>
+      <div class="table-card">
+        <h2>Top Search Cities</h2>
+        ${top_search_cities && top_search_cities.length > 0
+          ? renderBarTable(top_search_cities, 'city', 'count', '#4ade80')
+          : '<div style="color:#475569;font-size:0.8rem;padding:12px 0">Data starts collecting from now</div>'
+        }
+      </div>
+    </div>
+
+    <!-- Countries & Devices -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <h2>Countries</h2>
+        ${countries && countries.length > 0 ? renderCountryTable(countries) : '<div style="color:#475569;font-size:0.8rem">No data</div>'}
+      </div>
+      <div class="chart-card">
+        <h2>Devices</h2>
+        <div class="chart-container-sm"><canvas id="deviceChart"></canvas></div>
       </div>
     </div>
     ` : `
@@ -494,7 +528,26 @@ function renderDashboard(data) {
   if (hasData) {
     renderTrafficChart(timeseries);
     renderReferrerChart(top_referrers);
+    if (devices && devices.length > 0) renderDeviceChart(devices);
   }
+}
+
+function renderCountryTable(countries) {
+  if (!countries || countries.length === 0) return '';
+  const maxVal = Math.max(...countries.map(c => c.count));
+  return countries.slice(0, 10).map((c, i) => {
+    const pct = Math.max(8, (c.count / maxVal) * 100);
+    const flag = COUNTRY_FLAGS[c.country] || '🌍';
+    const name = COUNTRY_NAMES[c.country] || c.country;
+    return `<div class="stat-row">
+      <span class="stat-rank">${flag}</span>
+      <div class="stat-bar-bg">
+        <div class="stat-bar-fill" style="width:${pct}%;background:#fbbf24;opacity:0.2"></div>
+        <span class="stat-bar-label">${name}</span>
+      </div>
+      <span class="stat-count">${c.count}</span>
+    </div>`;
+  }).join('');
 }
 
 function renderBarTable(items, labelKey, valueKey, color) {
@@ -595,6 +648,35 @@ function renderReferrerChart(referrers) {
           backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#cbd5e1',
           borderColor: '#334155', borderWidth: 1,
         }
+      }
+    }
+  });
+}
+
+function renderDeviceChart(devices) {
+  if (charts.device) charts.device.destroy();
+  const el = document.getElementById('deviceChart');
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  const colors = { mobile: '#38bdf8', desktop: '#a78bfa', tablet: '#fbbf24' };
+
+  charts.device = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: devices.map(d => d.type),
+      datasets: [{
+        data: devices.map(d => d.count),
+        backgroundColor: devices.map(d => colors[d.type] || '#64748b'),
+        borderColor: '#1e293b', borderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' }, padding: 10, usePointStyle: true, pointStyle: 'circle' }
+        },
       }
     }
   });
