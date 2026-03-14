@@ -3167,6 +3167,9 @@ async function doSearch() {
   btn.disabled = true;
   btn.textContent = 'Searching providers...';
 
+  // Track search event
+  if (window._mcTrack) window._mcTrack('search', { city: from || headingTowards });
+
   // Hide homepage carousel so search results are immediately visible
   const featuredEl = document.getElementById('featuredSection');
   if (featuredEl) featuredEl.style.display = 'none';
@@ -3271,6 +3274,7 @@ async function submitAlert(event, city) {
     statusEl.textContent = '✅ Done! We\'ll email you when deals from ' + (displayCity(city) || 'Europe') + ' appear.';
     statusEl.style.display = 'block';
     form.style.display = 'none';
+    if (window._mcTrack) window._mcTrack('subscribe');
   } catch (err) {
     statusEl.className = 'alert-status error';
     statusEl.textContent = '❌ ' + err.message + '. Please try again.';
@@ -3306,6 +3310,7 @@ async function submitNewsletter(event) {
     statusEl.textContent = '✅ You\'re in! We\'ll send you the best deals weekly.';
     statusEl.style.display = 'block';
     form.style.display = 'none';
+    if (window._mcTrack) window._mcTrack('subscribe');
   } catch (err) {
     statusEl.className = 'newsletter-status error';
     statusEl.textContent = '❌ ' + err.message;
@@ -3942,6 +3947,33 @@ function scrollToSearch() {
 <div class="sticky-search-bar" id="stickySearchBar">
   <button onclick="scrollToSearch()">🔍 Modify search</button>
 </div>
+
+<!-- Movacamper Analytics Beacon (privacy-friendly, no cookies) -->
+<script>
+(function() {
+  function track(data) {
+    try {
+      fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        keepalive: true,
+      }).catch(function() {});
+    } catch(e) {}
+  }
+
+  // Track pageview on load
+  track({
+    page: location.pathname || '/',
+    referrer: document.referrer || null,
+  });
+
+  // Expose for search and subscribe events
+  window._mcTrack = function(event, extra) {
+    track({ page: location.pathname, event: event, ...extra });
+  };
+})();
+</script>
 
 </body>
 </html>

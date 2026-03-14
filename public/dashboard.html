@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Movacamper Analytics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .header h1 span { color: #38bdf8; }
+    .period-select {
+      display: flex;
+      gap: 8px;
+    }
+    .period-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .period-btn.active, .period-btn:hover {
+      background: #38bdf8;
+      color: #0f172a;
+      border-color: #38bdf8;
+    }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #f8fafc;
+      line-height: 1.1;
+    }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 6px;
+    }
+    .kpi-card.highlight .kpi-value { color: #38bdf8; }
+    .kpi-card.green .kpi-value { color: #4ade80; }
+    .kpi-card.amber .kpi-value { color: #fbbf24; }
+
+    /* Chart */
+    .chart-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .chart-section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #94a3b8;
+    }
+    .chart-container {
+      width: 100%;
+      height: 220px;
+      position: relative;
+    }
+    canvas { width: 100% !important; height: 100% !important; }
+
+    /* Tables */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .table-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .table-section h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #94a3b8;
+    }
+    .stat-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .stat-table tr {
+      border-bottom: 1px solid #1e293b;
+    }
+    .stat-table td {
+      padding: 8px 0;
+      font-size: 0.85rem;
+    }
+    .stat-table td:first-child {
+      color: #e2e8f0;
+    }
+    .stat-table td:last-child {
+      text-align: right;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-bar {
+      display: inline-block;
+      height: 4px;
+      background: #38bdf8;
+      border-radius: 2px;
+      margin-right: 8px;
+      vertical-align: middle;
+      opacity: 0.6;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #475569;
+    }
+    .empty-state h2 { color: #64748b; margin-bottom: 12px; }
+
+    .loading {
+      text-align: center;
+      padding: 80px 20px;
+      color: #475569;
+      font-size: 1.1rem;
+    }
+    .loading .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #334155;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer {
+      text-align: center;
+      color: #334155;
+      font-size: 0.75rem;
+      margin-top: 32px;
+    }
+
+    /* Trend indicator */
+    .trend { font-size: 0.7rem; margin-top: 2px; }
+    .trend.up { color: #4ade80; }
+    .trend.down { color: #f87171; }
+    .trend.flat { color: #64748b; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Mova<span>camper</span> Analytics</h1>
+  <div class="period-select">
+    <button class="period-btn" data-days="7">7d</button>
+    <button class="period-btn active" data-days="14">14d</button>
+    <button class="period-btn" data-days="30">30d</button>
+    <button class="period-btn" data-days="90">90d</button>
+  </div>
+</div>
+
+<div id="content">
+  <div class="loading">
+    <div class="spinner"></div>
+    <div>Loading analytics...</div>
+  </div>
+</div>
+
+<div class="footer">
+  Movacamper Internal Dashboard — data refreshes on page load
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+const TOKEN = 'movacamper-stats-2026';
+let currentDays = 14;
+let chartInstance = null;
+
+// Period buttons
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDays = parseInt(btn.dataset.days);
+    loadDashboard(currentDays);
+  });
+});
+
+async function loadDashboard(days) {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading analytics...</div></div>';
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&days=${days}`);
+    const data = await res.json();
+
+    if (data.error && !data.totals) {
+      content.innerHTML = `<div class="empty-state"><h2>No data yet</h2><p>${data.error}</p></div>`;
+      return;
+    }
+
+    renderDashboard(data);
+  } catch (err) {
+    content.innerHTML = `<div class="empty-state"><h2>Error</h2><p>${err.message}</p></div>`;
+  }
+}
+
+function trendIndicator(timeseries, key) {
+  if (timeseries.length < 4) return '';
+  const half = Math.floor(timeseries.length / 2);
+  const first = timeseries.slice(0, half).reduce((s, d) => s + (d[key] || 0), 0);
+  const second = timeseries.slice(half).reduce((s, d) => s + (d[key] || 0), 0);
+  if (first === 0 && second === 0) return '<div class="trend flat">—</div>';
+  if (first === 0) return '<div class="trend up">▲ new</div>';
+  const pct = Math.round(((second - first) / first) * 100);
+  if (pct > 5) return `<div class="trend up">▲ ${pct}%</div>`;
+  if (pct < -5) return `<div class="trend down">▼ ${Math.abs(pct)}%</div>`;
+  return '<div class="trend flat">→ stable</div>';
+}
+
+function renderDashboard(data) {
+  const { totals, timeseries, top_referrers, top_pages, top_search_cities } = data;
+  const content = document.getElementById('content');
+
+  const hasData = totals.pageviews > 0 || totals.searches > 0;
+
+  content.innerHTML = `
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card highlight">
+        <div class="kpi-value">${totals.visitors.toLocaleString()}</div>
+        <div class="kpi-label">Unique Visitors</div>
+        ${trendIndicator(timeseries, 'visitors')}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${totals.pageviews.toLocaleString()}</div>
+        <div class="kpi-label">Pageviews</div>
+        ${trendIndicator(timeseries, 'pageviews')}
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-value">${totals.searches.toLocaleString()}</div>
+        <div class="kpi-label">Searches</div>
+        ${trendIndicator(timeseries, 'searches')}
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-value">${totals.avg_pages_per_visitor}</div>
+        <div class="kpi-label">Pages / Visitor</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${totals.subscribers_total}</div>
+        <div class="kpi-label">Total Subscribers</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-value">${totals.subscribes}</div>
+        <div class="kpi-label">New Subs (period)</div>
+        ${trendIndicator(timeseries, 'subscribes')}
+      </div>
+    </div>
+
+    ${hasData ? `
+    <!-- Chart -->
+    <div class="chart-section">
+      <h2>Daily Traffic</h2>
+      <div class="chart-container">
+        <canvas id="trafficChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div class="tables-grid">
+      <div class="table-section">
+        <h2>Top Referrers</h2>
+        ${renderTable(top_referrers, 'source', 'count')}
+      </div>
+      <div class="table-section">
+        <h2>Top Pages</h2>
+        ${renderTable(top_pages, 'path', 'count')}
+      </div>
+      <div class="table-section">
+        <h2>Top Search Cities</h2>
+        ${renderTable(top_search_cities, 'city', 'count')}
+      </div>
+    </div>
+    ` : `
+    <div class="empty-state">
+      <h2>Tracking is active 🎯</h2>
+      <p>Data will appear here once visitors start coming in.<br>
+      Check back tomorrow for your first daily report.</p>
+    </div>
+    `}
+  `;
+
+  if (hasData) renderChart(timeseries);
+}
+
+function renderTable(items, labelKey, valueKey) {
+  if (!items || items.length === 0) {
+    return '<div style="color:#475569;font-size:0.85rem;padding:8px 0">No data yet</div>';
+  }
+  const maxVal = Math.max(...items.map(i => i[valueKey]));
+  return `<table class="stat-table">${items.map(item => {
+    const barWidth = Math.max(4, (item[valueKey] / maxVal) * 80);
+    return `<tr>
+      <td><span class="stat-bar" style="width:${barWidth}px"></span>${item[labelKey]}</td>
+      <td>${item[valueKey].toLocaleString()}</td>
+    </tr>`;
+  }).join('')}</table>`;
+}
+
+function renderChart(timeseries) {
+  if (chartInstance) chartInstance.destroy();
+
+  const ctx = document.getElementById('trafficChart').getContext('2d');
+  const labels = timeseries.map(d => {
+    const parts = d.date.split('-');
+    return `${parts[2]}/${parts[1]}`;
+  });
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Visitors',
+          data: timeseries.map(d => d.visitors),
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 2,
+        },
+        {
+          label: 'Pageviews',
+          data: timeseries.map(d => d.pageviews),
+          borderColor: '#94a3b8',
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+        },
+        {
+          label: 'Searches',
+          data: timeseries.map(d => d.searches),
+          borderColor: '#4ade80',
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 2,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: {
+          labels: { color: '#64748b', font: { size: 11 } }
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: '#1e293b' },
+          ticks: { color: '#475569', font: { size: 10 }, maxRotation: 0 },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#1e293b' },
+          ticks: { color: '#475569', font: { size: 10 } },
+        }
+      }
+    }
+  });
+}
+
+// Initial load
+loadDashboard(currentDays);
+</script>
+</body>
+</html>
