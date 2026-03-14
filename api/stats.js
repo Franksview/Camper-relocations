@@ -6,6 +6,8 @@ let store = null;
 
 async function getStore() {
   if (store) return store;
+
+  // Option 1: Upstash REST API
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
       const { Redis } = await import('@upstash/redis');
@@ -16,6 +18,8 @@ async function getStore() {
       return store;
     } catch (e) { /* fall through */ }
   }
+
+  // Option 2: Upstash REST alt
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       const { Redis } = await import('@upstash/redis');
@@ -26,6 +30,21 @@ async function getStore() {
       return store;
     } catch (e) { /* fall through */ }
   }
+
+  // Option 3: Standard Redis via REDIS_URL (ioredis)
+  if (process.env.REDIS_URL) {
+    try {
+      const Redis = (await import('ioredis')).default;
+      store = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 1,
+        connectTimeout: 5000,
+        lazyConnect: true,
+      });
+      await store.connect();
+      return store;
+    } catch (e) { /* fall through */ }
+  }
+
   return null;
 }
 
@@ -76,7 +95,9 @@ export default async function handler(req, res) {
       pipe.hgetall(`stats:cities:${date}`);    // search cities
     }
 
-    const results = await pipe.exec();
+    const rawResults = await pipe.exec();
+    // Normalize: ioredis returns [[err, val], ...], upstash returns [val, ...]
+    const results = rawResults.map(r => Array.isArray(r) ? r[1] : r);
     const FIELDS_PER_DAY = 7;
 
     // Build daily timeseries

@@ -3,9 +3,12 @@
 // Called by a tiny beacon in index.html — no cookies, privacy-friendly
 
 let store = null;
+let storeType = 'none';
 
 async function getStore() {
   if (store) return store;
+
+  // Option 1: Upstash REST API
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
       const { Redis } = await import('@upstash/redis');
@@ -13,9 +16,12 @@ async function getStore() {
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
       });
+      storeType = 'upstash-rest';
       return store;
     } catch (e) { /* fall through */ }
   }
+
+  // Option 2: Upstash REST alt
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       const { Redis } = await import('@upstash/redis');
@@ -23,9 +29,26 @@ async function getStore() {
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,
       });
+      storeType = 'upstash-rest-alt';
       return store;
     } catch (e) { /* fall through */ }
   }
+
+  // Option 3: Standard Redis via REDIS_URL (ioredis)
+  if (process.env.REDIS_URL) {
+    try {
+      const Redis = (await import('ioredis')).default;
+      store = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 1,
+        connectTimeout: 5000,
+        lazyConnect: true,
+      });
+      await store.connect();
+      storeType = 'ioredis';
+      return store;
+    } catch (e) { /* fall through */ }
+  }
+
   return null;
 }
 
