@@ -60,12 +60,11 @@ function getDates(days) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
 
   // Simple auth: ?token=movacamper-stats-2026
   const token = req.query.token;
@@ -77,6 +76,22 @@ export default async function handler(req, res) {
   if (!redis) {
     return res.status(200).json({ error: 'Redis not available', data: null });
   }
+
+  // DELETE: reset a specific day's stats (?date=YYYY-MM-DD)
+  if (req.method === 'DELETE') {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const keys = [
+      `stats:pv:${date}`, `stats:uv:${date}`, `stats:pages:${date}`,
+      `stats:ref:${date}`, `stats:cities:${date}`,
+      `stats:evt:search:${date}`, `stats:evt:subscribe:${date}`,
+    ];
+    for (const key of keys) {
+      try { await redis.del(key); } catch (e) { /* ignore */ }
+    }
+    return res.status(200).json({ ok: true, cleared: date });
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'GET or DELETE only' });
 
   const days = Math.min(parseInt(req.query.days) || 30, 90);
   const dates = getDates(days);
