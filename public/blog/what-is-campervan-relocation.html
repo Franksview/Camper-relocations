@@ -269,11 +269,14 @@
   .breadcrumb a { color: var(--warm); text-decoration: none; }
   .breadcrumb a:hover { color: var(--rust); }
 </style>
-<!-- Vercel Web Analytics -->
+<!-- Vercel Web Analytics (skipped for site owner) -->
 <script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  if (!localStorage.getItem('movacamper_notrack')) {
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    var s = document.createElement('script'); s.defer = true;
+    s.src = '/_vercel/insights/script.js'; document.head.appendChild(s);
+  }
 </script>
-<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 

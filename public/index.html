@@ -1921,11 +1921,14 @@
   .different-dates-list .deal-card { opacity: 0.75; }
   .different-dates-list .deal-card:hover { opacity: 1; }
 </style>
-<!-- Vercel Web Analytics -->
+<!-- Vercel Web Analytics (skipped for site owner) -->
 <script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  if (!localStorage.getItem('movacamper_notrack')) {
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    var s = document.createElement('script'); s.defer = true;
+    s.src = '/_vercel/insights/script.js'; document.head.appendChild(s);
+  }
 </script>
-<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
