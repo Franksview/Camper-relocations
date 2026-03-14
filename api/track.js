@@ -3,7 +3,7 @@
 // Called by a tiny beacon in index.html — no cookies, privacy-friendly
 
 let store = null;
-let storeType = 'none';
+const ALLOWED_EVENTS = new Set(['search', 'subscribe']);
 
 async function getStore() {
   if (store) return store;
@@ -16,7 +16,6 @@ async function getStore() {
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
       });
-      storeType = 'upstash-rest';
       return store;
     } catch (e) { /* fall through */ }
   }
@@ -29,7 +28,6 @@ async function getStore() {
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,
       });
-      storeType = 'upstash-rest-alt';
       return store;
     } catch (e) { /* fall through */ }
   }
@@ -44,7 +42,6 @@ async function getStore() {
         lazyConnect: true,
       });
       await store.connect();
-      storeType = 'ioredis';
       return store;
     } catch (e) { /* fall through */ }
   }
@@ -79,7 +76,7 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event } = req.body || {};
+  const { page, referrer, event, city } = req.body || {};
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
@@ -112,13 +109,12 @@ export default async function handler(req, res) {
       pipe.hincrby(`stats:ref:${date}`, 'direct', 1);
     }
 
-    // Custom events (search, subscribe, etc.)
-    if (event) {
+    // Custom events (allow-listed only to prevent arbitrary Redis keys)
+    if (event && ALLOWED_EVENTS.has(event)) {
       pipe.incr(`stats:evt:${event}:${date}`);
     }
 
     // Track search cities for "top search cities" dashboard
-    const { city } = req.body || {};
     if (event === 'search' && city) {
       pipe.hincrby(`stats:cities:${date}`, city.toLowerCase().trim(), 1);
     }
@@ -130,7 +126,7 @@ export default async function handler(req, res) {
     pipe.expire(`stats:pages:${date}`, ttl);
     pipe.expire(`stats:ref:${date}`, ttl);
     pipe.expire(`stats:cities:${date}`, ttl);
-    if (event) pipe.expire(`stats:evt:${event}:${date}`, ttl);
+    if (event && ALLOWED_EVENTS.has(event)) pipe.expire(`stats:evt:${event}:${date}`, ttl);
 
     await pipe.exec();
   } catch (err) {

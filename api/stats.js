@@ -77,7 +77,7 @@ export default async function handler(req, res) {
 
   const token = req.query.token;
   if (token !== 'movacamper-stats-2026') {
-    return res.status(401).json({ error: 'Unauthorized. Add ?token=movacamper-stats-2026' });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const redis = await getStore();
@@ -91,9 +91,11 @@ export default async function handler(req, res) {
       `stats:ref:${date}`, `stats:cities:${date}`,
       `stats:evt:search:${date}`, `stats:evt:subscribe:${date}`,
     ];
-    for (const key of keys) {
-      try { await redis.del(key); } catch (e) { /* ignore */ }
-    }
+    try {
+      const pipe = redis.pipeline();
+      for (const key of keys) pipe.del(key);
+      await pipe.exec();
+    } catch (e) { /* ignore */ }
     return res.status(200).json({ ok: true, cleared: date });
   }
 
@@ -114,16 +116,16 @@ export default async function handler(req, res) {
       vercelReferrers,
       vercelCountries,
       vercelDevices,
-      vercelOverview,
       redisData,
+      subscriberCount,
     ] = await Promise.all([
       fetchVercel('timeseries', vercelParams),
       fetchVercel('stats/path', { ...vercelParams, limit: '20' }),
       fetchVercel('stats/referrer_hostname', { ...vercelParams, limit: '20' }),
       fetchVercel('stats/country', { ...vercelParams, limit: '20' }),
       fetchVercel('stats/device_type', { ...vercelParams, limit: '10' }),
-      fetchVercel('overview', vercelParams),
       fetchRedisData(redis, dates),
+      redis ? redis.scard('subscribers:emails').catch(() => 0) : Promise.resolve(0),
     ]);
 
     // ── Build timeseries (Vercel for traffic, Redis for searches) ──
@@ -176,12 +178,6 @@ export default async function handler(req, res) {
       type: d.key, count: d.total, visitors: d.devices,
     }));
 
-    // ── Subscriber count (Redis) ──
-    let subscriberCount = 0;
-    if (redis) {
-      try { subscriberCount = await redis.scard('subscribers:emails') || 0; } catch (e) { /* */ }
-    }
-
     const avgPagesPerVisitor = totalUV > 0 ? parseFloat((totalPV / totalUV).toFixed(1)) : 0;
 
     return res.status(200).json({
@@ -208,7 +204,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('Stats error:', err);
-    return res.status(500).json({ error: 'Failed to fetch stats', detail: err.message });
+    return res.status(500).json({ error: 'Failed to fetch stats' });
   }
 }
 
