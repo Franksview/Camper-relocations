@@ -3900,6 +3900,14 @@ function renderTrip() {
               <a href="${AFFILIATE_LINKS.guruwalk(mismatchCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Walking tour</a>
               <a href="${AFFILIATE_LINKS.hostelworld(mismatchCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Stay in ${mismatchCity}</a>
             </div>` : ''}
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);">
+              <form class="empty-notify-form" onsubmit="submitAlert(event, '${gap.fromCity}')" style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:0.75rem;color:#888;white-space:nowrap;">Camper deal alert:</span>
+                <input type="email" placeholder="your@email.com" required class="alert-input" style="flex:1;" />
+                <button type="submit" class="alert-btn" style="padding:6px 12px;font-size:0.78rem;">&#x1F514;</button>
+              </form>
+              <div class="alert-status" style="display:none;"></div>
+            </div>
           </div>
         `;
       } else if (gap.type === 'gap') {
@@ -3955,6 +3963,14 @@ function renderTrip() {
           <div class="return-title">&#127968; Get back to ${displayCity(returnCity)}</div>
           <div style="margin-bottom:6px;color:var(--warm);font-size:0.78rem;">From ${displayCity(lastCity)} — here are your options:</div>
           ${renderGapTransport(lastCity, returnCity)}
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.78rem;color:var(--warm);margin-bottom:6px;">Or wait for a camper deal on this route:</div>
+            <form class="empty-notify-form" onsubmit="submitAlert(event, '${lastCity}')" style="display:flex;gap:8px;">
+              <input type="email" placeholder="your@email.com" required class="alert-input" style="flex:1;" />
+              <button type="submit" class="alert-btn">&#x1F514; Notify me</button>
+            </form>
+            <div class="alert-status" style="display:none;"></div>
+          </div>
         </div>
       `;
     } else {
