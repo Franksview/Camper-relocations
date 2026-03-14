@@ -356,15 +356,85 @@
   }
   .return-home-block .gap-options { margin-top: 6px; }
 
+  /* ─── POPULAR CITIES QUICK SEARCH ─── */
+  .popular-cities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .popular-cities-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .popular-city-btn {
+    padding: 6px 14px;
+    border: 1.5px solid var(--sand);
+    border-radius: 20px;
+    background: white;
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--ink-light);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .popular-city-btn:hover {
+    border-color: var(--rust);
+    color: var(--rust);
+    background: rgba(196, 112, 75, 0.05);
+  }
+
+  /* ─── COLLAPSIBLE MORE OPTIONS ─── */
+  .more-options-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--stone);
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+
+  .more-options-toggle:hover { color: var(--rust); }
+
+  .more-options-toggle .arrow {
+    transition: transform 0.2s;
+    font-size: 0.6rem;
+  }
+
+  .more-options-toggle.open .arrow { transform: rotate(180deg); }
+
+  .more-options-body {
+    display: none;
+  }
+
+  .more-options-body.open {
+    display: block;
+  }
+
   .search-btn {
     width: 100%;
-    padding: 11px;
+    padding: 14px;
     border: none;
     border-radius: var(--radius-sm);
     background: var(--rust);
     color: white;
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition);
@@ -1946,60 +2016,74 @@
   <section class="search-section">
     <div class="search-card" id="searchCard">
       <h2 id="searchTitle">Where are you starting?</h2>
-      <div class="form-row">
+      <div class="form-row" style="grid-template-columns:1fr;">
         <div class="form-group">
           <label for="fromCity">From</label>
           <input type="text" id="fromCity" placeholder="e.g. Berlin, Munich, Milan" autofocus>
         </div>
-        <div class="form-group">
-          <label for="travelDate">When (optional)</label>
-          <input type="text" id="travelDate" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" autocomplete="off">
-        </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="headingTowards">Heading towards (optional)</label>
-          <input type="text" id="headingTowards" placeholder="e.g. Spain, Southern Europe, or leave empty for all">
-        </div>
-        <div class="form-group">
-          <label for="radius">Search radius</label>
-          <select id="radius">
-            <option value="0">Exact city only</option>
-            <option value="75" selected>Within 75 km</option>
-            <option value="150">Within 150 km</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group full">
-          <label>Date flexibility</label>
-          <div class="flex-toggle" id="flexToggle">
-            <button data-days="0">Exact</button>
-            <button data-days="3" class="active">&plusmn;3 days</button>
-            <button data-days="7">&plusmn;7 days</button>
-            <button data-days="14">&plusmn;14 days</button>
-          </div>
-        </div>
-      </div>
-      <!-- Round trip goal (optional) -->
-      <div class="round-trip-toggle" id="roundTripToggle">
-        <button type="button" class="round-trip-btn" onclick="toggleRoundTrip()">
-          <span id="roundTripIcon">&#9675;</span> Round trip — I want to return home
-        </button>
-      </div>
-      <div class="round-trip-fields" id="roundTripFields" style="display:none;">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="returnCity">Return to</label>
-            <input type="text" id="returnCity" placeholder="e.g. Amsterdam">
-          </div>
-          <div class="form-group">
-            <label for="tripBudgetDays">Trip length (days)</label>
-            <input type="number" id="tripBudgetDays" placeholder="e.g. 20" min="3" max="90">
-          </div>
-        </div>
+      <div class="popular-cities">
+        <span class="popular-cities-label">Popular</span>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('Munich')">Munich</button>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('Berlin')">Berlin</button>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('Amsterdam')">Amsterdam</button>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('Paris')">Paris</button>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('Milan')">Milan</button>
+        <button type="button" class="popular-city-btn" onclick="quickSearch('London')">London</button>
       </div>
       <button class="search-btn" id="searchBtn" onclick="doSearch()">Search available deals</button>
+      <button type="button" class="more-options-toggle" id="moreOptionsToggle" onclick="toggleMoreOptions()">
+        More options <span class="arrow">&#9660;</span>
+      </button>
+      <div class="more-options-body" id="moreOptionsBody">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="travelDate">When (optional)</label>
+            <input type="text" id="travelDate" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="headingTowards">Heading towards (optional)</label>
+            <input type="text" id="headingTowards" placeholder="e.g. Spain, Southern Europe">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="radius">Search radius</label>
+            <select id="radius">
+              <option value="0">Exact city only</option>
+              <option value="75" selected>Within 75 km</option>
+              <option value="150">Within 150 km</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date flexibility</label>
+            <div class="flex-toggle" id="flexToggle">
+              <button data-days="0">Exact</button>
+              <button data-days="3" class="active">&plusmn;3</button>
+              <button data-days="7">&plusmn;7</button>
+              <button data-days="14">&plusmn;14</button>
+            </div>
+          </div>
+        </div>
+        <!-- Round trip goal (optional) -->
+        <div class="round-trip-toggle" id="roundTripToggle">
+          <button type="button" class="round-trip-btn" onclick="toggleRoundTrip()">
+            <span id="roundTripIcon">&#9675;</span> Round trip — I want to return home
+          </button>
+        </div>
+        <div class="round-trip-fields" id="roundTripFields" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="returnCity">Return to</label>
+              <input type="text" id="returnCity" placeholder="e.g. Amsterdam">
+            </div>
+            <div class="form-group">
+              <label for="tripBudgetDays">Trip length (days)</label>
+              <input type="number" id="tripBudgetDays" placeholder="e.g. 20" min="3" max="90">
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="browse-all-row">
         <span class="browse-divider">or</span>
         <button class="browse-all-btn" onclick="browseAll()">Browse all available deals across Europe</button>
@@ -3133,6 +3217,20 @@ document.querySelectorAll('#flexToggle button').forEach(btn => {
     flexibility = parseInt(btn.dataset.days);
   });
 });
+
+// ─── QUICK SEARCH (popular city buttons) ───
+function quickSearch(city) {
+  document.getElementById('fromCity').value = city;
+  doSearch();
+}
+
+// ─── MORE OPTIONS TOGGLE ───
+function toggleMoreOptions() {
+  const toggle = document.getElementById('moreOptionsToggle');
+  const body = document.getElementById('moreOptionsBody');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
 
 // ─── SEARCH ───
 async function doSearch() {
