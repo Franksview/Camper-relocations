@@ -308,14 +308,33 @@ const NEARBY_CITIES = {
   ],
 };
 
-// Get nearby cities within a given radius
+// Get nearby cities within a given radius (direct + reverse lookup)
 function getNearbyCities(city, radiusKm) {
   if (!radiusKm || radiusKm <= 0) return [];
   const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
   const slug = CITY_SLUGS[normalized] || CITY_SLUGS[normalized.replace(/-/g, ' ')] || normalized;
-  // Try slug first (e.g. 'munich'), then original normalized (e.g. 'dusseldorf')
-  const neighbors = NEARBY_CITIES[slug] || NEARBY_CITIES[normalized] || NEARBY_CITIES[normalized.replace(/-/g, ' ')] || [];
-  return neighbors.filter(n => n.distance <= radiusKm);
+  const searchKey = slug || normalized;
+
+  // Direct lookup: cities listed as neighbors of this city
+  const direct = NEARBY_CITIES[searchKey] || NEARBY_CITIES[normalized] || NEARBY_CITIES[normalized.replace(/-/g, ' ')] || [];
+  const result = [...direct];
+  const seen = new Set(result.map(n => n.city));
+
+  // Reverse lookup: cities that list THIS city as their neighbor
+  // (e.g. searching from Augsburg finds Munich, because Munich lists Augsburg)
+  for (const [otherCity, otherNeighbors] of Object.entries(NEARBY_CITIES)) {
+    if (otherCity === searchKey || otherCity === normalized) continue;
+    if (seen.has(otherCity)) continue;
+    for (const n of otherNeighbors) {
+      if (n.city === searchKey || n.city === normalized || n.city === normalized.replace(/-/g, ' ')) {
+        result.push({ city: otherCity, distance: n.distance });
+        seen.add(otherCity);
+        break;
+      }
+    }
+  }
+
+  return result.filter(n => n.distance <= radiusKm).sort((a, b) => a.distance - b.distance);
 }
 
 async function fetchImoovaPage(city, timeoutMs = 10000) {
