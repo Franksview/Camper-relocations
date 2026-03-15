@@ -3682,12 +3682,7 @@ function renderResults(data) {
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
         <h3>No camper deals from ${cityLabel} right now</h3>
-        <p>Deals from ${cityLabel} come and go fast — <strong>we'll email you when one pops up</strong>.</p>
-        <form class="empty-notify-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
-          <input type="email" placeholder="your@email.com" required class="alert-input" />
-          <button type="submit" class="alert-btn">&#x1F514; Notify me</button>
-        </form>
-        <div class="alert-status" style="display:none;"></div>
+        <p>Deals from ${cityLabel} come and go fast — subscribe below to get notified.</p>
       </div>
       ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
