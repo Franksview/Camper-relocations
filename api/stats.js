@@ -118,6 +118,7 @@ export default async function handler(req, res) {
       vercelDevices,
       redisData,
       subscriberCount,
+      relocampData,
     ] = await Promise.all([
       fetchVercel('timeseries', vercelParams),
       fetchVercel('stats/path', { ...vercelParams, limit: '20' }),
@@ -126,6 +127,7 @@ export default async function handler(req, res) {
       fetchVercel('stats/device_type', { ...vercelParams, limit: '10' }),
       fetchRedisData(redis, dates),
       redis ? redis.scard('subscribers:emails').catch(() => 0) : Promise.resolve(0),
+      fetchRelocampData(redis, dates),
     ]);
 
     // ── Build timeseries (Vercel for traffic, Redis for searches) ──
@@ -196,6 +198,7 @@ export default async function handler(req, res) {
       top_search_cities: redisData.topCities,
       countries,
       devices,
+      relocamp: relocampData,
       sources: {
         traffic: vercelTimeseries ? 'vercel-analytics' : 'redis-fallback',
         searches: 'redis',
@@ -248,6 +251,74 @@ async function fetchRedisData(redis, dates) {
     return { daily, topCities };
   } catch (err) {
     console.error('Redis fetch error:', err.message);
+    return empty;
+  }
+}
+
+// ── Redis: fetch Relocamp data (relo: prefix) ──
+async function fetchRelocampData(redis, dates) {
+  const empty = {
+    totals: { visitors: 0, pageviews: 0, searches: 0, trip_adds: 0, trip_shares: 0, deal_clicks: 0 },
+    timeseries: dates.map(d => ({ date: d, visitors: 0, pageviews: 0, searches: 0 })),
+    topCities: [],
+  };
+  if (!redis) return empty;
+
+  try {
+    const pipe = redis.pipeline();
+    for (const date of dates) {
+      pipe.get(`relo:stats:pv:${date}`);               // 0: pageviews
+      pipe.scard(`relo:stats:uv:${date}`);              // 1: unique visitors
+      pipe.get(`relo:stats:evt:search:${date}`);        // 2: searches
+      pipe.get(`relo:stats:evt:trip_add:${date}`);      // 3: trip adds
+      pipe.get(`relo:stats:evt:trip_share:${date}`);    // 4: trip shares
+      pipe.get(`relo:stats:evt:deal_click:${date}`);    // 5: deal clicks
+      pipe.hgetall(`relo:stats:cities:${date}`);        // 6: cities
+    }
+
+    const rawResults = await pipe.exec();
+    const results = rawResults.map(r => Array.isArray(r) ? r[1] : r);
+
+    const timeseries = [];
+    const allCities = {};
+    let totalPV = 0, totalUV = 0, totalSearches = 0, totalAdds = 0, totalShares = 0, totalClicks = 0;
+
+    for (let i = 0; i < dates.length; i++) {
+      const base = i * 7;
+      const pv = parseInt(results[base]) || 0;
+      const uv = parseInt(results[base + 1]) || 0;
+      const searches = parseInt(results[base + 2]) || 0;
+      const adds = parseInt(results[base + 3]) || 0;
+      const shares = parseInt(results[base + 4]) || 0;
+      const clicks = parseInt(results[base + 5]) || 0;
+      const cities = results[base + 6] || {};
+
+      totalPV += pv;
+      totalUV += uv;
+      totalSearches += searches;
+      totalAdds += adds;
+      totalShares += shares;
+      totalClicks += clicks;
+
+      timeseries.push({ date: dates[i], pageviews: pv, visitors: uv, searches });
+
+      for (const [k, v] of Object.entries(cities)) {
+        allCities[k] = (allCities[k] || 0) + (parseInt(v) || 0);
+      }
+    }
+
+    const topCities = Object.entries(allCities)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([city, count]) => ({ city, count }));
+
+    return {
+      totals: { visitors: totalUV, pageviews: totalPV, searches: totalSearches, trip_adds: totalAdds, trip_shares: totalShares, deal_clicks: totalClicks },
+      timeseries,
+      topCities,
+    };
+  } catch (err) {
+    console.error('Relocamp Redis fetch error:', err.message);
     return empty;
   }
 }

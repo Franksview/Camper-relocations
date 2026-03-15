@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Movacamper Analytics</title>
+  <title>Movacamper + Relocamp Analytics</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -188,6 +188,19 @@
       font-variant-numeric: tabular-nums; min-width: 32px; text-align: right;
     }
 
+    /* Section headers */
+    .section-header {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #475569; margin-bottom: 10px; margin-top: 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-header .dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    }
+    .section-header .dot-blue { background: #38bdf8; }
+    .section-header .dot-green { background: #4ade80; }
+    .section-header .dot-orange { background: #fb923c; }
+
     .empty-state {
       text-align: center; padding: 60px 20px; color: #475569;
     }
@@ -214,7 +227,7 @@
 <body>
 
 <div class="header">
-  <h1>Mova<span>camper</span> Analytics</h1>
+  <h1>Mova<span>camper</span> + Relo<span>camp</span></h1>
   <div class="header-right">
     <span class="last-updated" id="lastUpdated"></span>
     <div class="period-select">
@@ -231,7 +244,7 @@
 </div>
 
 <div class="footer">
-  Movacamper Internal Dashboard &middot; <a href="/">Back to site</a>
+  Movacamper + Relocamp Dashboard &middot; <a href="/">Movacamper</a> &middot; <a href="https://relocamp.vercel.app">Relocamp</a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -375,7 +388,7 @@ const COUNTRY_FLAGS = {
 };
 
 function renderDashboard(data) {
-  const { totals, timeseries, top_referrers, top_pages, top_search_cities, countries, devices } = data;
+  const { totals, timeseries, top_referrers, top_pages, top_search_cities, countries, devices, relocamp } = data;
   const content = document.getElementById('content');
   const hasData = totals.pageviews > 0 || totals.searches > 0;
 
@@ -385,10 +398,17 @@ function renderDashboard(data) {
   const tSearch = calcTrend(timeseries, 'searches');
   const tSub = calcTrend(timeseries, 'subscribes');
 
+  // Relocamp trends
+  const relo = relocamp || { totals: {}, timeseries: [], topCities: [] };
+  const tReloVis = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'visitors') : { cls: 'flat', label: '—' };
+  const tReloSearch = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'searches') : { cls: 'flat', label: '—' };
+
   // Sparkline data
   const visData = timeseries.map(d => d.visitors);
   const pvData = timeseries.map(d => d.pageviews);
   const searchData = timeseries.map(d => d.searches);
+  const reloVisData = relo.timeseries.map(d => d.visitors);
+  const reloSearchData = relo.timeseries.map(d => d.searches);
 
   // Funnel rates
   const searchRate = totals.visitors > 0 ? Math.round((totals.searches / totals.visitors) * 100) : 0;
@@ -412,7 +432,8 @@ function renderDashboard(data) {
       </div>
     </div>` : ''}
 
-    <!-- KPI Cards -->
+    <!-- Movacamper KPI Cards -->
+    <div class="section-header"><span class="dot dot-blue"></span> Movacamper</div>
     <div class="kpi-grid">
       <div class="kpi-card accent-blue">
         <span class="kpi-trend ${tVis.cls}">${tVis.label}</span>
@@ -444,6 +465,35 @@ function renderDashboard(data) {
         <span class="kpi-trend ${tSub.cls}">${tSub.label}</span>
         <div class="kpi-value">${totals.subscribes}</div>
         <div class="kpi-label">New Subs</div>
+      </div>
+    </div>
+
+    <!-- Relocamp KPI Cards -->
+    <div class="section-header"><span class="dot dot-orange"></span> Relocamp</div>
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-color:#fb923c33">
+        <span class="kpi-trend ${tReloVis.cls}">${tReloVis.label}</span>
+        <div class="kpi-value" style="color:#fb923c">${(relo.totals.visitors || 0).toLocaleString()}</div>
+        <div class="kpi-label">Visitors</div>
+        ${miniSparkSVG(reloVisData, '#fb923c')}
+      </div>
+      <div class="kpi-card" style="border-color:#fb923c33">
+        <div class="kpi-value" style="color:#fbbf24">${(relo.totals.pageviews || 0).toLocaleString()}</div>
+        <div class="kpi-label">Pageviews</div>
+      </div>
+      <div class="kpi-card" style="border-color:#fb923c33">
+        <span class="kpi-trend ${tReloSearch.cls}">${tReloSearch.label}</span>
+        <div class="kpi-value" style="color:#4ade80">${(relo.totals.searches || 0).toLocaleString()}</div>
+        <div class="kpi-label">Searches</div>
+        ${miniSparkSVG(reloSearchData, '#4ade80')}
+      </div>
+      <div class="kpi-card" style="border-color:#fb923c33">
+        <div class="kpi-value" style="color:#fb923c">${(relo.totals.trip_adds || 0).toLocaleString()}</div>
+        <div class="kpi-label">Trips Built</div>
+      </div>
+      <div class="kpi-card" style="border-color:#fb923c33">
+        <div class="kpi-value" style="color:#fb923c">${(relo.totals.trip_shares || 0).toLocaleString()}</div>
+        <div class="kpi-label">Trips Shared</div>
       </div>
     </div>
 
@@ -501,9 +551,16 @@ function renderDashboard(data) {
         ${renderBarTable(top_referrers, 'source', 'count', '#a78bfa')}
       </div>
       <div class="table-card">
-        <h2>Top Search Cities</h2>
+        <h2>Search Cities (Movacamper)</h2>
         ${top_search_cities && top_search_cities.length > 0
           ? renderBarTable(top_search_cities, 'city', 'count', '#4ade80')
+          : '<div style="color:#475569;font-size:0.8rem;padding:12px 0">Data starts collecting from now</div>'
+        }
+      </div>
+      <div class="table-card">
+        <h2>Search Cities (Relocamp)</h2>
+        ${relo.topCities && relo.topCities.length > 0
+          ? renderBarTable(relo.topCities, 'city', 'count', '#fb923c')
           : '<div style="color:#475569;font-size:0.8rem;padding:12px 0">Data starts collecting from now</div>'
         }
       </div>
@@ -529,7 +586,7 @@ function renderDashboard(data) {
   `;
 
   if (hasData) {
-    renderTrafficChart(timeseries);
+    renderTrafficChart(timeseries, relo.timeseries);
     renderReferrerChart(top_referrers);
     if (devices && devices.length > 0) renderDeviceChart(devices);
   }
@@ -572,7 +629,7 @@ function renderBarTable(items, labelKey, valueKey, color) {
   }).join('');
 }
 
-function renderTrafficChart(timeseries) {
+function renderTrafficChart(timeseries, reloTimeseries) {
   if (charts.traffic) charts.traffic.destroy();
   const ctx = document.getElementById('trafficChart').getContext('2d');
   const labels = timeseries.map(d => {
@@ -580,27 +637,40 @@ function renderTrafficChart(timeseries) {
     return `${p[2]}/${p[1]}`;
   });
 
+  // Build Relocamp data aligned with same dates
+  const reloByDate = {};
+  (reloTimeseries || []).forEach(d => { reloByDate[d.date] = d; });
+  const reloVis = timeseries.map(d => (reloByDate[d.date] || {}).visitors || 0);
+  const reloSearch = timeseries.map(d => (reloByDate[d.date] || {}).searches || 0);
+
   charts.traffic = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
         {
-          label: 'Visitors', data: timeseries.map(d => d.visitors),
+          label: 'MC Visitors', data: timeseries.map(d => d.visitors),
           borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.08)',
           fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 5,
           borderWidth: 2.5, pointBackgroundColor: '#38bdf8',
         },
         {
-          label: 'Pageviews', data: timeseries.map(d => d.pageviews),
-          borderColor: '#64748b', backgroundColor: 'transparent',
-          tension: 0.35, pointRadius: 2, borderWidth: 1.5, borderDash: [5, 3],
-        },
-        {
-          label: 'Searches', data: timeseries.map(d => d.searches),
+          label: 'MC Searches', data: timeseries.map(d => d.searches),
           borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)',
           fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 5,
           borderWidth: 2, pointBackgroundColor: '#4ade80',
+        },
+        {
+          label: 'RC Visitors', data: reloVis,
+          borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.08)',
+          fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 5,
+          borderWidth: 2.5, pointBackgroundColor: '#fb923c',
+        },
+        {
+          label: 'RC Searches', data: reloSearch,
+          borderColor: '#fbbf24', backgroundColor: 'transparent',
+          tension: 0.35, pointRadius: 2, borderWidth: 1.5, borderDash: [5, 3],
+          pointBackgroundColor: '#fbbf24',
         },
       ]
     },

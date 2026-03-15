@@ -3,7 +3,7 @@
 // Called by a tiny beacon in index.html — no cookies, privacy-friendly
 
 let store = null;
-const ALLOWED_EVENTS = new Set(['search', 'subscribe']);
+const ALLOWED_EVENTS = new Set(['search', 'subscribe', 'trip_add', 'trip_share', 'deal_click']);
 
 async function getStore() {
   if (store) return store;
@@ -76,57 +76,61 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event, city } = req.body || {};
+  const { page, referrer, event, city, source } = req.body || {};
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
   const visitorHash = hashVisitor(ip, ua);
 
+  // Key prefix: 'relo:' for Relocamp, '' for Movacamper
+  const pre = source === 'relocamp' ? 'relo:' : '';
+  const ownDomain = source === 'relocamp' ? 'relocamp.vercel.app' : 'movacamper.com';
+
   try {
     const pipe = redis.pipeline();
 
     // Pageview count
-    pipe.incr(`stats:pv:${date}`);
+    pipe.incr(`${pre}stats:pv:${date}`);
 
     // Unique visitors (set of hashed fingerprints)
-    pipe.sadd(`stats:uv:${date}`, visitorHash);
+    pipe.sadd(`${pre}stats:uv:${date}`, visitorHash);
 
     // Page breakdown
     if (page) {
-      pipe.hincrby(`stats:pages:${date}`, page || '/', 1);
+      pipe.hincrby(`${pre}stats:pages:${date}`, page || '/', 1);
     }
 
     // Referrer breakdown
-    if (referrer && referrer !== '' && !referrer.includes('movacamper.com')) {
+    if (referrer && referrer !== '' && !referrer.includes(ownDomain)) {
       // Extract domain from referrer
       try {
         const refDomain = new URL(referrer).hostname.replace('www.', '');
-        pipe.hincrby(`stats:ref:${date}`, refDomain, 1);
+        pipe.hincrby(`${pre}stats:ref:${date}`, refDomain, 1);
       } catch (e) {
-        pipe.hincrby(`stats:ref:${date}`, 'direct', 1);
+        pipe.hincrby(`${pre}stats:ref:${date}`, 'direct', 1);
       }
     } else if (!referrer) {
-      pipe.hincrby(`stats:ref:${date}`, 'direct', 1);
+      pipe.hincrby(`${pre}stats:ref:${date}`, 'direct', 1);
     }
 
     // Custom events (allow-listed only to prevent arbitrary Redis keys)
     if (event && ALLOWED_EVENTS.has(event)) {
-      pipe.incr(`stats:evt:${event}:${date}`);
+      pipe.incr(`${pre}stats:evt:${event}:${date}`);
     }
 
     // Track search cities for "top search cities" dashboard
     if (event === 'search' && city) {
-      pipe.hincrby(`stats:cities:${date}`, city.toLowerCase().trim(), 1);
+      pipe.hincrby(`${pre}stats:cities:${date}`, city.toLowerCase().trim(), 1);
     }
 
     // Set TTL on all keys: 90 days
     const ttl = 90 * 24 * 60 * 60;
-    pipe.expire(`stats:pv:${date}`, ttl);
-    pipe.expire(`stats:uv:${date}`, ttl);
-    pipe.expire(`stats:pages:${date}`, ttl);
-    pipe.expire(`stats:ref:${date}`, ttl);
-    pipe.expire(`stats:cities:${date}`, ttl);
-    if (event && ALLOWED_EVENTS.has(event)) pipe.expire(`stats:evt:${event}:${date}`, ttl);
+    pipe.expire(`${pre}stats:pv:${date}`, ttl);
+    pipe.expire(`${pre}stats:uv:${date}`, ttl);
+    pipe.expire(`${pre}stats:pages:${date}`, ttl);
+    pipe.expire(`${pre}stats:ref:${date}`, ttl);
+    pipe.expire(`${pre}stats:cities:${date}`, ttl);
+    if (event && ALLOWED_EVENTS.has(event)) pipe.expire(`${pre}stats:evt:${event}:${date}`, ttl);
 
     await pipe.exec();
   } catch (err) {
