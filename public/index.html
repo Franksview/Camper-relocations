@@ -1716,6 +1716,90 @@
     color: #c62828;
   }
 
+  /* ─── CONTEXTUAL SUBSCRIBE PROMPT (after search results) ─── */
+  .contextual-subscribe {
+    margin: 24px 0 8px;
+    padding: 20px 24px;
+    background: var(--cream);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  .contextual-subscribe .ctx-sub-text {
+    font-size: 0.92rem;
+    color: var(--ink-light);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .contextual-subscribe .ctx-sub-text strong {
+    color: var(--ink);
+  }
+
+  .contextual-subscribe .ctx-sub-form {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .contextual-subscribe .ctx-sub-form .alert-input {
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .contextual-subscribe .ctx-sub-form .alert-btn {
+    padding: 10px 18px;
+    font-size: 0.88rem;
+  }
+
+  .contextual-subscribe .ctx-sub-status {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+  }
+
+  .contextual-subscribe .ctx-sub-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .contextual-subscribe .ctx-sub-status.error {
+    background: #fce4ec;
+    color: #c62828;
+  }
+
+  .contextual-subscribe .ctx-sub-privacy {
+    font-size: 0.72rem;
+    color: var(--stone);
+    margin-top: 8px;
+  }
+
+  /* No-results variant: slightly more prominent */
+  .contextual-subscribe.ctx-no-results {
+    background: var(--rust-light);
+    border-color: #e8c4b0;
+    padding: 24px;
+  }
+
+  .contextual-subscribe.ctx-no-results .ctx-sub-text {
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 600px) {
+    .contextual-subscribe .ctx-sub-form {
+      flex-direction: column;
+    }
+    .contextual-subscribe .ctx-sub-form .alert-input {
+      width: 100%;
+    }
+  }
+
   /* ─── NEWSLETTER SECTION ─── */
   .newsletter-section {
     background: var(--forest);
@@ -3421,6 +3505,76 @@ async function submitNewsletter(event) {
   }
 }
 
+// ─── CONTEXTUAL SUBSCRIBE PROMPT ───
+function renderContextualSubscribe(city, variant) {
+  const cityDisplay = city ? displayCity(city) : '';
+  const formId = 'ctxSubForm-' + Math.random().toString(36).slice(2, 8);
+
+  let message = '';
+  let extraClass = '';
+
+  if (variant === 'no-results') {
+    message = cityDisplay
+      ? `No deals right now — we'll email you when one pops up from <strong>${cityDisplay}</strong>.`
+      : `No deals right now — we'll email you when new deals appear.`;
+    extraClass = ' ctx-no-results';
+  } else {
+    message = cityDisplay
+      ? `Get notified when new <strong>${cityDisplay}</strong> deals appear`
+      : `Get notified when new deals appear`;
+  }
+
+  return `
+    <div class="contextual-subscribe${extraClass}">
+      <div class="ctx-sub-text">${message}</div>
+      <form class="ctx-sub-form" id="${formId}" onsubmit="submitContextualSubscribe(event, '${(city || '').replace(/'/g, "\\'")}')">
+        <input type="email" placeholder="your@email.com" required class="alert-input" />
+        <button type="submit" class="alert-btn">${variant === 'no-results' ? 'Notify me' : 'Get alerts'}</button>
+      </form>
+      <div class="ctx-sub-status" style="display:none;"></div>
+      <div class="ctx-sub-privacy">Free, no spam. Unsubscribe anytime.</div>
+    </div>
+  `;
+}
+
+async function submitContextualSubscribe(event, city) {
+  event.preventDefault();
+  const form = event.target;
+  const input = form.querySelector('.alert-input');
+  const btn = form.querySelector('.alert-btn');
+  const statusEl = form.parentElement.querySelector('.ctx-sub-status');
+
+  btn.disabled = true;
+  btn.textContent = 'Subscribing...';
+
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: city || 'any',
+        date: document.getElementById('travelDate')?.value || null,
+        flexibility: flexibility || 7,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Subscription failed');
+
+    statusEl.className = 'ctx-sub-status success';
+    statusEl.textContent = 'Done! We\'ll email you when new deals' + (city ? ' from ' + displayCity(city) : '') + ' appear.';
+    statusEl.style.display = 'block';
+    form.style.display = 'none';
+    if (window._mcTrack) window._mcTrack('subscribe');
+  } catch (err) {
+    statusEl.className = 'ctx-sub-status error';
+    statusEl.textContent = err.message + '. Please try again.';
+    statusEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Get alerts';
+  }
+}
+
 // ─── DATE MATCH HELPER ───
 function isDealInDateRange(deal, targetDateStr, flexDays) {
   if (!targetDateStr || !flexDays && flexDays !== 0) return true; // no filter = always matches
@@ -3504,7 +3658,7 @@ function renderResults(data) {
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
         <h3>No camper deals from ${cityLabel} right now</h3>
-        <p><strong>But don't worry</strong> — get notified when they appear:</p>
+        <p>Deals from ${cityLabel} come and go fast — <strong>we'll email you when one pops up</strong>.</p>
         <form class="empty-notify-form" onsubmit="submitAlert(event, '${meta.from || meta.to || ''}')">
           <input type="email" placeholder="your@email.com" required class="alert-input" />
           <button type="submit" class="alert-btn">&#x1F514; Notify me</button>
@@ -3513,6 +3667,7 @@ function renderResults(data) {
       </div>
       ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
+      ${renderContextualSubscribe(meta.from || meta.to || '', 'no-results')}
     `;
 
     // Auto-load fallback deals from featured cache or API
@@ -3688,6 +3843,10 @@ function renderResults(data) {
 
   // Show bridge block when few deals
   if (meta.from) html += renderBridgeBlock(meta.from, dateMatchedDeals.length);
+
+  // Contextual subscribe prompt after search results
+  const subCity = meta.from || meta.to || '';
+  html += renderContextualSubscribe(subCity, 'after-results');
 
   container.innerHTML = html;
 }
