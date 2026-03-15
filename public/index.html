@@ -703,6 +703,30 @@
     white-space: nowrap;
   }
 
+  .trip-leg .leg-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .trip-leg .book-leg {
+    background: var(--forest);
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition);
+    white-space: nowrap;
+  }
+
+  .trip-leg .book-leg:hover { background: var(--forest-light, #4a8a75); }
+
   .trip-leg .remove-leg {
     background: none;
     border: none;
@@ -4020,7 +4044,10 @@ function renderTrip() {
           </div>
         </div>
         <span class="leg-price">${leg.price || '?'}</span>
-        <button class="remove-leg" onclick="removeLeg(${i})" title="Remove this leg">&times;</button>
+        <div class="leg-actions">
+          ${leg.url && leg.url.startsWith('http') ? `<a href="${leg.url}" target="_blank" rel="noopener" class="book-leg">Book &#8599;</a>` : ''}
+          <button class="remove-leg" onclick="removeLeg(${i})" title="Remove this leg">&times;</button>
+        </div>
       </div>
     `;
 
