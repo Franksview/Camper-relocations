@@ -249,7 +249,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-const TOKEN = 'movacamper-stats-2026';
+// Token must be in URL: /dashboard?token=xxx
+const urlToken = new URLSearchParams(window.location.search).get('token');
+if (!urlToken) {
+  document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#64748b;font-family:Inter,sans-serif"><h2>Access denied</h2></div>';
+  throw new Error('No token');
+}
+const TOKEN = urlToken;
 let currentDays = 14;
 let charts = {};
 
