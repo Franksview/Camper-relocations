@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const token = req.query.token;
-  if (token !== 'movacamper-stats-2026') {
+  if (token !== 'mc-dash-9xK7qW3p') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
