@@ -201,6 +201,49 @@
     .section-header .dot-green { background: #4ade80; }
     .section-header .dot-orange { background: #fb923c; }
 
+    /* Subscribers */
+    .subs-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 20px; margin-bottom: 24px;
+    }
+    .subs-card h2 {
+      font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .subs-card h2 .badge {
+      background: #a78bfa; color: #0f172a; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .sub-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: #334155;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0; color: #a78bfa; font-weight: 700;
+    }
+    .sub-info { flex: 1; min-width: 0; }
+    .sub-email { font-size: 0.85rem; font-weight: 600; color: #f8fafc; word-break: break-all; }
+    .sub-details {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
+    }
+    .sub-tag {
+      font-size: 0.7rem; padding: 3px 10px; border-radius: 6px;
+      background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+    }
+    .sub-tag strong { color: #cbd5e1; }
+    .sub-date { font-size: 0.65rem; color: #475569; margin-top: 4px; }
+    .sub-actions { flex-shrink: 0; }
+    .sub-mail-btn {
+      background: #334155; color: #94a3b8; border: 1px solid #475569;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer;
+      font-size: 0.75rem; font-family: inherit; transition: all 0.15s;
+      text-decoration: none; display: inline-block;
+    }
+    .sub-mail-btn:hover { background: #475569; color: #f8fafc; }
+
     .empty-state {
       text-align: center; padding: 60px 20px; color: #475569;
     }
@@ -285,6 +328,7 @@ async function loadDashboard(days) {
     document.getElementById('lastUpdated').textContent =
       'Updated ' + new Date(data.generated_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
     renderDashboard(data);
+    loadSubscribers();
   } catch (err) {
     content.innerHTML = `<div class="empty-state"><h2>Error</h2><p>${err.message}</p></div>`;
   }
@@ -534,6 +578,12 @@ function renderDashboard(data) {
       </div>
     </div>
 
+    <!-- Subscribers -->
+    <div class="subs-card" id="subscribersCard">
+      <h2>Subscribers <span class="badge" id="subsBadge">loading...</span></h2>
+      <div id="subscribersList" style="color:#475569;font-size:0.8rem">Loading subscribers...</div>
+    </div>
+
     <!-- Charts Row -->
     <div class="charts-row">
       <div class="chart-card">
@@ -760,6 +810,55 @@ function renderDeviceChart(devices) {
       }
     }
   });
+}
+
+// ─── SUBSCRIBERS ───
+async function loadSubscribers() {
+  const card = document.getElementById('subscribersCard');
+  const list = document.getElementById('subscribersList');
+  const badge = document.getElementById('subsBadge');
+  if (!card || !list) return;
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=subscribers`);
+    const data = await res.json();
+    const subs = data.subscribers || [];
+
+    badge.textContent = subs.length;
+
+    if (subs.length === 0) {
+      list.innerHTML = '<div style="color:#475569;font-size:0.8rem;padding:12px 0">No subscribers yet</div>';
+      return;
+    }
+
+    list.innerHTML = subs.map(sub => {
+      const initial = (sub.email || '?')[0].toUpperCase();
+      const city = sub.city && sub.city !== 'any' ? sub.city : null;
+      const date = sub.date || null;
+      const flex = sub.flexibility ? `±${sub.flexibility}d` : null;
+      const created = sub.created ? new Date(sub.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown date';
+      const mailto = `mailto:${sub.email}?subject=${encodeURIComponent('Movacamper deal alert')}&body=${encodeURIComponent(`Hi,\n\nYou subscribed to Movacamper deal alerts${city ? ' for ' + city : ''}. We found some deals that might interest you!\n\nCheck them out: https://movacamper.com\n\nHappy travels,\nFrank`)}`;
+
+      return `<div class="sub-item">
+        <div class="sub-avatar">${initial}</div>
+        <div class="sub-info">
+          <div class="sub-email">${sub.email}</div>
+          <div class="sub-details">
+            ${city ? `<span class="sub-tag">📍 <strong>${city}</strong></span>` : '<span class="sub-tag">📍 Any city</span>'}
+            ${date ? `<span class="sub-tag">📅 <strong>${date}</strong></span>` : ''}
+            ${flex ? `<span class="sub-tag">↔ <strong>${flex}</strong></span>` : ''}
+            ${sub.source ? `<span class="sub-tag">🌐 ${sub.source}</span>` : ''}
+          </div>
+          <div class="sub-date">Subscribed ${created}</div>
+        </div>
+        <div class="sub-actions">
+          <a href="${mailto}" class="sub-mail-btn">✉ Email</a>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = `<div style="color:#f87171;font-size:0.8rem">Error loading subscribers: ${err.message}</div>`;
+  }
 }
 
 loadDashboard(currentDays);

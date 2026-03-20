@@ -101,6 +101,46 @@ export default async function handler(req, res) {
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET or DELETE only' });
 
+  // ── Subscriber list endpoint ──
+  if (req.query.action === 'subscribers') {
+    if (!redis) return res.status(200).json({ subscribers: [], note: 'no redis' });
+    try {
+      const emails = await redis.smembers('subscribers:emails');
+      if (!emails || emails.length === 0) return res.status(200).json({ subscribers: [] });
+
+      const pipe = redis.pipeline();
+      for (const email of emails) pipe.get(`sub:${email}`);
+      const rawResults = await pipe.exec();
+      const results = rawResults.map(r => Array.isArray(r) ? r[1] : r);
+
+      const subscribers = [];
+      for (let i = 0; i < emails.length; i++) {
+        try {
+          const data = typeof results[i] === 'string' ? JSON.parse(results[i]) : results[i];
+          if (data) {
+            subscribers.push(data);
+          } else {
+            subscribers.push({ email: emails[i], city: 'unknown', created: null });
+          }
+        } catch (e) {
+          subscribers.push({ email: emails[i], city: 'unknown', created: null });
+        }
+      }
+
+      // Sort by created date, newest first
+      subscribers.sort((a, b) => {
+        if (!a.created) return 1;
+        if (!b.created) return -1;
+        return new Date(b.created) - new Date(a.created);
+      });
+
+      return res.status(200).json({ subscribers, total: subscribers.length });
+    } catch (err) {
+      console.error('Subscriber list error:', err);
+      return res.status(500).json({ error: 'Failed to fetch subscribers' });
+    }
+  }
+
   const days = Math.min(parseInt(req.query.days) || 30, 90);
   const dates = getDates(days);
   const fromDate = dates[0];
