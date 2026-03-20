@@ -226,14 +226,10 @@
     }
     .sub-info { flex: 1; min-width: 0; }
     .sub-email { font-size: 0.85rem; font-weight: 600; color: #f8fafc; word-break: break-all; }
-    .sub-details {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
+    .sub-wants {
+      font-size: 0.8rem; color: #94a3b8; margin-top: 5px; line-height: 1.4;
     }
-    .sub-tag {
-      font-size: 0.7rem; padding: 3px 10px; border-radius: 6px;
-      background: #0f172a; border: 1px solid #334155; color: #94a3b8;
-    }
-    .sub-tag strong { color: #cbd5e1; }
+    .sub-wants strong { color: #fbbf24; }
     .sub-date { font-size: 0.65rem; color: #475569; margin-top: 4px; }
     .sub-actions { flex-shrink: 0; }
     .sub-mail-btn {
@@ -835,24 +831,39 @@ async function loadSubscribers() {
       const initial = (sub.email || '?')[0].toUpperCase();
       const city = sub.city && sub.city !== 'any' ? sub.city : null;
       const date = sub.date || null;
-      const flex = sub.flexibility ? `±${sub.flexibility}d` : null;
+      const flex = sub.flexibility || 7;
       const created = sub.created ? new Date(sub.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown date';
-      const mailto = `mailto:${sub.email}?subject=${encodeURIComponent('Movacamper deal alert')}&body=${encodeURIComponent(`Hi,\n\nYou subscribed to Movacamper deal alerts${city ? ' for ' + city : ''}. We found some deals that might interest you!\n\nCheck them out: https://movacamper.com\n\nHappy travels,\nFrank`)}`;
+
+      // Human-readable summary of what they want
+      let wants = '';
+      if (city && date) {
+        wants = `Wants deals departing from <strong>${city}</strong> around <strong>${date}</strong> (±${flex} days)`;
+      } else if (city) {
+        wants = `Wants deals departing from <strong>${city}</strong> (any date)`;
+      } else if (date) {
+        wants = `Wants deals from any city around <strong>${date}</strong> (±${flex} days)`;
+      } else {
+        wants = `Wants <strong>any deal</strong> — no specific city or date`;
+      }
+
+      // Gmail compose URL instead of mailto (opens in browser, not Outlook)
+      const emailBody = city && date
+        ? `Hi,\n\nYou signed up for Movacamper deal alerts for campervan relocations departing from ${city} around ${date}.\n\nGreat news — we found some matching deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`
+        : city
+        ? `Hi,\n\nYou signed up for Movacamper deal alerts for campervan relocations departing from ${city}.\n\nGreat news — we found some matching deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`
+        : `Hi,\n\nYou signed up for Movacamper deal alerts for cheap campervan relocations across Europe.\n\nGreat news — we found some new deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`;
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(sub.email)}&su=${encodeURIComponent('Campervan deals for you — Movacamper')}&body=${encodeURIComponent(emailBody)}`;
 
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
           <div class="sub-email">${sub.email}</div>
-          <div class="sub-details">
-            ${city ? `<span class="sub-tag">📍 <strong>${city}</strong></span>` : '<span class="sub-tag">📍 Any city</span>'}
-            ${date ? `<span class="sub-tag">📅 <strong>${date}</strong></span>` : ''}
-            ${flex ? `<span class="sub-tag">↔ <strong>${flex}</strong></span>` : ''}
-            ${sub.source ? `<span class="sub-tag">🌐 ${sub.source}</span>` : ''}
-          </div>
+          <div class="sub-wants">${wants}</div>
           <div class="sub-date">Subscribed ${created}</div>
         </div>
         <div class="sub-actions">
-          <a href="${mailto}" class="sub-mail-btn">✉ Email</a>
+          <a href="${gmailUrl}" target="_blank" class="sub-mail-btn">✉ Reply via Gmail</a>
         </div>
       </div>`;
     }).join('');
