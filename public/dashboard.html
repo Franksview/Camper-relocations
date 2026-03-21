@@ -655,8 +655,8 @@ function renderDashboard(data) {
       <div id="draftsList"></div>
     </div>
 
-    <!-- No drafts — still show cron button -->
-    <div class="sent-card" id="noDraftsCard" style="display:none">
+    <!-- No drafts — still show cron button (visible by default) -->
+    <div class="sent-card" id="noDraftsCard">
       <h2>📋 No drafts pending
         <button class="cron-btn" onclick="triggerCron(this)">⚡ Run deal matcher now</button>
       </h2>
@@ -1063,6 +1063,8 @@ async function loadDrafts() {
     }).join('');
   } catch (err) {
     card.style.display = 'none';
+    const noDraftsCard = document.getElementById('noDraftsCard');
+    if (noDraftsCard) noDraftsCard.style.display = 'block';
   }
 }
 
