@@ -42,13 +42,15 @@ async function getStore() {
 }
 
 // ── Unsubscribe page HTML ──
-function unsubPage(success, email) {
+function unsubPage(success, email, source) {
+  const brand = source === 'relocamp' ? 'Relocamp' : 'Movacamper';
+  const site = source === 'relocamp' ? 'relocamp.nl' : 'movacamper.com';
   const message = success
-    ? `<h2>You've been unsubscribed</h2><p><strong>${email}</strong> has been removed from our deal alerts.</p><p>Changed your mind? You can always sign up again at <a href="https://movacamper.com">movacamper.com</a></p><p style="margin-top:24px;font-size:32px">👋</p>`
+    ? `<h2>You've been unsubscribed</h2><p><strong>${email}</strong> has been removed from our deal alerts.</p><p>Changed your mind? You can always sign up again at <a href="https://${site}">${site}</a></p><p style="margin-top:24px;font-size:32px">👋</p>`
     : `<h2>Oops, something went wrong</h2><p>We couldn't process your unsubscribe request. The link may have expired.</p><p>You can email <a href="mailto:frank@movacamper.com">frank@movacamper.com</a> and we'll sort it out.</p>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Movacamper — Unsubscribe</title>
+<title>${brand} — Unsubscribe</title>
 <style>body{margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
 .card{max-width:440px;background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
 h2{color:#1f2937;margin:0 0 12px} p{color:#6b7280;line-height:1.6} a{color:#2d6a4f}</style>
@@ -73,8 +75,14 @@ export default async function handler(req, res) {
       return res.status(400).send(unsubPage(false));
     }
 
+    let subSource = 'movacamper';
     if (redis) {
       try {
+        const raw = await redis.get(`sub:${email}`);
+        if (raw) {
+          const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (data.source) subSource = data.source;
+        }
         await redis.srem('subscribers:emails', email);
         await redis.del(`sub:${email}`);
         console.log('Unsubscribed:', email);
@@ -84,7 +92,7 @@ export default async function handler(req, res) {
     }
 
     res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(unsubPage(true, email));
+    return res.status(200).send(unsubPage(true, email, subSource));
   }
 
   // ── GET: return subscriber count ──
@@ -114,20 +122,21 @@ export default async function handler(req, res) {
   }
 
   // ── POST: new subscription ──
-  const { email, city, date, flexibility } = req.body || {};
+  const { email, city, date, flexibility, source } = req.body || {};
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Valid email address required' });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  const subSource = source === 'relocamp' ? 'relocamp' : 'movacamper';
   const subscription = {
     email: normalizedEmail,
     city: city || 'any',
     date: date || null,
     flexibility: flexibility || 7,
     created: new Date().toISOString(),
-    source: 'movacamper.com',
+    source: subSource,
     status: 'active',
     emailCount: 0,
     lastEmailed: null,
@@ -136,11 +145,12 @@ export default async function handler(req, res) {
   console.log('NEW SUBSCRIBER:', JSON.stringify(subscription));
 
   // Push notification to Frank via ntfy.sh
+  const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
   try {
     await fetch('https://ntfy.sh/movacamper-subs-x7k', {
       method: 'POST',
-      headers: { 'Title': 'New Movacamper subscriber!', 'Tags': 'envelope' },
-      body: `${normalizedEmail} subscribed (city: ${city || 'any'})`,
+      headers: { 'Title': `New ${brandName} subscriber!`, 'Tags': 'envelope' },
+      body: `${normalizedEmail} subscribed on ${brandName} (city: ${city || 'any'})`,
     });
   } catch (e) { /* notification is best-effort */ }
 
@@ -159,6 +169,11 @@ export default async function handler(req, res) {
   const welcomeEmail = cityNonEU
     ? buildNonEUWelcomeEmail(subscription)
     : buildWelcomeEmail(subscription);
+
+  // Override branding for Relocamp subscribers
+  if (subSource === 'relocamp') {
+    welcomeEmail.fromName = 'Relocamp';
+  }
 
   // Fire and forget — don't slow down the subscribe response
   sendEmail(welcomeEmail).then(result => {

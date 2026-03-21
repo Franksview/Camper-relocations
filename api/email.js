@@ -386,7 +386,7 @@ export function buildDigestEmail(subscriber, deals, stats) {
 }
 
 // ── Send Email ──
-export async function sendEmail({ to, subject, html }) {
+export async function sendEmail({ to, subject, html, fromName }) {
   if (!process.env.SMTP_PASS) {
     console.warn('SMTP not configured — email not sent to', to);
     return { sent: false, reason: 'SMTP not configured' };
@@ -394,8 +394,9 @@ export async function sendEmail({ to, subject, html }) {
 
   try {
     const transport = await getTransporter();
+    const senderName = fromName || 'Movacamper';
     const result = await transport.sendMail({
-      from: '"Frank — Movacamper" <frank@movacamper.com>',
+      from: `"${senderName}" <frank@movacamper.com>`,
       to,
       subject,
       html,

@@ -235,6 +235,9 @@ module.exports = async function handler(req, res) {
 
         const hasCity = sub.city && sub.city !== 'any';
 
+        const subSource = sub.source || 'movacamper';
+        const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
+
         // ── Non-EU subscribers: draft with non-EU message ──
         if (hasCity && isNonEU(sub.city)) {
           const emailData = buildNonEUWelcomeEmail(sub);
@@ -247,6 +250,8 @@ module.exports = async function handler(req, res) {
             deals: [],
             created: now.toISOString(),
             status: 'draft',
+            source: subSource,
+            fromName: brandName,
           };
           await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
           await redis.sadd('email:drafts', sub.email);
@@ -276,6 +281,8 @@ module.exports = async function handler(req, res) {
               matchCount: matches.length,
               created: now.toISOString(),
               status: 'draft',
+              source: subSource,
+              fromName: brandName,
             };
             await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
             await redis.sadd('email:drafts', sub.email);
@@ -326,6 +333,8 @@ module.exports = async function handler(req, res) {
               matchCount: uniqueDeals.length,
               created: now.toISOString(),
               status: 'draft',
+              source: subSource,
+              fromName: brandName,
             };
             await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
             await redis.sadd('email:drafts', sub.email);

@@ -133,11 +133,12 @@ export default async function handler(req, res) {
 
         const { sendEmail } = await import('./email.js');
 
-        // Use the pre-built HTML stored in the draft
+        // Use the pre-built HTML stored in the draft, with source-aware branding
         const result = await sendEmail({
           to: draft.to,
           subject: draft.subject,
           html: draft.html,
+          fromName: draft.fromName || 'Movacamper',
         });
 
         if (result.sent) {

@@ -941,14 +941,21 @@ async function loadSubscribers() {
         wants = `Wants <strong>any deal</strong> — no specific city or date`;
       }
 
+      // Source-aware branding
+      const isRelocamp = sub.source === 'relocamp';
+      const brandName = isRelocamp ? 'Relocamp' : 'Movacamper';
+      const brandSite = isRelocamp ? 'relocamp.nl' : 'movacamper.com';
+      const brandUrl = `https://${brandSite}`;
+
       // Gmail compose URL instead of mailto (opens in browser, not Outlook)
       const emailBody = city && date
-        ? `Hi,\n\nYou signed up for Movacamper deal alerts for campervan relocations departing from ${city} around ${date}.\n\nGreat news — we found some matching deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`
+        ? `Hi,\n\nYou signed up for ${brandName} deal alerts for campervan relocations departing from ${city} around ${date}.\n\nGreat news — we found some matching deals! Check them out here:\n${brandUrl}\n\nHappy travels!\nFrank\n${brandSite}`
         : city
-        ? `Hi,\n\nYou signed up for Movacamper deal alerts for campervan relocations departing from ${city}.\n\nGreat news — we found some matching deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`
-        : `Hi,\n\nYou signed up for Movacamper deal alerts for cheap campervan relocations across Europe.\n\nGreat news — we found some new deals! Check them out here:\nhttps://movacamper.com\n\nHappy travels!\nFrank\nMovacamper.com`;
+        ? `Hi,\n\nYou signed up for ${brandName} deal alerts for campervan relocations departing from ${city}.\n\nGreat news — we found some matching deals! Check them out here:\n${brandUrl}\n\nHappy travels!\nFrank\n${brandSite}`
+        : `Hi,\n\nYou signed up for ${brandName} deal alerts for cheap campervan relocations across Europe.\n\nGreat news — we found some new deals! Check them out here:\n${brandUrl}\n\nHappy travels!\nFrank\n${brandSite}`;
 
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(sub.email)}&su=${encodeURIComponent('Campervan deals for you — Movacamper')}&body=${encodeURIComponent(emailBody)}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(sub.email)}&su=${encodeURIComponent('Campervan deals for you — ' + brandName)}&body=${encodeURIComponent(emailBody)}`;
+      const sourceBadge = isRelocamp ? '<span style="background:#c4704b;color:white;font-size:0.65rem;padding:2px 6px;border-radius:4px;margin-left:6px">RC</span>' : '<span style="background:#2d6a4f;color:white;font-size:0.65rem;padding:2px 6px;border-radius:4px;margin-left:6px">MC</span>';
 
       const isReplied = !!sub.replied;
       const repliedAt = sub.repliedAt ? new Date(sub.repliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
@@ -970,7 +977,7 @@ async function loadSubscribers() {
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
-          <div class="sub-email">${sub.email}</div>
+          <div class="sub-email">${sub.email}${sourceBadge}</div>
           <div class="sub-wants">${wants}</div>
           <div class="sub-date">Subscribed ${created}</div>
           ${lastContactHtml}${emailCountHtml}
