@@ -99,7 +99,26 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, cleared: date });
   }
 
-  if (req.method !== 'GET') return res.status(405).json({ error: 'GET or DELETE only' });
+  // PATCH: mark subscriber as replied
+  if (req.method === 'PATCH') {
+    if (!redis) return res.status(200).json({ ok: false, note: 'no redis' });
+    const email = req.query.email || (req.body && req.body.email);
+    if (!email) return res.status(400).json({ error: 'email required' });
+    try {
+      const raw = await redis.get(`sub:${email}`);
+      if (!raw) return res.status(404).json({ error: 'subscriber not found' });
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      data.replied = !data.replied; // toggle
+      data.repliedAt = data.replied ? new Date().toISOString() : null;
+      await redis.set(`sub:${email}`, JSON.stringify(data));
+      return res.status(200).json({ ok: true, replied: data.replied });
+    } catch (err) {
+      console.error('Mark replied error:', err);
+      return res.status(500).json({ error: 'Failed to update subscriber' });
+    }
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'GET, DELETE, or PATCH only' });
 
   // ── Subscriber list endpoint ──
   if (req.query.action === 'subscribers') {

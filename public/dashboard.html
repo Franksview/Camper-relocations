@@ -239,6 +239,17 @@
       text-decoration: none; display: inline-block;
     }
     .sub-mail-btn:hover { background: #475569; color: #f8fafc; }
+    .sub-mail-btn.replied { background: #065f46; color: #34d399; border-color: #059669; }
+    .sub-mail-btn.replied:hover { background: #047857; color: #6ee7b7; }
+    .sub-mark-btn {
+      background: transparent; color: #475569; border: 1px solid #334155;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+      font-size: 0.7rem; font-family: inherit; transition: all 0.15s;
+      margin-top: 6px; display: block; text-align: center; width: 100%;
+    }
+    .sub-mark-btn:hover { color: #94a3b8; border-color: #475569; }
+    .sub-mark-btn.done { color: #34d399; border-color: #065f46; }
+    .sub-mark-btn.done:hover { color: #f87171; border-color: #7f1d1d; }
 
     .empty-state {
       text-align: center; padding: 60px 20px; color: #475569;
@@ -855,6 +866,13 @@ async function loadSubscribers() {
 
       const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(sub.email)}&su=${encodeURIComponent('Campervan deals for you — Movacamper')}&body=${encodeURIComponent(emailBody)}`;
 
+      const isReplied = !!sub.replied;
+      const repliedAt = sub.repliedAt ? new Date(sub.repliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+      const btnClass = isReplied ? 'sub-mail-btn replied' : 'sub-mail-btn';
+      const btnLabel = isReplied ? '✓ Replied' : '✉ Reply via Gmail';
+      const markClass = isReplied ? 'sub-mark-btn done' : 'sub-mark-btn';
+      const markLabel = isReplied ? `✓ Replied ${repliedAt} — undo?` : 'Mark as replied';
+
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
@@ -863,12 +881,32 @@ async function loadSubscribers() {
           <div class="sub-date">Subscribed ${created}</div>
         </div>
         <div class="sub-actions">
-          <a href="${gmailUrl}" target="_blank" class="sub-mail-btn">✉ Reply via Gmail</a>
+          <a href="${gmailUrl}" target="_blank" class="${btnClass}">${btnLabel}</a>
+          <button class="${markClass}" onclick="markReplied('${sub.email}', this)">${markLabel}</button>
         </div>
       </div>`;
     }).join('');
   } catch (err) {
     list.innerHTML = `<div style="color:#f87171;font-size:0.8rem">Error loading subscribers: ${err.message}</div>`;
+  }
+}
+
+// ─── MARK REPLIED ───
+async function markReplied(email, btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&email=${encodeURIComponent(email)}`, { method: 'PATCH' });
+    const data = await res.json();
+    if (data.ok) {
+      await loadSubscribers();
+    } else {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Retry'; btn.disabled = false; }, 2000);
+    }
+  } catch (err) {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Retry'; btn.disabled = false; }, 2000);
   }
 }
 
