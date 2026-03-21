@@ -122,7 +122,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!redis) return res.status(200).json({ ok: false, note: 'no redis' });
 
-    // Send a draft email
+    // Send a draft email (uses pre-built HTML from draft)
     if (req.query.action === 'send-draft') {
       const email = req.query.email || (req.body && req.body.email);
       if (!email) return res.status(400).json({ error: 'email required' });
@@ -131,24 +131,34 @@ export default async function handler(req, res) {
         if (!raw) return res.status(404).json({ error: 'draft not found' });
         const draft = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
-        // Import and send
-        const { sendEmail, buildNonEUWelcomeEmail } = await import('./email.js');
-        const sub = await redis.get(`sub:${email}`);
-        const subData = typeof sub === 'string' ? JSON.parse(sub) : sub;
-        if (!subData) return res.status(404).json({ error: 'subscriber not found' });
+        const { sendEmail } = await import('./email.js');
 
-        const emailData = buildNonEUWelcomeEmail(subData);
-        const result = await sendEmail(emailData);
+        // Use the pre-built HTML stored in the draft
+        const result = await sendEmail({
+          to: draft.to,
+          subject: draft.subject,
+          html: draft.html,
+        });
 
         if (result.sent) {
-          // Remove draft, log sent
+          // Remove draft
           await redis.del(`draft:${email}`);
           await redis.srem('email:drafts', email);
-          subData.lastEmailed = new Date().toISOString();
-          subData.emailCount = (subData.emailCount || 0) + 1;
-          await redis.set(`sub:${email}`, JSON.stringify(subData));
+
+          // Update subscriber record
+          const sub = await redis.get(`sub:${email}`);
+          const subData = typeof sub === 'string' ? JSON.parse(sub) : sub;
+          if (subData) {
+            subData.lastEmailed = new Date().toISOString();
+            subData.emailCount = (subData.emailCount || 0) + 1;
+            subData.replied = true;
+            subData.repliedAt = new Date().toISOString();
+            await redis.set(`sub:${email}`, JSON.stringify(subData));
+          }
+
+          // Log sent email
           await redis.lpush('email:sent-log', JSON.stringify({
-            to: email, subject: emailData.subject, type: draft.type, sentAt: new Date().toISOString(),
+            to: email, subject: draft.subject, type: draft.type, sentAt: new Date().toISOString(),
           }));
           return res.status(200).json({ ok: true, sent: true });
         }

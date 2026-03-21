@@ -1,10 +1,9 @@
 // Vercel Cron — Daily Subscriber Deal Matcher
 // Runs at 08:00 UTC daily. Matches subscribers to live Imoova deals.
-// - Specific subscribers (city set): auto-send deal alerts
-// - Generic subscribers (city=any): weekly digest (Mondays only)
-// - Non-EU subscribers: create draft for Frank to review
+// ALL matches create DRAFTS — Frank reviews and approves in the dashboard.
+// Nothing is auto-sent.
 
-import { sendEmail, buildDealAlertEmail, buildDigestEmail, isNonEU } from '../email.js';
+import { buildDealAlertEmail, buildDigestEmail, buildNonEUWelcomeEmail, isNonEU, getUnsubUrl } from '../email.js';
 
 const IMOOVA_EU_URL = 'https://www.imoova.com/en/relocations?region=EU';
 
@@ -131,24 +130,18 @@ function matchDeals(deals, subscriber) {
   const subCity = normalizeCitySlug(city);
 
   return deals.filter(deal => {
-    // City match: check if deal departs from subscriber's city
     const dealFrom = deal.from.toLowerCase().replace(/\s+/g, '-');
     if (dealFrom !== subCity && !dealFrom.includes(subCity) && !subCity.includes(dealFrom)) {
       return false;
     }
-
-    // Date match (if subscriber specified a date)
     if (date && deal.date_start) {
       const subDate = new Date(date);
       const dealStart = new Date(deal.date_start);
       const dealEnd = deal.date_end ? new Date(deal.date_end) : dealStart;
       const flex = (flexibility || 7) * 24 * 60 * 60 * 1000;
-
-      // Deal must overlap with subscriber's date window
       if (dealEnd.getTime() < subDate.getTime() - flex) return false;
       if (dealStart.getTime() > subDate.getTime() + flex) return false;
     }
-
     return true;
   });
 }
@@ -167,8 +160,6 @@ async function getRedis() {
 }
 
 export default async function handler(req, res) {
-  // Vercel Cron sends GET requests with authorization header
-  // Also allow manual trigger with dashboard token
   const authHeader = req.headers.authorization;
   const token = req.query.token;
   const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
@@ -183,16 +174,14 @@ export default async function handler(req, res) {
 
   const now = new Date();
   const isMonday = now.getUTCDay() === 1;
-  const results = { sent: 0, drafts: 0, skipped: 0, errors: 0, details: [] };
+  const results = { drafts: 0, skipped: 0, errors: 0, details: [] };
 
   try {
-    // Get all subscribers
     const emails = await redis.smembers('subscribers:emails');
     if (!emails || emails.length === 0) {
       return res.status(200).json({ ok: true, message: 'No subscribers', results });
     }
 
-    // Fetch subscriber data
     const pipe = redis.pipeline();
     for (const email of emails) pipe.get(`sub:${email}`);
     const rawResults = await pipe.exec();
@@ -206,12 +195,19 @@ export default async function handler(req, res) {
       } catch (e) { /* skip broken records */ }
     }
 
-    // Deal cache to avoid re-fetching same city
     const dealCache = new Map();
 
     for (const sub of subscribers) {
       try {
-        // Anti-spam: don't email if emailed within last 7 days
+        // Skip if draft already exists for this subscriber
+        const existingDraft = await redis.get(`draft:${sub.email}`);
+        if (existingDraft) {
+          results.skipped++;
+          results.details.push({ email: sub.email, reason: 'draft already pending' });
+          continue;
+        }
+
+        // Anti-spam: don't create draft if emailed within last 7 days
         if (sub.lastEmailed) {
           const lastEmailed = new Date(sub.lastEmailed);
           const daysSince = (now - lastEmailed) / (1000 * 60 * 60 * 24);
@@ -224,31 +220,27 @@ export default async function handler(req, res) {
 
         const hasCity = sub.city && sub.city !== 'any';
 
-        // ── Non-EU subscribers: create draft ──
+        // ── Non-EU subscribers: draft with non-EU message ──
         if (hasCity && isNonEU(sub.city)) {
-          // Only create draft once (check if draft already exists)
-          const existingDraft = await redis.get(`draft:${sub.email}`);
-          if (!existingDraft) {
-            const draft = {
-              to: sub.email,
-              subject: `Welcome to Movacamper — Europe only for now`,
-              type: 'non-eu',
-              city: sub.city,
-              created: now.toISOString(),
-              status: 'draft',
-            };
-            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-            await redis.sadd('email:drafts', sub.email);
-            results.drafts++;
-            results.details.push({ email: sub.email, action: 'draft created (non-EU)' });
-          } else {
-            results.skipped++;
-            results.details.push({ email: sub.email, reason: 'draft already exists' });
-          }
+          const emailData = buildNonEUWelcomeEmail(sub);
+          const draft = {
+            to: sub.email,
+            subject: emailData.subject,
+            html: emailData.html,
+            type: 'non-eu',
+            city: sub.city,
+            deals: [],
+            created: now.toISOString(),
+            status: 'draft',
+          };
+          await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
+          await redis.sadd('email:drafts', sub.email);
+          results.drafts++;
+          results.details.push({ email: sub.email, action: 'draft created (non-EU)' });
           continue;
         }
 
-        // ── Specific subscribers: match deals ──
+        // ── Specific subscribers: match deals → create draft ──
         if (hasCity) {
           const citySlug = normalizeCitySlug(sub.city);
           if (!dealCache.has(citySlug)) {
@@ -259,30 +251,21 @@ export default async function handler(req, res) {
 
           if (matches.length > 0) {
             const emailData = buildDealAlertEmail(sub, matches);
-            const result = await sendEmail(emailData);
-
-            if (result.sent) {
-              // Update subscriber record
-              sub.lastEmailed = now.toISOString();
-              sub.emailCount = (sub.emailCount || 0) + 1;
-              await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
-
-              // Log sent email
-              const logEntry = {
-                to: sub.email,
-                subject: emailData.subject,
-                type: 'deal-alert',
-                deals: matches.length,
-                sentAt: now.toISOString(),
-              };
-              await redis.lpush('email:sent-log', JSON.stringify(logEntry));
-
-              results.sent++;
-              results.details.push({ email: sub.email, action: `sent ${matches.length} deals` });
-            } else {
-              results.errors++;
-              results.details.push({ email: sub.email, error: result.reason });
-            }
+            const draft = {
+              to: sub.email,
+              subject: emailData.subject,
+              html: emailData.html,
+              type: 'deal-alert',
+              city: sub.city,
+              deals: matches.slice(0, 5).map(d => ({ from: d.from, to: d.to, price: d.price, date_range: d.date_range })),
+              matchCount: matches.length,
+              created: now.toISOString(),
+              status: 'draft',
+            };
+            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
+            await redis.sadd('email:drafts', sub.email);
+            results.drafts++;
+            results.details.push({ email: sub.email, action: `draft created: ${matches.length} deals from ${sub.city}` });
           } else {
             results.skipped++;
             results.details.push({ email: sub.email, reason: 'no matching deals' });
@@ -290,9 +273,8 @@ export default async function handler(req, res) {
           continue;
         }
 
-        // ── Generic subscribers: weekly digest (Mondays only) ──
+        // ── Generic subscribers: weekly digest draft (Mondays only) ──
         if (!hasCity && isMonday) {
-          // Fetch deals from a few hub cities for the digest
           let allDeals = [];
           const cityCounts = {};
           for (const hub of HUB_CITIES.slice(0, 5)) {
@@ -304,7 +286,6 @@ export default async function handler(req, res) {
             if (hubDeals.length > 0) cityCounts[hub] = hubDeals.length;
           }
 
-          // Deduplicate by route
           const seen = new Set();
           const uniqueDeals = allDeals.filter(d => {
             const key = `${d.from}-${d.to}`;
@@ -314,36 +295,27 @@ export default async function handler(req, res) {
           });
 
           if (uniqueDeals.length > 0) {
-            // Find top city
             const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0];
-
             const emailData = buildDigestEmail(sub, uniqueDeals.slice(0, 5), {
               totalDeals: uniqueDeals.length,
               topCity: topCity ? topCity[0].charAt(0).toUpperCase() + topCity[0].slice(1) : null,
               topCityCount: topCity ? topCity[1] : 0,
             });
-            const result = await sendEmail(emailData);
-
-            if (result.sent) {
-              sub.lastEmailed = now.toISOString();
-              sub.emailCount = (sub.emailCount || 0) + 1;
-              await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
-
-              const logEntry = {
-                to: sub.email,
-                subject: emailData.subject,
-                type: 'weekly-digest',
-                deals: uniqueDeals.length,
-                sentAt: now.toISOString(),
-              };
-              await redis.lpush('email:sent-log', JSON.stringify(logEntry));
-
-              results.sent++;
-              results.details.push({ email: sub.email, action: 'weekly digest sent' });
-            } else {
-              results.errors++;
-              results.details.push({ email: sub.email, error: result.reason });
-            }
+            const draft = {
+              to: sub.email,
+              subject: emailData.subject,
+              html: emailData.html,
+              type: 'weekly-digest',
+              city: 'all',
+              deals: uniqueDeals.slice(0, 5).map(d => ({ from: d.from, to: d.to, price: d.price, date_range: d.date_range })),
+              matchCount: uniqueDeals.length,
+              created: now.toISOString(),
+              status: 'draft',
+            };
+            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
+            await redis.sadd('email:drafts', sub.email);
+            results.drafts++;
+            results.details.push({ email: sub.email, action: 'digest draft created' });
           } else {
             results.skipped++;
             results.details.push({ email: sub.email, reason: 'no deals for digest' });
@@ -358,9 +330,6 @@ export default async function handler(req, res) {
         results.details.push({ email: sub.email, error: err.message });
       }
     }
-
-    // Trim sent log to 500 entries
-    await redis.ltrim('email:sent-log', 0, 499).catch(() => {});
 
     return res.status(200).json({ ok: true, results });
   } catch (err) {

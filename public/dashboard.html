@@ -258,23 +258,34 @@
 
     /* Drafts */
     .drafts-card {
-      background: #1e293b; border: 1px solid #f59e0b; border-radius: 12px;
+      background: #1e293b; border: 2px solid #f59e0b; border-radius: 12px;
       padding: 20px; margin-bottom: 24px;
     }
     .drafts-card h2 { font-size: 0.85rem; font-weight: 600; color: #f59e0b; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
     .drafts-card .badge { background: #f59e0b; color: #0f172a; }
-    .draft-item { padding: 14px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.4); display: flex; align-items: center; gap: 14px; }
-    .draft-item:last-child { border-bottom: none; }
-    .draft-info { flex: 1; }
+    .draft-item { padding: 16px; margin-bottom: 12px; background: #0f172a; border-radius: 10px; border: 1px solid #334155; }
+    .draft-item:last-child { margin-bottom: 0; }
+    .draft-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .draft-to { font-size: 0.85rem; font-weight: 600; color: #f8fafc; }
-    .draft-subject { font-size: 0.75rem; color: #94a3b8; margin-top: 3px; }
-    .draft-type { font-size: 0.65rem; color: #f59e0b; margin-top: 3px; }
-    .draft-actions { display: flex; gap: 6px; flex-shrink: 0; }
-    .draft-btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-family: inherit; border: 1px solid; transition: all 0.15s; }
+    .draft-type-badge { font-size: 0.6rem; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    .draft-type-badge.deal-alert { background: #065f46; color: #34d399; }
+    .draft-type-badge.non-eu { background: #78350f; color: #fbbf24; }
+    .draft-type-badge.weekly-digest { background: #4c1d95; color: #a78bfa; }
+    .draft-subject { font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px; font-style: italic; }
+    .draft-deals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .draft-deal-tag { font-size: 0.65rem; padding: 4px 8px; background: #1e3a5f; color: #38bdf8; border-radius: 4px; }
+    .draft-deal-tag .price { color: #34d399; font-weight: 600; margin-left: 4px; }
+    .draft-meta { font-size: 0.6rem; color: #475569; margin-bottom: 10px; }
+    .draft-actions { display: flex; gap: 8px; }
+    .draft-btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: inherit; border: 1px solid; transition: all 0.15s; font-weight: 600; }
     .draft-btn.send { background: #065f46; color: #34d399; border-color: #059669; }
     .draft-btn.send:hover { background: #047857; }
+    .draft-btn.preview { background: #1e3a5f; color: #38bdf8; border-color: #1d4ed8; }
+    .draft-btn.preview:hover { background: #1d4ed8; color: #fff; }
     .draft-btn.dismiss { background: transparent; color: #f87171; border-color: #7f1d1d; }
     .draft-btn.dismiss:hover { background: #7f1d1d; color: #fca5a5; }
+    .draft-preview-frame { margin-top: 10px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; display: none; }
+    .draft-preview-frame iframe { width: 100%; height: 400px; border: none; background: #fff; }
 
     /* Sent Log */
     .sent-card {
@@ -638,8 +649,18 @@ function renderDashboard(data) {
 
     <!-- Email Drafts (needs review) -->
     <div class="drafts-card" id="draftsCard" style="display:none">
-      <h2>⚠ Drafts needing review <span class="badge" id="draftsBadge">0</span></h2>
+      <h2>📋 Drafts to review <span class="badge" id="draftsBadge">0</span>
+        <button class="cron-btn" onclick="triggerCron(this)">⚡ Run deal matcher now</button>
+      </h2>
       <div id="draftsList"></div>
+    </div>
+
+    <!-- No drafts — still show cron button -->
+    <div class="sent-card" id="noDraftsCard" style="display:none">
+      <h2>📋 No drafts pending
+        <button class="cron-btn" onclick="triggerCron(this)">⚡ Run deal matcher now</button>
+      </h2>
+      <div style="color:#475569;font-size:0.8rem;padding:4px 0">Click "Run deal matcher" to check for new deals matching your subscribers.</div>
     </div>
 
     <!-- Subscribers -->
@@ -650,9 +671,7 @@ function renderDashboard(data) {
 
     <!-- Sent Email Log -->
     <div class="sent-card" id="sentCard">
-      <h2>Sent Emails <span class="badge" id="sentBadge">0</span>
-        <button class="cron-btn" onclick="triggerCron(this)">⚡ Run deal matcher now</button>
-      </h2>
+      <h2>Sent Emails <span class="badge" id="sentBadge">0</span></h2>
       <div id="sentList" style="color:#475569;font-size:0.8rem">Loading...</div>
     </div>
 
@@ -998,25 +1017,47 @@ async function loadDrafts() {
     const data = await res.json();
     const drafts = data.drafts || [];
 
+    const noDraftsCard = document.getElementById('noDraftsCard');
     if (drafts.length === 0) {
       card.style.display = 'none';
+      if (noDraftsCard) noDraftsCard.style.display = 'block';
       return;
     }
 
     card.style.display = 'block';
+    if (noDraftsCard) noDraftsCard.style.display = 'none';
     badge.textContent = drafts.length;
 
-    list.innerHTML = drafts.map(d => {
-      const typeLabel = d.type === 'non-eu' ? 'Non-EU subscriber' : d.type || 'Review needed';
-      return `<div class="draft-item">
-        <div class="draft-info">
-          <div class="draft-to">${d.to}</div>
-          <div class="draft-subject">${d.subject || 'Welcome email'}</div>
-          <div class="draft-type">${typeLabel} · ${d.city || ''}</div>
+    list.innerHTML = drafts.map((d, idx) => {
+      const typeClass = (d.type || 'deal-alert').replace(/\s+/g, '-');
+      const typeLabel = d.type === 'non-eu' ? '🌏 Non-EU' : d.type === 'weekly-digest' ? '📰 Digest' : '🎯 Deal Alert';
+      const created = d.created ? new Date(d.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Deal tags
+      let dealsHtml = '';
+      if (d.deals && d.deals.length > 0) {
+        dealsHtml = '<div class="draft-deals">' + d.deals.map(deal =>
+          `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span></span>`
+        ).join('') + '</div>';
+      } else if (d.type === 'non-eu') {
+        dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — subscriber from ' + (d.city || 'non-EU') + '</span></div>';
+      }
+
+      return `<div class="draft-item" id="draft-${idx}">
+        <div class="draft-header">
+          <div class="draft-to">📧 ${d.to}</div>
+          <span class="draft-type-badge ${typeClass}">${typeLabel}</span>
         </div>
+        <div class="draft-subject">Subject: "${d.subject || 'Welcome'}"</div>
+        ${dealsHtml}
+        <div class="draft-meta">Created ${created}${d.matchCount ? ' · ' + d.matchCount + ' deals matched' : ''}</div>
         <div class="draft-actions">
-          <button class="draft-btn send" onclick="sendDraft('${d.to}', this)">✓ Send</button>
+          <button class="draft-btn send" onclick="sendDraft('${d.to}', this)">✅ Approve & Send</button>
+          <button class="draft-btn preview" onclick="togglePreview(${idx})">👁 Preview email</button>
           <button class="draft-btn dismiss" onclick="dismissDraft('${d.to}', this)">✕ Dismiss</button>
+        </div>
+        <div class="draft-preview-frame" id="preview-${idx}">
+          <iframe srcdoc="${(d.html || '<p>No preview available</p>').replace(/"/g, '&quot;')}"></iframe>
         </div>
       </div>`;
     }).join('');
@@ -1025,17 +1066,33 @@ async function loadDrafts() {
   }
 }
 
+function togglePreview(idx) {
+  const frame = document.getElementById('preview-' + idx);
+  if (!frame) return;
+  frame.style.display = frame.style.display === 'none' ? 'block' : 'none';
+}
+
 async function sendDraft(email, btn) {
-  btn.disabled = true; btn.textContent = '...';
+  if (!confirm(`Send email to ${email}? This will deliver the email via frank@movacamper.com.`)) return;
+  btn.disabled = true; btn.textContent = '⏳ Sending...';
   try {
     const res = await fetch(`/api/stats?token=${TOKEN}&action=send-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
     const data = await res.json();
-    if (data.ok) { await loadDrafts(); await loadSentLog(); await loadSubscribers(); }
-    else { btn.textContent = 'Error'; setTimeout(() => { btn.textContent = '✓ Send'; btn.disabled = false; }, 2000); }
-  } catch { btn.textContent = 'Error'; setTimeout(() => { btn.textContent = '✓ Send'; btn.disabled = false; }, 2000); }
+    if (data.ok && data.sent) {
+      btn.textContent = '✅ Sent!';
+      setTimeout(async () => { await loadDrafts(); await loadSentLog(); await loadSubscribers(); }, 1000);
+    } else {
+      btn.textContent = '❌ ' + (data.reason || 'Failed');
+      setTimeout(() => { btn.textContent = '✅ Approve & Send'; btn.disabled = false; }, 3000);
+    }
+  } catch (err) {
+    btn.textContent = '❌ Error';
+    setTimeout(() => { btn.textContent = '✅ Approve & Send'; btn.disabled = false; }, 3000);
+  }
 }
 
 async function dismissDraft(email, btn) {
+  if (!confirm(`Dismiss draft for ${email}? The subscriber won't receive this email.`)) return;
   btn.disabled = true; btn.textContent = '...';
   try {
     const res = await fetch(`/api/stats?token=${TOKEN}&action=dismiss-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
@@ -1088,7 +1145,7 @@ async function triggerCron(btn) {
     const res = await fetch(`/api/cron/match-subscribers?token=${TOKEN}`);
     const data = await res.json();
     if (data.ok) {
-      btn.textContent = `✓ Done: ${data.results.sent} sent, ${data.results.skipped} skipped`;
+      btn.textContent = `✓ Done: ${data.results.drafts} drafts created, ${data.results.skipped} skipped`;
       await loadDrafts();
       await loadSentLog();
       await loadSubscribers();
