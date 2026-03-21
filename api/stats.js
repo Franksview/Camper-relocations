@@ -118,7 +118,97 @@ export default async function handler(req, res) {
     }
   }
 
-  if (req.method !== 'GET') return res.status(405).json({ error: 'GET, DELETE, or PATCH only' });
+  // POST: send a draft email or trigger cron
+  if (req.method === 'POST') {
+    if (!redis) return res.status(200).json({ ok: false, note: 'no redis' });
+
+    // Send a draft email
+    if (req.query.action === 'send-draft') {
+      const email = req.query.email || (req.body && req.body.email);
+      if (!email) return res.status(400).json({ error: 'email required' });
+      try {
+        const raw = await redis.get(`draft:${email}`);
+        if (!raw) return res.status(404).json({ error: 'draft not found' });
+        const draft = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+        // Import and send
+        const { sendEmail, buildNonEUWelcomeEmail } = await import('./email.js');
+        const sub = await redis.get(`sub:${email}`);
+        const subData = typeof sub === 'string' ? JSON.parse(sub) : sub;
+        if (!subData) return res.status(404).json({ error: 'subscriber not found' });
+
+        const emailData = buildNonEUWelcomeEmail(subData);
+        const result = await sendEmail(emailData);
+
+        if (result.sent) {
+          // Remove draft, log sent
+          await redis.del(`draft:${email}`);
+          await redis.srem('email:drafts', email);
+          subData.lastEmailed = new Date().toISOString();
+          subData.emailCount = (subData.emailCount || 0) + 1;
+          await redis.set(`sub:${email}`, JSON.stringify(subData));
+          await redis.lpush('email:sent-log', JSON.stringify({
+            to: email, subject: emailData.subject, type: draft.type, sentAt: new Date().toISOString(),
+          }));
+          return res.status(200).json({ ok: true, sent: true });
+        }
+        return res.status(200).json({ ok: false, reason: result.reason });
+      } catch (err) {
+        console.error('Send draft error:', err);
+        return res.status(500).json({ error: 'Failed to send draft' });
+      }
+    }
+
+    // Dismiss a draft
+    if (req.query.action === 'dismiss-draft') {
+      const email = req.query.email || (req.body && req.body.email);
+      if (!email) return res.status(400).json({ error: 'email required' });
+      try {
+        await redis.del(`draft:${email}`);
+        await redis.srem('email:drafts', email);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to dismiss draft' });
+      }
+    }
+
+    return res.status(400).json({ error: 'Unknown POST action' });
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'GET, DELETE, PATCH, or POST only' });
+
+  // ── Drafts list endpoint ──
+  if (req.query.action === 'drafts') {
+    if (!redis) return res.status(200).json({ drafts: [] });
+    try {
+      const draftEmails = await redis.smembers('email:drafts');
+      if (!draftEmails || draftEmails.length === 0) return res.status(200).json({ drafts: [] });
+      const pipe = redis.pipeline();
+      for (const e of draftEmails) pipe.get(`draft:${e}`);
+      const rawResults = await pipe.exec();
+      const drafts = rawResults
+        .map(r => { try { const v = Array.isArray(r) ? r[1] : r; return typeof v === 'string' ? JSON.parse(v) : v; } catch { return null; } })
+        .filter(Boolean);
+      return res.status(200).json({ drafts, total: drafts.length });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch drafts' });
+    }
+  }
+
+  // ── Sent log endpoint ──
+  if (req.query.action === 'sent-log') {
+    if (!redis) return res.status(200).json({ log: [] });
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const raw = await redis.lrange('email:sent-log', 0, limit - 1);
+      const log = (raw || []).map(entry => {
+        try { return typeof entry === 'string' ? JSON.parse(entry) : entry; } catch { return null; }
+      }).filter(Boolean);
+      return res.status(200).json({ log, total: log.length });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch sent log' });
+    }
+  }
 
   // ── Subscriber list endpoint ──
   if (req.query.action === 'subscribers') {

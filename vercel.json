@@ -6,7 +6,11 @@
     { "source": "/api/featured", "destination": "/api/featured" },
     { "source": "/api/subscribe", "destination": "/api/subscribe" },
     { "source": "/api/track", "destination": "/api/track" },
-    { "source": "/api/stats", "destination": "/api/stats" }
+    { "source": "/api/stats", "destination": "/api/stats" },
+    { "source": "/api/cron/match-subscribers", "destination": "/api/cron/match-subscribers" }
+  ],
+  "crons": [
+    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" }
   ],
   "headers": [
     {

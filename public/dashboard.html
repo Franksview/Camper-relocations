@@ -250,6 +250,57 @@
     .sub-mark-btn:hover { color: #94a3b8; border-color: #475569; }
     .sub-mark-btn.done { color: #34d399; border-color: #065f46; }
     .sub-mark-btn.done:hover { color: #f87171; border-color: #7f1d1d; }
+    .sub-last-contact { font-size: 0.6rem; margin-top: 3px; }
+    .sub-last-contact.fresh { color: #34d399; }
+    .sub-last-contact.stale { color: #fbbf24; }
+    .sub-last-contact.cold { color: #f87171; }
+    .sub-email-count { font-size: 0.6rem; color: #475569; margin-top: 2px; }
+
+    /* Drafts */
+    .drafts-card {
+      background: #1e293b; border: 1px solid #f59e0b; border-radius: 12px;
+      padding: 20px; margin-bottom: 24px;
+    }
+    .drafts-card h2 { font-size: 0.85rem; font-weight: 600; color: #f59e0b; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .drafts-card .badge { background: #f59e0b; color: #0f172a; }
+    .draft-item { padding: 14px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.4); display: flex; align-items: center; gap: 14px; }
+    .draft-item:last-child { border-bottom: none; }
+    .draft-info { flex: 1; }
+    .draft-to { font-size: 0.85rem; font-weight: 600; color: #f8fafc; }
+    .draft-subject { font-size: 0.75rem; color: #94a3b8; margin-top: 3px; }
+    .draft-type { font-size: 0.65rem; color: #f59e0b; margin-top: 3px; }
+    .draft-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .draft-btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-family: inherit; border: 1px solid; transition: all 0.15s; }
+    .draft-btn.send { background: #065f46; color: #34d399; border-color: #059669; }
+    .draft-btn.send:hover { background: #047857; }
+    .draft-btn.dismiss { background: transparent; color: #f87171; border-color: #7f1d1d; }
+    .draft-btn.dismiss:hover { background: #7f1d1d; color: #fca5a5; }
+
+    /* Sent Log */
+    .sent-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 20px; margin-bottom: 24px;
+    }
+    .sent-card h2 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .sent-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.2); font-size: 0.75rem; }
+    .sent-item:last-child { border-bottom: none; }
+    .sent-icon { width: 24px; text-align: center; flex-shrink: 0; }
+    .sent-to { color: #f8fafc; font-weight: 500; min-width: 140px; }
+    .sent-subject { color: #94a3b8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sent-date { color: #475569; flex-shrink: 0; }
+    .sent-type { font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+    .sent-type.welcome { background: #1e3a5f; color: #38bdf8; }
+    .sent-type.deal-alert { background: #065f46; color: #34d399; }
+    .sent-type.weekly-digest { background: #4c1d95; color: #a78bfa; }
+    .sent-type.non-eu { background: #78350f; color: #fbbf24; }
+
+    /* Cron trigger */
+    .cron-btn {
+      background: #334155; color: #94a3b8; border: 1px solid #475569;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      font-size: 0.7rem; font-family: inherit; transition: all 0.15s;
+    }
+    .cron-btn:hover { background: #475569; color: #f8fafc; }
 
     .empty-state {
       text-align: center; padding: 60px 20px; color: #475569;
@@ -585,10 +636,24 @@ function renderDashboard(data) {
       </div>
     </div>
 
+    <!-- Email Drafts (needs review) -->
+    <div class="drafts-card" id="draftsCard" style="display:none">
+      <h2>⚠ Drafts needing review <span class="badge" id="draftsBadge">0</span></h2>
+      <div id="draftsList"></div>
+    </div>
+
     <!-- Subscribers -->
     <div class="subs-card" id="subscribersCard">
       <h2>Subscribers <span class="badge" id="subsBadge">loading...</span></h2>
       <div id="subscribersList" style="color:#475569;font-size:0.8rem">Loading subscribers...</div>
+    </div>
+
+    <!-- Sent Email Log -->
+    <div class="sent-card" id="sentCard">
+      <h2>Sent Emails <span class="badge" id="sentBadge">0</span>
+        <button class="cron-btn" onclick="triggerCron(this)">⚡ Run deal matcher now</button>
+      </h2>
+      <div id="sentList" style="color:#475569;font-size:0.8rem">Loading...</div>
     </div>
 
     <!-- Charts Row -->
@@ -873,12 +938,23 @@ async function loadSubscribers() {
       const markClass = isReplied ? 'sub-mark-btn done' : 'sub-mark-btn';
       const markLabel = isReplied ? `✓ Replied ${repliedAt} — undo?` : 'Mark as replied';
 
+      // Follow-up indicator
+      let lastContactHtml = '';
+      if (sub.lastEmailed) {
+        const daysSince = Math.floor((Date.now() - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24));
+        const cls = daysSince <= 7 ? 'fresh' : daysSince <= 14 ? 'stale' : 'cold';
+        const icon = daysSince <= 7 ? '●' : daysSince <= 14 ? '◐' : '○';
+        lastContactHtml = `<div class="sub-last-contact ${cls}">${icon} Last emailed ${daysSince}d ago</div>`;
+      }
+      const emailCountHtml = sub.emailCount ? `<div class="sub-email-count">📧 ${sub.emailCount} email${sub.emailCount > 1 ? 's' : ''} sent</div>` : '';
+
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
           <div class="sub-email">${sub.email}</div>
           <div class="sub-wants">${wants}</div>
           <div class="sub-date">Subscribed ${created}</div>
+          ${lastContactHtml}${emailCountHtml}
         </div>
         <div class="sub-actions">
           <a href="${gmailUrl}" target="_blank" class="${btnClass}">${btnLabel}</a>
@@ -909,6 +985,127 @@ async function markReplied(email, btn) {
     setTimeout(() => { btn.textContent = 'Retry'; btn.disabled = false; }, 2000);
   }
 }
+
+// ─── DRAFTS ───
+async function loadDrafts() {
+  const card = document.getElementById('draftsCard');
+  const list = document.getElementById('draftsList');
+  const badge = document.getElementById('draftsBadge');
+  if (!card || !list) return;
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=drafts`);
+    const data = await res.json();
+    const drafts = data.drafts || [];
+
+    if (drafts.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    badge.textContent = drafts.length;
+
+    list.innerHTML = drafts.map(d => {
+      const typeLabel = d.type === 'non-eu' ? 'Non-EU subscriber' : d.type || 'Review needed';
+      return `<div class="draft-item">
+        <div class="draft-info">
+          <div class="draft-to">${d.to}</div>
+          <div class="draft-subject">${d.subject || 'Welcome email'}</div>
+          <div class="draft-type">${typeLabel} · ${d.city || ''}</div>
+        </div>
+        <div class="draft-actions">
+          <button class="draft-btn send" onclick="sendDraft('${d.to}', this)">✓ Send</button>
+          <button class="draft-btn dismiss" onclick="dismissDraft('${d.to}', this)">✕ Dismiss</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    card.style.display = 'none';
+  }
+}
+
+async function sendDraft(email, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=send-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) { await loadDrafts(); await loadSentLog(); await loadSubscribers(); }
+    else { btn.textContent = 'Error'; setTimeout(() => { btn.textContent = '✓ Send'; btn.disabled = false; }, 2000); }
+  } catch { btn.textContent = 'Error'; setTimeout(() => { btn.textContent = '✓ Send'; btn.disabled = false; }, 2000); }
+}
+
+async function dismissDraft(email, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=dismiss-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) await loadDrafts();
+  } catch { btn.textContent = 'Error'; }
+}
+
+// ─── SENT LOG ───
+async function loadSentLog() {
+  const list = document.getElementById('sentList');
+  const badge = document.getElementById('sentBadge');
+  if (!list) return;
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=sent-log&limit=20`);
+    const data = await res.json();
+    const log = data.log || [];
+
+    badge.textContent = log.length;
+
+    if (log.length === 0) {
+      list.innerHTML = '<div style="color:#475569;font-size:0.8rem;padding:8px 0">No emails sent yet. Click "Run deal matcher" to trigger the first batch.</div>';
+      return;
+    }
+
+    list.innerHTML = log.map(entry => {
+      const typeClass = (entry.type || 'welcome').replace(/\s+/g, '-');
+      const icon = entry.type === 'deal-alert' ? '🎯' : entry.type === 'weekly-digest' ? '📰' : entry.type === 'non-eu' ? '🌏' : '👋';
+      const date = entry.sentAt ? new Date(entry.sentAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      const deals = entry.deals ? ` (${entry.deals} deals)` : '';
+      return `<div class="sent-item">
+        <span class="sent-icon">${icon}</span>
+        <span class="sent-to">${entry.to}</span>
+        <span class="sent-subject">${entry.subject || ''}${deals}</span>
+        <span class="sent-type ${typeClass}">${entry.type || 'welcome'}</span>
+        <span class="sent-date">${date}</span>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = `<div style="color:#f87171;font-size:0.8rem">Error: ${err.message}</div>`;
+  }
+}
+
+// ─── TRIGGER CRON MANUALLY ───
+async function triggerCron(btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Running...';
+  try {
+    const res = await fetch(`/api/cron/match-subscribers?token=${TOKEN}`);
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = `✓ Done: ${data.results.sent} sent, ${data.results.skipped} skipped`;
+      await loadDrafts();
+      await loadSentLog();
+      await loadSubscribers();
+      setTimeout(() => { btn.textContent = '⚡ Run deal matcher now'; btn.disabled = false; }, 5000);
+    } else {
+      btn.textContent = 'Error: ' + (data.reason || data.error || 'unknown');
+      setTimeout(() => { btn.textContent = '⚡ Run deal matcher now'; btn.disabled = false; }, 3000);
+    }
+  } catch (err) {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = '⚡ Run deal matcher now'; btn.disabled = false; }, 3000);
+  }
+}
+
+// Load all sections
+loadDrafts();
+loadSentLog();
 
 loadDashboard(currentDays);
 </script>
