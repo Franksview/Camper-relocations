@@ -150,7 +150,7 @@ function matchDeals(deals, subscriber) {
   });
 }
 
-// ── Redis helper ──
+// ── Redis helper (same logic as stats.js getStore) ──
 async function getRedis() {
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     const { Redis } = await import('@upstash/redis');
@@ -159,6 +159,16 @@ async function getRedis() {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     const { Redis } = await import('@upstash/redis');
     return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  }
+  if (process.env.REDIS_URL) {
+    try {
+      const Redis = (await import('ioredis')).default;
+      const client = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 1, connectTimeout: 5000, lazyConnect: true,
+      });
+      await client.connect();
+      return client;
+    } catch (e) { /* fall through */ }
   }
   return null;
 }
