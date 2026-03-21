@@ -3,7 +3,11 @@
 // ALL matches create DRAFTS — Frank reviews and approves in the dashboard.
 // Nothing is auto-sent.
 
-import { buildDealAlertEmail, buildDigestEmail, buildNonEUWelcomeEmail, isNonEU, getUnsubUrl } from '../email.js';
+// Dynamic import (CommonJS compat — no "type":"module" in package.json)
+async function getEmailHelpers() {
+  const mod = await import('../email.js');
+  return mod;
+}
 
 const IMOOVA_EU_URL = 'https://www.imoova.com/en/relocations?region=EU';
 
@@ -159,7 +163,7 @@ async function getRedis() {
   return null;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization;
   const token = req.query.token;
   const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
@@ -175,6 +179,7 @@ export default async function handler(req, res) {
   const now = new Date();
   const isMonday = now.getUTCDay() === 1;
   const results = { drafts: 0, skipped: 0, errors: 0, details: [] };
+  const { buildDealAlertEmail, buildDigestEmail, buildNonEUWelcomeEmail, isNonEU } = await getEmailHelpers();
 
   try {
     const emails = await redis.smembers('subscribers:emails');
