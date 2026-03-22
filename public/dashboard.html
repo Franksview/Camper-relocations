@@ -271,6 +271,8 @@
     .draft-type-badge.deal-alert { background: #065f46; color: #34d399; }
     .draft-type-badge.non-eu { background: #78350f; color: #fbbf24; }
     .draft-type-badge.weekly-digest { background: #4c1d95; color: #a78bfa; }
+    .draft-type-badge.nearby-alert { background: #1e3a5f; color: #7dd3fc; }
+    .draft-type-badge.no-match { background: #3f3f46; color: #a1a1aa; }
     .draft-subject { font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px; font-style: italic; }
     .draft-deals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
     .draft-deal-tag { font-size: 0.65rem; padding: 4px 8px; background: #1e3a5f; color: #38bdf8; border-radius: 4px; }
@@ -974,18 +976,50 @@ async function loadSubscribers() {
       }
       const emailCountHtml = sub.emailCount ? `<div class="sub-email-count">📧 ${sub.emailCount} email${sub.emailCount > 1 ? 's' : ''} sent</div>` : '';
 
+      const notesHtml = sub.notes ? `<div style="font-size:0.75rem;color:#f59e0b;margin-top:2px">📝 ${sub.notes}</div>` : '';
+      const editId = `edit-${sub.email.replace(/[^a-z0-9]/gi, '_')}`;
+      const histId = `hist-${sub.email.replace(/[^a-z0-9]/gi, '_')}`;
+      const safeEmail = sub.email.replace(/'/g, "\\'");
+
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
           <div class="sub-email">${sub.email}${sourceBadge}</div>
           <div class="sub-wants">${wants}</div>
           <div class="sub-date">Subscribed ${created}</div>
-          ${lastContactHtml}${emailCountHtml}
+          ${lastContactHtml}${emailCountHtml}${notesHtml}
         </div>
         <div class="sub-actions">
           <a href="${gmailUrl}" target="_blank" class="${btnClass}">${btnLabel}</a>
-          <button class="${markClass}" onclick="markReplied('${sub.email}', this)">${markLabel}</button>
+          <button class="${markClass}" onclick="markReplied('${safeEmail}', this)">${markLabel}</button>
+          <button class="sub-mark-btn" onclick="toggleEdit('${safeEmail}', '${editId}')" style="margin-top:4px">✏️ Edit</button>
+          <button class="sub-mark-btn" onclick="toggleHistory('${safeEmail}', '${histId}')" style="margin-top:4px">📋 History</button>
         </div>
+      </div>
+      <div id="${editId}" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin:-4px 0 8px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <label style="font-size:0.7rem;color:#94a3b8">
+            City<br><input id="${editId}-city" value="${city || ''}" placeholder="e.g. Munich" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+          </label>
+          <label style="font-size:0.7rem;color:#94a3b8">
+            Date<br><input id="${editId}-date" type="date" value="${date || ''}" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+          </label>
+          <label style="font-size:0.7rem;color:#94a3b8">
+            Flexibility<br><select id="${editId}-flex" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+              <option value="3"${flex == 3 ? ' selected' : ''}>± 3 days</option>
+              <option value="7"${flex == 7 ? ' selected' : ''}>± 1 week</option>
+              <option value="14"${flex == 14 ? ' selected' : ''}>± 2 weeks</option>
+              <option value="30"${flex == 30 ? ' selected' : ''}>± 1 month</option>
+            </select>
+          </label>
+          <label style="font-size:0.7rem;color:#94a3b8">
+            Notes<br><input id="${editId}-notes" value="${(sub.notes || '').replace(/"/g, '&quot;')}" placeholder="Your notes..." style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+          </label>
+        </div>
+        <button onclick="saveEdit('${safeEmail}', '${editId}')" style="background:#2d6a4f;color:white;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:0.8rem">💾 Save</button>
+      </div>
+      <div id="${histId}" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin:-4px 0 8px 0;font-size:0.75rem;color:#94a3b8">
+        Loading history...
       </div>`;
     }).join('');
   } catch (err) {
@@ -1009,6 +1043,68 @@ async function markReplied(email, btn) {
   } catch (err) {
     btn.textContent = 'Error';
     setTimeout(() => { btn.textContent = 'Retry'; btn.disabled = false; }, 2000);
+  }
+}
+
+// ─── EDIT SUBSCRIBER ───
+function toggleEdit(email, editId) {
+  const el = document.getElementById(editId);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveEdit(email, editId) {
+  const city = document.getElementById(`${editId}-city`).value;
+  const date = document.getElementById(`${editId}-date`).value;
+  const flexibility = document.getElementById(`${editId}-flex`).value;
+  const notes = document.getElementById(`${editId}-notes`).value;
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=edit-subscriber&email=${encodeURIComponent(email)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ city, date, flexibility, notes }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById(editId).style.display = 'none';
+      await loadSubscribers();
+    }
+  } catch (err) {
+    alert('Failed to save: ' + err.message);
+  }
+}
+
+// ─── SUBSCRIBER HISTORY ───
+async function toggleHistory(email, histId) {
+  const el = document.getElementById(histId);
+  if (el.style.display !== 'none') {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = 'Loading...';
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=subscriber-history&email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const history = data.history || [];
+    if (history.length === 0) {
+      el.innerHTML = '<div style="color:#475569">No history yet</div>';
+      return;
+    }
+    const icons = {
+      'subscribed': '📩', 'welcome-sent': '👋', 'deal-alert-drafted': '📋', 'deal-alert-sent': '✅',
+      'nearby-alert-drafted': '📍', 'nearby-alert-sent': '✅', 'no-match-drafted': '👁️', 'no-match-sent': '✅',
+      'digest-drafted': '📰', 'digest-sent': '✅', 'preferences-updated': '⚙️', 'admin-edited': '✏️',
+      'dismissed': '🗑️', 'non-eu-drafted': '🌏', 'non-eu-sent': '✅',
+    };
+    el.innerHTML = history.map(h => {
+      const icon = icons[h.type] || '•';
+      const time = new Date(h.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const detail = h.details ? Object.entries(h.details).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join(', ') : '';
+      return `<div style="padding:4px 0;border-bottom:1px solid #1e293b">${icon} <strong>${h.type}</strong> <span style="color:#475569">${time}</span>${detail ? `<br><span style="color:#64748b;font-size:0.7rem">${detail}</span>` : ''}</div>`;
+    }).join('');
+  } catch (err) {
+    el.innerHTML = `<div style="color:#f87171">Error: ${err.message}</div>`;
   }
 }
 
@@ -1037,15 +1133,20 @@ async function loadDrafts() {
 
     list.innerHTML = drafts.map((d, idx) => {
       const typeClass = (d.type || 'deal-alert').replace(/\s+/g, '-');
-      const typeLabel = d.type === 'non-eu' ? '🌏 Non-EU' : d.type === 'weekly-digest' ? '📰 Digest' : '🎯 Deal Alert';
+      const typeLabels = { 'non-eu': '🌏 Non-EU', 'weekly-digest': '📰 Digest', 'deal-alert': '🎯 Deal Alert', 'nearby-alert': '📍 Nearby', 'no-match': '👁️ No Match' };
+      const typeLabel = typeLabels[d.type] || '🎯 Deal Alert';
       const created = d.created ? new Date(d.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 
       // Deal tags
       let dealsHtml = '';
       if (d.deals && d.deals.length > 0) {
-        dealsHtml = '<div class="draft-deals">' + d.deals.map(deal =>
-          `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span></span>`
-        ).join('') + '</div>';
+        dealsHtml = '<div class="draft-deals">' + d.deals.map(deal => {
+          const nearbyLabel = deal.nearbyCity ? ` <span style="font-size:0.6rem;color:#7dd3fc">(📍 ${deal.nearbyCity}, ${deal.nearbyDistance}km)</span>` : '';
+          const providerLabel = deal.provider && deal.provider !== 'Imoova' ? ` <span style="font-size:0.6rem;color:#a78bfa">[${deal.provider}]</span>` : '';
+          return `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span>${nearbyLabel}${providerLabel}</span>`;
+        }).join('') + '</div>';
+      } else if (d.type === 'no-match') {
+        dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#3f3f46;color:#a1a1aa">No deals near ' + (d.city || 'any') + ' — friendly "we\'re watching" email</span></div>';
       } else if (d.type === 'non-eu') {
         dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — subscriber from ' + (d.city || 'non-EU') + '</span></div>';
       }

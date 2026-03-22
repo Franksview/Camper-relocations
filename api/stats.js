@@ -158,10 +158,23 @@ export default async function handler(req, res) {
             await redis.set(`sub:${email}`, JSON.stringify(subData));
           }
 
+          // Update lastNoMatchSent if this was a no-match draft
+          if (draft.type === 'no-match' && subData) {
+            subData.lastNoMatchSent = new Date().toISOString();
+            await redis.set(`sub:${email}`, JSON.stringify(subData));
+          }
+
           // Log sent email
           await redis.lpush('email:sent-log', JSON.stringify({
             to: email, subject: draft.subject, type: draft.type, sentAt: new Date().toISOString(),
           }));
+
+          // Log history event
+          try {
+            const { logEvent } = await import('./lib/history.js');
+            await logEvent(redis, email, `${draft.type}-sent`, { subject: draft.subject });
+          } catch (e) { /* best-effort */ }
+
           return res.status(200).json({ ok: true, sent: true });
         }
         return res.status(200).json({ ok: false, reason: result.reason });
@@ -178,9 +191,42 @@ export default async function handler(req, res) {
       try {
         await redis.del(`draft:${email}`);
         await redis.srem('email:drafts', email);
+        try {
+          const { logEvent } = await import('./lib/history.js');
+          await logEvent(redis, email, 'dismissed', {});
+        } catch (e) { /* best-effort */ }
         return res.status(200).json({ ok: true });
       } catch (err) {
         return res.status(500).json({ error: 'Failed to dismiss draft' });
+      }
+    }
+
+    // Edit subscriber preferences (from dashboard)
+    if (req.query.action === 'edit-subscriber') {
+      const email = req.query.email || (req.body && req.body.email);
+      if (!email) return res.status(400).json({ error: 'email required' });
+      try {
+        const raw = await redis.get(`sub:${email}`);
+        if (!raw) return res.status(404).json({ error: 'subscriber not found' });
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+        const { city, date, flexibility, notes } = req.body || {};
+        const changes = {};
+        if (city !== undefined) { changes.oldCity = data.city; data.city = city.trim() || 'any'; changes.newCity = data.city; }
+        if (date !== undefined) { changes.oldDate = data.date; data.date = date || null; changes.newDate = data.date; }
+        if (flexibility !== undefined) { data.flexibility = parseInt(flexibility) || 7; changes.flexibility = data.flexibility; }
+        if (notes !== undefined) { data.notes = notes; changes.notes = true; }
+
+        await redis.set(`sub:${email}`, JSON.stringify(data));
+
+        try {
+          const { logEvent } = await import('./lib/history.js');
+          await logEvent(redis, email, 'admin-edited', changes);
+        } catch (e) { /* best-effort */ }
+
+        return res.status(200).json({ ok: true, subscriber: data });
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to update subscriber' });
       }
     }
 
@@ -219,6 +265,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ log, total: log.length });
     } catch (err) {
       return res.status(500).json({ error: 'Failed to fetch sent log' });
+    }
+  }
+
+  // ── Subscriber history endpoint ──
+  if (req.query.action === 'subscriber-history') {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email required' });
+    if (!redis) return res.status(200).json({ history: [] });
+    try {
+      const { getHistory } = await import('./lib/history.js');
+      const history = await getHistory(redis, email, 50);
+      return res.status(200).json({ history, email });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch history' });
     }
   }
 
