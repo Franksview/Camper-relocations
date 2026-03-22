@@ -121,10 +121,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ── Rate limiting: max 5 subscriptions per IP per hour ──
+  const clientIP = (req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 'unknown').split(',')[0].trim();
+  if (redis && clientIP !== 'unknown') {
+    try {
+      const rateKey = `ratelimit:sub:${clientIP}`;
+      const attempts = await redis.incr(rateKey);
+      if (attempts === 1) await redis.expire(rateKey, 3600); // 1 hour window
+      if (attempts > 5) {
+        console.warn(`Rate limited: ${clientIP} (${attempts} attempts)`);
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+      }
+    } catch (e) { /* rate limit is best-effort, don't block if Redis fails */ }
+  }
+
   // ── POST: new subscription ──
   const { email, city, date, flexibility, source } = req.body || {};
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) {
     return res.status(400).json({ error: 'Valid email address required' });
   }
 

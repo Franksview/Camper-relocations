@@ -2308,6 +2308,11 @@ let flexibility = 3;
 let currentDeals = [];
 let roundTripEnabled = false;
 
+// Secure deal store — avoids inline JSON in onclick attributes (XSS prevention)
+const _dealStore = [];
+function storeDeal(deal) { _dealStore.push(deal); return _dealStore.length - 1; }
+function getDeal(index) { return _dealStore[index]; }
+
 // ─── EU DATE INPUT (dd/mm/yyyy) ───
 (function() {
   const dateInput = document.getElementById('travelDate');
@@ -2462,6 +2467,18 @@ function renderFeaturedDeals(data) {
   html += '</div>';
   container.innerHTML = html;
 }
+
+// ─── Event delegation for deal buttons (XSS-safe) ───
+['resultsContainer', 'featuredContainer'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-deal-index]');
+    if (btn) {
+      const deal = getDeal(parseInt(btn.dataset.dealIndex, 10));
+      if (deal) addToTrip(deal);
+    }
+  });
+});
 
 // Fire on page load
 loadFeaturedDeals();
@@ -3889,6 +3906,8 @@ function renderDealCard(deal, index) {
     ? `<span class="nearby-badge">${deal.nearby_distance}km away</span>`
     : '';
 
+  const dealIdx = storeDeal(deal);
+
   return `
     <div class="deal-card ${deal.direction_match ? 'direction-match' : ''}" style="animation-delay: ${index * 0.05}s">
       <div class="deal-top">
@@ -3908,7 +3927,7 @@ function renderDealCard(deal, index) {
         <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary">
           View deal &#8599;
         </a>
-        <button class="btn-book btn-next-leg" onclick='addToTrip(${JSON.stringify(deal).replace(/'/g, "&#39;")})'>
+        <button class="btn-book btn-next-leg" data-deal-index="${dealIdx}">
           ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as leg ' + (trip.length + 1)}
         </button>
       </div>
