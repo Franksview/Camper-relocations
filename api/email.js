@@ -1,26 +1,7 @@
-// Movacamper Email Helper — Nodemailer via Hostnet SMTP
+// Movacamper Email Helper — Resend API
 // Shared module for welcome emails, deal alerts, and broadcasts
 
 import { createHmac } from 'crypto';
-
-// ── SMTP Transport (lazy init) ──
-let transporter = null;
-
-async function getTransporter() {
-  if (transporter) return transporter;
-  const nodemailer = await import('nodemailer');
-  transporter = nodemailer.default.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.hostnet.nl',
-    port: parseInt(process.env.SMTP_PORT) || 465,
-    secure: parseInt(process.env.SMTP_PORT) === 587 ? false : true, // 465=SSL, 587=STARTTLS
-    auth: {
-      user: process.env.SMTP_USER || 'frank@movacamper.com',
-      pass: process.env.SMTP_PASS,
-    },
-    tls: { rejectUnauthorized: false },
-  });
-  return transporter;
-}
 
 // ── Unsubscribe Tokens ──
 const UNSUB_SECRET = process.env.UNSUB_SECRET || 'mc-unsub-default-secret-2026';
@@ -480,24 +461,40 @@ export function buildNoMatchEmail(subscriber) {
   };
 }
 
-// ── Send Email ──
+// ── Send Email via Resend API ──
 export async function sendEmail({ to, subject, html, fromName }) {
-  if (!process.env.SMTP_PASS) {
-    console.warn('SMTP not configured — email not sent to', to);
-    return { sent: false, reason: 'SMTP not configured' };
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('Resend API key not configured — email not sent to', to);
+    return { sent: false, reason: 'RESEND_API_KEY not configured' };
   }
 
+  const senderName = fromName || 'Movacamper';
+
   try {
-    const transport = await getTransporter();
-    const senderName = fromName || 'Movacamper';
-    const result = await transport.sendMail({
-      from: `"${senderName}" <frank@movacamper.com>`,
-      to,
-      subject,
-      html,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from: `${senderName} <frank@movacamper.com>`,
+        to: [to],
+        subject,
+        html,
+      }),
     });
-    console.log('Email sent to', to, '- messageId:', result.messageId);
-    return { sent: true, messageId: result.messageId };
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log('Email sent to', to, '- id:', data.id);
+      return { sent: true, messageId: data.id };
+    } else {
+      console.error('Resend error:', data);
+      return { sent: false, reason: data.message || JSON.stringify(data) };
+    }
   } catch (err) {
     console.error('Email send error:', err.message);
     return { sent: false, reason: err.message };
