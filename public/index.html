@@ -1824,6 +1824,179 @@
     }
   }
 
+  /* ─── STICKY SUBSCRIBE BAR ─── */
+  .sticky-sub-bar {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    background: var(--forest);
+    color: white;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    animation: slideDown 0.3s ease-out;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .sticky-sub-bar .sticky-text {
+    flex: 1;
+    font-size: 0.88rem;
+    min-width: 180px;
+  }
+  .sticky-sub-bar .sticky-text strong { color: #a7f3d0; }
+  .sticky-sub-bar form {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    min-width: 240px;
+    max-width: 360px;
+  }
+  .sticky-sub-bar input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-size: 0.85rem;
+    min-width: 0;
+  }
+  .sticky-sub-bar input::placeholder { color: rgba(255,255,255,0.6); }
+  .sticky-sub-bar input:focus { outline: none; border-color: #a7f3d0; background: rgba(255,255,255,0.25); }
+  .sticky-sub-bar button {
+    padding: 8px 16px;
+    background: white;
+    color: var(--forest);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sticky-sub-bar button:hover { background: #e8f5e9; }
+  .sticky-sub-bar .sticky-proof {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.65);
+    width: 100%;
+    text-align: center;
+    margin-top: -4px;
+  }
+  .sticky-sub-bar .sticky-success {
+    color: #a7f3d0;
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+  @media (max-width: 600px) {
+    .sticky-sub-bar { flex-direction: column; text-align: center; padding: 12px 16px; }
+    .sticky-sub-bar form { max-width: 100%; width: 100%; }
+  }
+
+  /* ─── EXIT INTENT POPUP ─── */
+  .exit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .exit-popup {
+    background: white;
+    border-radius: 12px;
+    padding: 36px 32px;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    animation: popIn 0.3s ease-out;
+  }
+  @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .exit-popup h3 { font-size: 1.2rem; color: var(--ink); margin: 0 0 8px; }
+  .exit-popup p { font-size: 0.9rem; color: var(--ink-light); margin: 0 0 20px; line-height: 1.5; }
+  .exit-popup form { display: flex; gap: 8px; margin-bottom: 12px; }
+  .exit-popup input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+  }
+  .exit-popup input:focus { outline: none; border-color: var(--forest); }
+  .exit-popup .exit-btn {
+    padding: 12px 20px;
+    background: var(--rust);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .exit-popup .exit-btn:hover { background: var(--rust-hover); }
+  .exit-popup .exit-dismiss {
+    font-size: 0.8rem;
+    color: var(--stone);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 8px;
+  }
+  .exit-popup .exit-dismiss:hover { color: var(--ink-light); }
+  .exit-popup .exit-proof { font-size: 0.75rem; color: var(--stone); margin-top: 4px; }
+  .exit-popup .exit-success { color: var(--forest); font-weight: 600; }
+  @media (max-width: 600px) {
+    .exit-popup form { flex-direction: column; }
+  }
+
+  /* ─── DEAL CARD INLINE CTA ─── */
+  .deal-alert-link {
+    display: block;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--stone);
+    padding: 6px 0 2px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .deal-alert-link:hover { color: var(--rust); }
+  .deal-alert-inline {
+    display: none;
+    margin-top: 6px;
+    padding: 8px;
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+  }
+  .deal-alert-inline.visible { display: flex; gap: 6px; }
+  .deal-alert-inline input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--sand);
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+  .deal-alert-inline button {
+    padding: 6px 12px;
+    background: var(--forest);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   /* ─── NEWSLETTER SECTION ─── */
   .newsletter-section {
     background: var(--forest);
@@ -3474,6 +3647,178 @@ async function doSearch() {
 }
 
 // ─── EMAIL ALERTS ───
+// ─── SOCIAL PROOF: load subscriber count ───
+let _subCount = 0;
+(async function loadSubCount() {
+  try {
+    const r = await fetch('/api/subscribe');
+    const d = await r.json();
+    _subCount = d.count || 0;
+  } catch (e) { /* ok */ }
+})();
+function subProofText() {
+  if (_subCount >= 3) return `Join ${_subCount} other deal hunters getting alerts`;
+  return 'Free alerts — no spam, unsubscribe anytime';
+}
+
+// ─── STICKY SUBSCRIBE BAR ───
+let _lastSearchCity = '';
+function renderStickyBar(city) {
+  _lastSearchCity = city;
+  if (localStorage.getItem('mc-subscribed')) return '';
+  const cityDisplay = city ? displayCity(city) : '';
+  const msg = cityDisplay
+    ? `🔔 Get alerts for <strong>${cityDisplay}</strong> deals — new ones pop up daily`
+    : '🔔 Get alerts when new deals appear — they change daily';
+  return `
+    <div class="sticky-sub-bar" id="stickySubBar">
+      <div class="sticky-text">${msg}</div>
+      <form onsubmit="submitStickyBar(event, '${(city||'').replace(/'/g,"\\'")}')">
+        <input type="email" placeholder="your@email.com" required id="stickyEmail">
+        <button type="submit" id="stickyBtn">Notify me</button>
+      </form>
+      <div class="sticky-proof">${subProofText()}</div>
+    </div>
+  `;
+}
+
+async function submitStickyBar(event, city) {
+  event.preventDefault();
+  const input = document.getElementById('stickyEmail');
+  const btn = document.getElementById('stickyBtn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: city || 'any',
+        date: document.getElementById('travelDate')?.value || null,
+        flexibility: flexibility || 7,
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+    const bar = document.getElementById('stickySubBar');
+    bar.innerHTML = '<div class="sticky-success">✅ Done! We\'ll email you when ' + (city ? displayCity(city) : '') + ' deals appear.</div>';
+    localStorage.setItem('mc-subscribed', '1');
+    if (window._mcTrack) window._mcTrack('subscribe');
+    setTimeout(() => bar.style.display = 'none', 4000);
+  } catch (err) {
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+  }
+}
+
+// ─── EXIT INTENT POPUP ───
+let _exitShown = false;
+function initExitIntent() {
+  if (window.innerWidth < 768) return; // No exit intent on mobile
+  if (localStorage.getItem('mc-exit-shown')) return;
+  if (localStorage.getItem('mc-subscribed')) return;
+
+  document.addEventListener('mouseout', function exitHandler(e) {
+    if (e.clientY > 5 || _exitShown || !_lastSearchCity) return;
+    _exitShown = true;
+    localStorage.setItem('mc-exit-shown', '1');
+    document.removeEventListener('mouseout', exitHandler);
+    showExitPopup(_lastSearchCity);
+  });
+}
+
+function showExitPopup(city) {
+  const cityDisplay = city ? displayCity(city) : '';
+  const msg = cityDisplay
+    ? `Leave your email and we'll let you know when <strong>${cityDisplay}</strong> deals pop up.`
+    : `Leave your email and we'll alert you when new deals appear.`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'exit-overlay';
+  overlay.id = 'exitOverlay';
+  overlay.innerHTML = `
+    <div class="exit-popup">
+      <h3>Before you go — deals change daily! 🚐</h3>
+      <p>${msg}</p>
+      <form onsubmit="submitExitPopup(event, '${(city||'').replace(/'/g,"\\'")}')">
+        <input type="email" placeholder="your@email.com" required id="exitEmail">
+        <button type="submit" class="exit-btn" id="exitBtn">Notify me</button>
+      </form>
+      <div class="exit-proof">${subProofText()}</div>
+      <button class="exit-dismiss" onclick="document.getElementById('exitOverlay').remove()">No thanks, I'll check back later</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+async function submitExitPopup(event, city) {
+  event.preventDefault();
+  const input = document.getElementById('exitEmail');
+  const btn = document.getElementById('exitBtn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: city || 'any',
+        date: document.getElementById('travelDate')?.value || null,
+        flexibility: flexibility || 7,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    const popup = document.querySelector('.exit-popup');
+    popup.innerHTML = '<h3>✅ You\'re in!</h3><p>We\'ll email you when ' + (city ? displayCity(city) : 'new') + ' deals appear.</p><p style="font-size:32px;margin-top:16px">🚐</p>';
+    localStorage.setItem('mc-subscribed', '1');
+    if (window._mcTrack) window._mcTrack('subscribe');
+    setTimeout(() => document.getElementById('exitOverlay')?.remove(), 3000);
+  } catch (err) {
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+  }
+}
+
+// ─── DEAL CARD INLINE SUBSCRIBE ───
+function toggleDealAlert(idx) {
+  const el = document.getElementById('dealAlertInline-' + idx);
+  el.classList.toggle('visible');
+  if (el.classList.contains('visible')) el.querySelector('input').focus();
+}
+
+async function submitDealAlert(event, city, idx) {
+  event.preventDefault();
+  const form = event.target;
+  const input = form.querySelector('input');
+  const btn = form.querySelector('button');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.value.trim(),
+        city: city || 'any',
+        date: document.getElementById('travelDate')?.value || null,
+        flexibility: flexibility || 7,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    const parent = document.getElementById('dealAlertInline-' + idx);
+    parent.innerHTML = '<span style="color:var(--forest);font-size:0.8rem;font-weight:600">✅ We\'ll alert you!</span>';
+    localStorage.setItem('mc-subscribed', '1');
+    if (window._mcTrack) window._mcTrack('subscribe');
+  } catch (err) {
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+  }
+}
+
+// Init exit intent on page load
+initExitIntent();
+
 async function submitAlert(event, city) {
   event.preventDefault();
   const form = event.target;
@@ -3575,7 +3920,7 @@ function renderContextualSubscribe(city, variant) {
         <button type="submit" class="alert-btn">${variant === 'no-results' ? 'Notify me' : 'Get alerts'}</button>
       </form>
       <div class="ctx-sub-status" style="display:none;"></div>
-      <div class="ctx-sub-privacy">Free, no spam. Unsubscribe anytime.</div>
+      <div class="ctx-sub-privacy">${subProofText()}</div>
     </div>
   `;
 }
@@ -3695,13 +4040,31 @@ function renderResults(data) {
 
     const suggestedDest = meta.headingTowards ? displayCity(meta.headingTowards) : '';
 
+    // Build nearby city suggestions from search meta
+    const nearbyCities = meta.nearby_cities_searched || [];
+    let nearbyHtml = '';
+    if (nearbyCities.length > 0) {
+      const tips = nearbyCities.slice(0, 3).map(n => {
+        const transport = n.distance < 200 ? `FlixBus ~€${Math.round(10 + n.distance * 0.05)}` : `Train ~€${Math.round(15 + n.distance * 0.06)}`;
+        return `<div style="display:inline-block;background:var(--forest-light);border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px;margin:4px;font-size:0.85rem">
+          📍 <strong>${displayCity(n.city)}</strong> <span style="color:#6b7280">(${n.distance}km)</span>
+          <span style="color:var(--forest);font-size:0.78rem"> · 🚌 ${transport}</span>
+        </div>`;
+      }).join('');
+      nearbyHtml = `<div style="margin:16px 0;text-align:center">
+        <p style="font-size:0.88rem;color:var(--ink-light);margin-bottom:8px">But nearby cities may have deals:</p>
+        ${tips}
+      </div>`;
+    }
+
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">
           <img src="/empty-van.png" alt="Campervan at a dead end" />
         </div>
         <h3>No camper deals from ${cityLabel} right now</h3>
-        <p>Deals from ${cityLabel} come and go fast — subscribe below to get notified.</p>
+        <p>Deals change daily — we check all 5 providers for you.</p>
+        ${nearbyHtml}
       </div>
       ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
@@ -3738,8 +4101,10 @@ function renderResults(data) {
     ? ` <span style="font-size:0.75rem;color:#888;font-weight:400;">+ ${searchedNearby.length} nearby</span>`
     : '';
 
+  // ── Sticky subscribe bar at top of results ──
+  let html = renderStickyBar(meta.from || meta.to || '');
+
   // ── Header: when searching with a direction, show direction-matched count prominently ──
-  let html = '';
   if (hasDirection) {
     const toCity = meta.headingTowards;
     const fromLabel = meta.from ? ` from ${displayCity(meta.from)}` : '';
@@ -3931,6 +4296,14 @@ function renderDealCard(deal, index) {
           ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as leg ' + (trip.length + 1)}
         </button>
       </div>
+      ${!localStorage.getItem('mc-subscribed') ? `
+      <div class="deal-alert-link" onclick="toggleDealAlert(${index})">🔔 Alert me for more ${deal.from} → ${deal.to} deals</div>
+      <div class="deal-alert-inline" id="dealAlertInline-${index}">
+        <form onsubmit="submitDealAlert(event, '${(deal.from||'').replace(/'/g,"\\'")}', ${index})">
+          <input type="email" placeholder="your@email.com" required>
+          <button type="submit">Alert me</button>
+        </form>
+      </div>` : ''}
     </div>
   `;
 }
