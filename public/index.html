@@ -3030,8 +3030,9 @@ const AFFILIATE_LINKS = {
   withlocals:   (city) => `https://www.withlocals.com/experiences/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
   donkeyrepublic: (city) => `https://www.donkey.bike/cities/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
   // ─── GAP DAY: Accommodation ───
+  priceline:    (city) => `https://www.jdoqocy.com/click-101710044-12090567?url=${encodeURIComponent('https://www.priceline.com/hotel-deals/' + city.toLowerCase().replace(/\s+/g, '-') + '-hotels')}`,
   hostelworld:  (city) => `https://www.hostelworld.com/st/hostels/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
-  booking:      (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,  // → add affiliate tracking
+  booking:      (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,
   airbnb:       (city) => `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes`,
   // ─── GAP DAY: Explore ───
   googlemaps:   (city) => `https://www.google.com/maps/search/things+to+do+in+${encodeURIComponent(city)}/`,
@@ -4499,6 +4500,7 @@ function renderTrip() {
               <a href="${AFFILIATE_LINKS.withlocals(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#129489;&#8205;&#127859; Local guide</a>
             </div>
             <div class="gap-options" style="margin-top:4px;">
+              <a href="${AFFILIATE_LINKS.priceline(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Priceline — up to 60% off</a>
               <a href="${AFFILIATE_LINKS.hostelworld(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
               <a href="${AFFILIATE_LINKS.booking(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
               <a href="${AFFILIATE_LINKS.airbnb(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128716;&#65039; Airbnb</a>
@@ -4517,6 +4519,7 @@ function renderTrip() {
               <a href="${AFFILIATE_LINKS.donkeyrepublic(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128690; Rent a bike</a>
               <a href="${AFFILIATE_LINKS.guruwalk(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Free walking tour</a>
               <a href="${AFFILIATE_LINKS.getyourguide(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127903;&#65039; Local experiences</a>
+              <a href="${AFFILIATE_LINKS.priceline(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Priceline — up to 60% off</a>
               <a href="${AFFILIATE_LINKS.hostelworld(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
               <a href="${AFFILIATE_LINKS.booking(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
             </div>`}
