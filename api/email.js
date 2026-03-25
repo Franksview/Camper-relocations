@@ -244,17 +244,22 @@ export function buildWelcomeEmail(subscriber) {
   const prefsUrl = getPrefsUrl(email, source);
   const hasCity = city && city !== 'any';
 
-  let enContent = '<h2>Thanks for signing up!</h2>\n';
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Welcome aboard, ${firstName}!` : 'Welcome aboard!';
+
+  let enContent = `<h2>${greeting}</h2>\n`;
   if (hasCity) {
-    enContent += `<p>We'll keep an eye out for campervan relocation deals departing from <strong>${city}</strong>`;
+    enContent += `<p>Great to have you! I'm Frank, and I run Movacamper. Every day I scan all the major relocation companies for cheap campervan deals across Europe — and now I'll be doing it for you personally.</p>\n`;
+    enContent += `<p>I'll watch for deals departing from <strong>${city}</strong>`;
     if (date) enContent += ` around <strong>${date}</strong> (±${flexibility || 7} days)`;
-    enContent += '.</p>\n';
+    enContent += `. The moment something comes up, you'll get an email from me with all the details.</p>\n`;
   } else {
-    enContent += '<p>We\'ll notify you whenever we find cheap campervan relocation deals across Europe.</p>\n';
+    enContent += `<p>Great to have you! I'm Frank, and I run Movacamper. Every day I scan all the major relocation companies — Imoova, Roadsurfer, Bunk Campers, Movacar, and more — for cheap campervan deals across Europe.</p>\n`;
+    enContent += '<p>You\'ll get a weekly roundup of the best deals I find. If you want alerts for a specific city, just reply to this email!</p>\n';
   }
-  enContent += '<p>In the meantime, check out what\'s available right now:</p>\n';
+  enContent += '<p>In the meantime, have a look at what\'s available right now:</p>\n';
   enContent += '<p><a href="https://movacamper.com" class="btn">Browse current deals</a></p>\n';
-  enContent += '<div class="tip">💡 Tip: The more specific your city and dates, the better we can match deals for you. Reply to this email if you want to update your preferences!</div>\n';
+  enContent += '<div class="tip">💡 The more specific your city and dates, the better I can match deals for you. You can always <a href="' + prefsUrl + '">update your preferences</a> or just reply to this email!</div>\n';
 
   // Add local language version if not English
   let localContent = '';
@@ -277,7 +282,7 @@ export function buildWelcomeEmail(subscriber) {
 
   return {
     to: email,
-    subject: 'Welcome to Movacamper — deal alerts activated! 🚐',
+    subject: `You're in! I'll start hunting deals for you 🚐`,
     html,
   };
 }
@@ -309,13 +314,25 @@ export function buildDealAlertEmail(subscriber, deals) {
   const unsubUrl = getUnsubUrl(email);
   const prefsUrl = getPrefsUrl(email, source);
   const hasCity = city && city !== 'any';
+  const cityDisplay = hasCity ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Hey ${firstName}` : 'Hey there';
 
-  let enContent = `<h2>We found ${deals.length} deal${deals.length > 1 ? 's' : ''} for you!</h2>\n`;
-  if (hasCity && date) {
-    enContent += `<p>Campervan relocation deals departing from <strong>${city}</strong> around <strong>${date}</strong>:</p>\n`;
-  } else if (hasCity) {
-    enContent += `<p>Campervan relocation deals departing from <strong>${city}</strong>:</p>\n`;
+  let enContent = `<h2>${greeting} — great news!</h2>\n`;
+
+  if (deals.length === 1) {
+    const d = deals[0];
+    enContent += `<p>I just spotted a campervan relocation deal that matches what you're looking for`;
+    if (hasCity) enContent += ` from <strong>${cityDisplay}</strong>`;
+    enContent += `. Someone needs a <strong>${d.vehicle || 'campervan'}</strong> moved from ${d.from} to ${d.to} — and you could be the one driving it!</p>\n`;
+  } else {
+    enContent += `<p>Good stuff — I found <strong>${deals.length} campervan relocation deals</strong>`;
+    if (hasCity) enContent += ` departing from <strong>${cityDisplay}</strong>`;
+    if (date) enContent += ` around your dates`;
+    enContent += `. These are real deals that just popped up — someone needs these vehicles moved, and you get to drive them for next to nothing.</p>\n`;
   }
+
+  enContent += `<p>Here's what I've got for you:</p>\n`;
 
   for (const deal of deals.slice(0, 5)) {
     enContent += `<div class="deal">
@@ -327,8 +344,10 @@ export function buildDealAlertEmail(subscriber, deals) {
   }
 
   if (deals.length > 5) {
-    enContent += `<p style="color:#6b7280;font-size:13px">+ ${deals.length - 5} more deals available on <a href="https://movacamper.com">movacamper.com</a></p>\n`;
+    enContent += `<p style="color:#6b7280;font-size:13px">+ ${deals.length - 5} more deals on <a href="https://movacamper.com">movacamper.com</a></p>\n`;
   }
+
+  enContent += `<div class="tip">⚡ These deals go fast — relocation companies fill them on a first-come basis. If something catches your eye, grab it!</div>\n`;
 
   // Local language
   let localContent = '';
@@ -336,7 +355,7 @@ export function buildDealAlertEmail(subscriber, deals) {
     localContent = '<hr class="divider">\n<div class="local">\n';
     localContent += `<h3>🌍 ${t(lang, 'found_deals')}</h3>\n`;
     if (hasCity) {
-      localContent += `<p>${t(lang, 'deals_departing')} <strong>${city}</strong>`;
+      localContent += `<p>${t(lang, 'deals_departing')} <strong>${cityDisplay}</strong>`;
       if (date) localContent += ` ${t(lang, 'around_date')} <strong>${date}</strong>`;
       localContent += '.</p>\n';
     }
@@ -345,8 +364,8 @@ export function buildDealAlertEmail(subscriber, deals) {
   }
 
   const subject = hasCity
-    ? `${deals.length} campervan deal${deals.length > 1 ? 's' : ''} from ${city} — Movacamper`
-    : `${deals.length} new campervan deal${deals.length > 1 ? 's' : ''} — Movacamper`;
+    ? `${deals.length === 1 ? 'A' : deals.length} campervan deal${deals.length > 1 ? 's' : ''} from ${cityDisplay} just popped up!`
+    : `${deals.length} fresh campervan deal${deals.length > 1 ? 's' : ''} for you!`;
 
   return {
     to: email,
@@ -361,11 +380,16 @@ export function buildDigestEmail(subscriber, deals, stats) {
   const unsubUrl = getUnsubUrl(email);
   const prefsUrl = getPrefsUrl(email, source);
 
-  let content = '<h2>This week\'s hot deals 🔥</h2>\n';
-  content += `<p>We currently have <strong>${stats.totalDeals || 'several'}</strong> campervan relocation deals across Europe.</p>\n`;
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Hey ${firstName}` : 'Hey there';
+
+  let content = `<h2>${greeting} — here's your weekly roundup!</h2>\n`;
+  content += `<p>I've been scanning all the relocation companies this week, and there are <strong>${stats.totalDeals || 'several'}</strong> campervan deals live across Europe right now.</p>\n`;
 
   if (stats.topCity) {
-    content += `<p>Most popular departure: <strong>${stats.topCity}</strong> (${stats.topCityCount} deals)</p>\n`;
+    content += `<p>The hottest departure city this week? <strong>${stats.topCity}</strong> with ${stats.topCityCount} deals. Here are some highlights:</p>\n`;
+  } else {
+    content += '<p>Here are some of the best ones I spotted:</p>\n';
   }
 
   for (const deal of deals.slice(0, 5)) {
@@ -373,15 +397,15 @@ export function buildDigestEmail(subscriber, deals, stats) {
   <div class="route">${deal.from} → ${deal.to}</div>
   <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
   <div class="price">${deal.price || '€1/day'}</div>
-  <a href="${deal.url}">View deal →</a>
+  <a href="${deal.url}">Check it out →</a>
 </div>\n`;
   }
 
-  content += '<div class="tip">🎯 Want alerts for a specific city? Just reply to this email with your preferred departure city and dates — we\'ll update your alert!</div>\n';
+  content += '<div class="tip">🎯 Want alerts for a specific city instead of the weekly overview? Just reply with your departure city and rough dates — I\'ll set it up for you!</div>\n';
 
   return {
     to: email,
-    subject: `This week's campervan deals across Europe — Movacamper`,
+    subject: `Your weekly deal roundup — ${stats.totalDeals || 'fresh'} campervans up for grabs!`,
     html: emailWrapper(content, unsubUrl, prefsUrl),
   };
 }
@@ -393,11 +417,19 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
   const unsubUrl = getUnsubUrl(email);
   const prefsUrl = getPrefsUrl(email, source);
   const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
-
-  let content = `<h2>No deals from ${cityDisplay} right now — but close!</h2>\n`;
-  content += `<p>We checked all providers and there are no campervan relocations departing from ${cityDisplay} today. But we found deals from nearby cities:</p>\n`;
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Hey ${firstName}` : 'Hey';
 
   let totalDeals = 0;
+  for (const g of nearbyResults) totalDeals += g.deals.length;
+
+  const nearestCity = nearbyResults[0]?.city || 'a nearby city';
+  const nearestDist = nearbyResults[0]?.distance || 0;
+
+  let content = `<h2>${greeting} — quick update on ${cityDisplay}</h2>\n`;
+  content += `<p>I've been checking all providers for deals from ${cityDisplay}, and nothing's come up yet. But here's the thing — <strong>${nearestCity}</strong> is only ${nearestDist}km away, and there are deals there right now!</p>\n`;
+  content += `<p>A short FlixBus or train ride gets you to the pickup point, and then you're off on a campervan adventure for practically nothing. Here's what I found:</p>\n`;
+
   for (const group of nearbyResults.slice(0, 3)) {
     const transportTip = group.distance < 100
       ? `FlixBus ~€${Math.round(8 + group.distance * 0.04)}`
@@ -406,23 +438,22 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
         : `Train ~€${Math.round(15 + group.distance * 0.06)}`;
 
     content += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0">
-  <div style="font-size:16px;font-weight:600;color:#1f2937">📍 ${group.city} <span style="font-size:13px;color:#6b7280;font-weight:400">(${group.distance}km away)</span></div>
-  <div style="font-size:13px;color:#2d6a4f;margin:4px 0">🚌 Get there: ${transportTip} from ${cityDisplay}</div>
-  <div style="font-size:13px;color:#6b7280;margin:4px 0">${group.deals.length} deal${group.deals.length > 1 ? 's' : ''} available</div>\n`;
+  <div style="font-size:16px;font-weight:600;color:#1f2937">📍 ${group.city} <span style="font-size:13px;color:#6b7280;font-weight:400">(${group.distance}km from ${cityDisplay})</span></div>
+  <div style="font-size:13px;color:#2d6a4f;margin:4px 0">🚌 Getting there: ${transportTip}</div>\n`;
 
     for (const deal of group.deals.slice(0, 2)) {
       content += `  <div class="deal" style="margin-top:8px">
     <div class="route">${deal.from} → ${deal.to}</div>
     <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
     <div class="price">${deal.price || '€1/day'}</div>
-    <a href="${deal.url}">View deal →</a>
+    <a href="${deal.url}">Grab this deal →</a>
   </div>\n`;
     }
     content += '</div>\n';
-    totalDeals += group.deals.length;
   }
 
-  content += `<div class="tip">🎯 A preferred travel date helps us match better! <a href="${prefsUrl}">Update your preferences</a></div>\n`;
+  content += `<p>I'll keep watching ${cityDisplay} for you — new deals pop up all the time. In the meantime, adding a preferred travel date helps me find even better matches.</p>\n`;
+  content += `<p><a href="${prefsUrl}" class="btn">Update your preferences</a></p>\n`;
 
   // Local language
   let localContent = '';
@@ -435,7 +466,7 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
 
   return {
     to: email,
-    subject: `Deals near ${cityDisplay} — ${totalDeals} option${totalDeals > 1 ? 's' : ''} from nearby cities`,
+    subject: `Nothing from ${cityDisplay} yet, but ${nearestCity} (${nearestDist}km) has deals!`,
     html: emailWrapper(content + localContent, unsubUrl, prefsUrl),
   };
 }
@@ -446,17 +477,19 @@ export function buildNoMatchEmail(subscriber) {
   const unsubUrl = getUnsubUrl(email);
   const prefsUrl = getPrefsUrl(email, source);
   const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Hey ${firstName}` : 'Hey';
 
-  const content = `<h2>We're keeping an eye out for you!</h2>
-<p>We checked all providers (Imoova, Roadsurfer, Indie Campers, Bunk Campers, Movacar) and there are no campervan relocation deals near <strong>${cityDisplay}</strong> right now.</p>
-<p>But deals change daily — new routes pop up all the time. We'll send you an alert the moment something shows up.</p>
-<div class="tip">🎯 <strong>Want better matches?</strong> Adding a preferred travel date helps us find deals that fit your schedule. <a href="${prefsUrl}">Update your preferences</a></div>
-<p>In the meantime, check what's available across Europe:</p>
+  const content = `<h2>${greeting} — still on the lookout!</h2>
+<p>Just a quick update: I've checked Imoova, Roadsurfer, Bunk Campers, Movacar, and more — and there's nothing near <strong>${cityDisplay}</strong> at the moment. Not even in nearby cities.</p>
+<p>But here's the good news: relocation deals change constantly. Companies suddenly need vehicles moved, and new routes can appear overnight. I'm checking daily, and the moment something pops up near ${cityDisplay}, you'll be the first to know.</p>
+<div class="tip">💡 <strong>Quick tip:</strong> If you have a rough travel date in mind, let me know — it helps me match deals that actually fit your schedule. <a href="${prefsUrl}">Update your preferences here</a></div>
+<p>Want to see what's available right now in other parts of Europe? Some people grab a cheap FlixBus to a nearby pickup city:</p>
 <p><a href="https://movacamper.com" class="btn">Browse all deals</a></p>`;
 
   return {
     to: email,
-    subject: `No deals near ${cityDisplay} yet — we're watching!`,
+    subject: `Still watching ${cityDisplay} for you — hang tight!`,
     html: emailWrapper(content, unsubUrl, prefsUrl),
   };
 }
