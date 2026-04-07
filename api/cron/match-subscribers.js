@@ -111,9 +111,35 @@ module.exports = async function handler(req, res) {
     const dealCache = new Map(); // slug → { exact, nearby }
     let cityGroupsProcessed = 0;
 
-    for (const [citySlug, subs] of cityGroups) {
-      // Timeout safety: max 10 city groups per cron run
-      if (cityGroupsProcessed >= 10) {
+    // Pre-check which subscribers already have drafts, so we can skip entire city groups
+    const existingDrafts = new Set();
+    try {
+      const draftEmails = await redis.smembers('email:drafts');
+      if (draftEmails) draftEmails.forEach(e => existingDrafts.add(e));
+    } catch (e) { /* best-effort */ }
+
+    // Sort city groups: prioritize groups with subscribers who need drafts
+    const sortedCityGroups = [...cityGroups.entries()].sort((a, b) => {
+      const aNeedsDraft = a[1].some(s => !existingDrafts.has(s.email));
+      const bNeedsDraft = b[1].some(s => !existingDrafts.has(s.email));
+      if (aNeedsDraft && !bNeedsDraft) return -1;
+      if (!aNeedsDraft && bNeedsDraft) return 1;
+      return 0;
+    });
+
+    for (const [citySlug, subs] of sortedCityGroups) {
+      // Skip entire city group if all subscribers already have pending drafts
+      const needsDraft = subs.some(s => !existingDrafts.has(s.email));
+      if (!needsDraft) {
+        for (const sub of subs) {
+          results.skipped++;
+          results.details.push({ email: sub.email, reason: 'draft already pending' });
+        }
+        continue; // Does NOT count toward batch limit
+      }
+
+      // Timeout safety: max 15 city groups per cron run
+      if (cityGroupsProcessed >= 15) {
         for (const sub of subs) {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'deferred (batch limit)' });
@@ -142,9 +168,8 @@ module.exports = async function handler(req, res) {
       // Process each subscriber in this city group
       for (const sub of subs) {
         try {
-          // Skip if draft already exists
-          const existingDraft = await redis.get(`draft:${sub.email}`);
-          if (existingDraft) {
+          // Skip if draft already exists (use pre-fetched set, fallback to Redis)
+          if (existingDrafts.has(sub.email)) {
             results.skipped++;
             results.details.push({ email: sub.email, reason: 'draft already pending' });
             continue;
@@ -272,10 +297,12 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ── Generic subscribers: weekly digest (Mondays only) ──
+    // ── Generic subscribers: weekly digest (Mondays), BUT new subs get an intro digest on any day ──
     for (const sub of genericSubs) {
       try {
-        if (!isMonday) {
+        const isFirstDigest = !sub.digestSent;
+        // Skip non-Monday runs only for subs that already received their intro digest
+        if (!isMonday && !isFirstDigest) {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'digest only on Mondays' });
           continue;
@@ -343,9 +370,20 @@ module.exports = async function handler(req, res) {
           };
           await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
           await redis.sadd('email:drafts', sub.email);
-          await logEvent(redis, sub.email, 'digest-drafted', { totalDeals: uniqueDeals.length });
+          await logEvent(redis, sub.email, 'digest-drafted', {
+            totalDeals: uniqueDeals.length,
+            intro: isFirstDigest,
+          });
+          // Mark digestSent so we don't re-create intro drafts every cron run
+          try {
+            sub.digestSent = true;
+            await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
+          } catch (e) { /* best-effort */ }
           results.drafts++;
-          results.details.push({ email: sub.email, action: 'digest draft created' });
+          results.details.push({
+            email: sub.email,
+            action: isFirstDigest ? 'intro digest draft created' : 'digest draft created',
+          });
         } else {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'no deals for digest' });

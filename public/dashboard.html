@@ -399,7 +399,8 @@ async function loadDashboard(days) {
     document.getElementById('lastUpdated').textContent =
       'Updated ' + new Date(data.generated_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
     renderDashboard(data);
-    loadSubscribers();
+    // Now DOM exists, load drafts → subscribers chain
+    await loadDrafts();
   } catch (err) {
     content.innerHTML = `<div class="empty-state"><h2>Error</h2><p>${err.message}</p></div>`;
   }
@@ -522,7 +523,10 @@ function renderDashboard(data) {
   // Relocamp trends
   const relo = relocamp || { totals: {}, timeseries: [], topCities: [] };
   const tReloVis = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'visitors') : { cls: 'flat', label: '—' };
+  const tReloPageviews = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'pageviews') : { cls: 'flat', label: '—' };
   const tReloSearch = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'searches') : { cls: 'flat', label: '—' };
+  const tReloAdds = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'trip_adds') : { cls: 'flat', label: '—' };
+  const tReloShares = relo.timeseries.length > 0 ? calcTrend(relo.timeseries, 'trip_shares') : { cls: 'flat', label: '—' };
 
   // Sparkline data
   const visData = timeseries.map(d => d.visitors);
@@ -599,6 +603,7 @@ function renderDashboard(data) {
         ${miniSparkSVG(reloVisData, '#fb923c')}
       </div>
       <div class="kpi-card" style="border-color:#fb923c33">
+        <span class="kpi-trend ${tReloPageviews.cls}">${tReloPageviews.label}</span>
         <div class="kpi-value" style="color:#fbbf24">${(relo.totals.pageviews || 0).toLocaleString()}</div>
         <div class="kpi-label">Pageviews</div>
       </div>
@@ -609,19 +614,79 @@ function renderDashboard(data) {
         ${miniSparkSVG(reloSearchData, '#4ade80')}
       </div>
       <div class="kpi-card" style="border-color:#fb923c33">
+        <span class="kpi-trend ${tReloAdds.cls}">${tReloAdds.label}</span>
         <div class="kpi-value" style="color:#fb923c">${(relo.totals.trip_adds || 0).toLocaleString()}</div>
         <div class="kpi-label">Trips Built</div>
       </div>
       <div class="kpi-card" style="border-color:#fb923c33">
+        <span class="kpi-trend ${tReloShares.cls}">${tReloShares.label}</span>
         <div class="kpi-value" style="color:#fb923c">${(relo.totals.trip_shares || 0).toLocaleString()}</div>
         <div class="kpi-label">Trips Shared</div>
       </div>
     </div>
 
-    ${hasData ? `
-    <!-- Conversion Funnel -->
+    <!-- Relocamp Funnel -->
+    ${relo.totals.visitors > 0 ? (() => {
+      const rv = relo.totals.visitors || 1;
+      const rs = relo.totals.searches || 0;
+      const rsr = relo.totals.search_results || 0;
+      const rnr = relo.totals.search_no_results || 0;
+      const rdv = relo.totals.deal_views || 0;
+      const rta = relo.totals.trip_adds || 0;
+      const rdc = relo.totals.deal_clicks || 0;
+      const rts = relo.totals.trip_shares || 0;
+      const pSearch = Math.round(rs / rv * 100);
+      const pResults = rs > 0 ? Math.round(rsr / rs * 100) : 0;
+      const pView = rsr > 0 ? Math.round(rdv / rsr * 100) : 0;
+      const pAdd = rdv > 0 ? Math.round(rta / rdv * 100) : (rsr > 0 ? Math.round(rta / rsr * 100) : 0);
+      const pClick = rta > 0 ? Math.round(rdc / rta * 100) : 0;
+      return `
     <div class="funnel-card">
-      <h2>Conversion Funnel</h2>
+      <h2>Relocamp Funnel</h2>
+      <div class="funnel">
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#fb923c">${rv}</div>
+          <div class="funnel-step-label">Visitors</div>
+          <div class="funnel-step-bar" style="width:100%;background:#fb923c"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${pSearch}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#4ade80">${rs}</div>
+          <div class="funnel-step-label">Searches</div>
+          <div class="funnel-step-bar" style="width:${Math.max(pSearch, 5)}%;background:#4ade80"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${pResults}% found</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#38bdf8">${rsr} <small style="color:#ef4444;font-size:0.6em">${rnr} empty</small></div>
+          <div class="funnel-step-label">With Results</div>
+          <div class="funnel-step-bar" style="width:${Math.max(pResults * pSearch / 100, 5)}%;background:#38bdf8"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${pView}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#a78bfa">${rdv}</div>
+          <div class="funnel-step-label">Deal Views</div>
+          <div class="funnel-step-bar" style="width:${Math.max(rdv / rv * 100, 3)}%;background:#a78bfa"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${pAdd}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#fbbf24">${rta}</div>
+          <div class="funnel-step-label">Trip Adds</div>
+          <div class="funnel-step-bar" style="width:${Math.max(rta / rv * 100, 2)}%;background:#fbbf24"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${pClick}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#f87171">${rdc}</div>
+          <div class="funnel-step-label">Deal Clicks</div>
+          <div class="funnel-step-bar" style="width:${Math.max(rdc / rv * 100, 1)}%;background:#f87171"></div>
+        </div>
+      </div>
+    </div>`;
+    })() : ''}
+
+    ${hasData ? `
+    <!-- Movacamper Funnel -->
+    <div class="funnel-card">
+      <h2>Movacamper Funnel</h2>
       <div class="funnel">
         <div class="funnel-step">
           <div class="funnel-step-value" style="color:#38bdf8">${totals.visitors}</div>
@@ -905,6 +970,51 @@ function renderDeviceChart(devices) {
   });
 }
 
+// ─── DRAFT MAP (filled by loadDrafts, used by loadSubscribers) ───
+let draftMap = {};
+
+function renderInlineDraft(email) {
+  const d = draftMap[email];
+  if (!d) return '';
+  const typeLabels = { 'non-eu': '🌏 Non-EU', 'weekly-digest': '📰 Digest', 'deal-alert': '🎯 Deal Alert', 'nearby-alert': '📍 Nearby', 'no-match': '👁️ No Match' };
+  const typeLabel = typeLabels[d.type] || '🎯 Deal Alert';
+  const typeClass = (d.type || 'deal-alert').replace(/\s+/g, '-');
+  const created = d.created ? new Date(d.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const previewId = `inline-preview-${email.replace(/[^a-z0-9]/gi, '_')}`;
+  const safeEmail = d.to.replace(/'/g, "\\'");
+
+  let dealsHtml = '';
+  if (d.deals && d.deals.length > 0) {
+    dealsHtml = '<div class="draft-deals">' + d.deals.map(deal => {
+      const nearbyLabel = deal.nearbyCity ? ` <span style="font-size:0.6rem;color:#7dd3fc">(📍 ${deal.nearbyCity}, ${deal.nearbyDistance}km)</span>` : '';
+      const providerLabel = deal.provider && deal.provider !== 'Imoova' ? ` <span style="font-size:0.6rem;color:#a78bfa">[${deal.provider}]</span>` : '';
+      return `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span>${nearbyLabel}${providerLabel}</span>`;
+    }).join('') + '</div>';
+  } else if (d.type === 'no-match') {
+    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#3f3f46;color:#a1a1aa">No deals near ' + (d.city || 'any') + '</span></div>';
+  } else if (d.type === 'non-eu') {
+    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — ' + (d.city || 'non-EU') + '</span></div>';
+  }
+
+  return `<div class="inline-draft" style="background:#1a1f2e;border:1.5px solid #f59e0b44;border-radius:8px;padding:12px 14px;margin:-2px 0 8px 0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:0.75rem;font-weight:600;color:#fbbf24">📬 New email ready</div>
+      <span class="draft-type-badge ${typeClass}" style="font-size:0.65rem">${typeLabel}</span>
+    </div>
+    <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">Subject: "${d.subject || 'Welcome'}"</div>
+    ${dealsHtml}
+    <div style="font-size:0.68rem;color:#475569;margin:6px 0">Created ${created}${d.matchCount ? ' · ' + d.matchCount + ' deals matched' : ''}</div>
+    <div class="draft-actions" style="margin-top:8px">
+      <button class="draft-btn send" onclick="sendDraft('${safeEmail}', this)">✅ Approve & Send</button>
+      <button class="draft-btn preview" onclick="document.getElementById('${previewId}').style.display = document.getElementById('${previewId}').style.display === 'none' ? 'block' : 'none'">👁 Preview</button>
+      <button class="draft-btn dismiss" onclick="dismissDraftInline('${safeEmail}', this)">✕ Dismiss</button>
+    </div>
+    <div class="draft-preview-frame" id="${previewId}" style="display:none">
+      <iframe srcdoc="${(d.html || '<p>No preview</p>').replace(/"/g, '&quot;')}"></iframe>
+    </div>
+  </div>`;
+}
+
 // ─── SUBSCRIBERS ───
 async function loadSubscribers() {
   const card = document.getElementById('subscribersCard');
@@ -996,6 +1106,7 @@ async function loadSubscribers() {
           <button class="sub-mark-btn" onclick="toggleHistory('${safeEmail}', '${histId}')" style="margin-top:4px">📋 History</button>
         </div>
       </div>
+      ${renderInlineDraft(sub.email)}
       <div id="${editId}" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin:-4px 0 8px 0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <label style="font-size:0.7rem;color:#94a3b8">
@@ -1111,75 +1222,40 @@ async function toggleHistory(email, histId) {
 // ─── DRAFTS ───
 async function loadDrafts() {
   const card = document.getElementById('draftsCard');
-  const list = document.getElementById('draftsList');
   const badge = document.getElementById('draftsBadge');
-  if (!card || !list) return;
+  const noDraftsCard = document.getElementById('noDraftsCard');
 
   try {
     const res = await fetch(`/api/stats?token=${TOKEN}&action=drafts`);
     const data = await res.json();
     const drafts = data.drafts || [];
 
-    const noDraftsCard = document.getElementById('noDraftsCard');
+    // Build draftMap for inline rendering in subscriber cards
+    draftMap = {};
+    drafts.forEach(d => { draftMap[d.to] = d; });
+
     if (drafts.length === 0) {
-      card.style.display = 'none';
+      if (card) card.style.display = 'none';
       if (noDraftsCard) noDraftsCard.style.display = 'block';
-      return;
+    } else {
+      // Show compact summary in drafts card
+      if (card) {
+        card.style.display = 'block';
+        if (badge) badge.textContent = drafts.length;
+        const list = document.getElementById('draftsList');
+        if (list) list.innerHTML = `<div style="color:#fbbf24;font-size:0.8rem;padding:4px 0">${drafts.length} draft${drafts.length !== 1 ? 's' : ''} ready — shown below in subscriber cards</div>`;
+      }
+      if (noDraftsCard) noDraftsCard.style.display = 'none';
     }
 
-    card.style.display = 'block';
-    if (noDraftsCard) noDraftsCard.style.display = 'none';
-    badge.textContent = drafts.length;
-
-    list.innerHTML = drafts.map((d, idx) => {
-      const typeClass = (d.type || 'deal-alert').replace(/\s+/g, '-');
-      const typeLabels = { 'non-eu': '🌏 Non-EU', 'weekly-digest': '📰 Digest', 'deal-alert': '🎯 Deal Alert', 'nearby-alert': '📍 Nearby', 'no-match': '👁️ No Match' };
-      const typeLabel = typeLabels[d.type] || '🎯 Deal Alert';
-      const created = d.created ? new Date(d.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-
-      // Deal tags
-      let dealsHtml = '';
-      if (d.deals && d.deals.length > 0) {
-        dealsHtml = '<div class="draft-deals">' + d.deals.map(deal => {
-          const nearbyLabel = deal.nearbyCity ? ` <span style="font-size:0.6rem;color:#7dd3fc">(📍 ${deal.nearbyCity}, ${deal.nearbyDistance}km)</span>` : '';
-          const providerLabel = deal.provider && deal.provider !== 'Imoova' ? ` <span style="font-size:0.6rem;color:#a78bfa">[${deal.provider}]</span>` : '';
-          return `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span>${nearbyLabel}${providerLabel}</span>`;
-        }).join('') + '</div>';
-      } else if (d.type === 'no-match') {
-        dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#3f3f46;color:#a1a1aa">No deals near ' + (d.city || 'any') + ' — friendly "we\'re watching" email</span></div>';
-      } else if (d.type === 'non-eu') {
-        dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — subscriber from ' + (d.city || 'non-EU') + '</span></div>';
-      }
-
-      return `<div class="draft-item" id="draft-${idx}">
-        <div class="draft-header">
-          <div class="draft-to">📧 ${d.to}</div>
-          <span class="draft-type-badge ${typeClass}">${typeLabel}</span>
-        </div>
-        <div class="draft-subject">Subject: "${d.subject || 'Welcome'}"</div>
-        ${dealsHtml}
-        <div class="draft-meta">Created ${created}${d.matchCount ? ' · ' + d.matchCount + ' deals matched' : ''}</div>
-        <div class="draft-actions">
-          <button class="draft-btn send" onclick="sendDraft('${d.to}', this)">✅ Approve & Send</button>
-          <button class="draft-btn preview" onclick="togglePreview(${idx})">👁 Preview email</button>
-          <button class="draft-btn dismiss" onclick="dismissDraft('${d.to}', this)">✕ Dismiss</button>
-        </div>
-        <div class="draft-preview-frame" id="preview-${idx}">
-          <iframe srcdoc="${(d.html || '<p>No preview available</p>').replace(/"/g, '&quot;')}"></iframe>
-        </div>
-      </div>`;
-    }).join('');
+    // Reload subscribers to show inline drafts
+    await loadSubscribers();
   } catch (err) {
-    card.style.display = 'none';
-    const noDraftsCard = document.getElementById('noDraftsCard');
+    if (card) card.style.display = 'none';
     if (noDraftsCard) noDraftsCard.style.display = 'block';
+    // Still load subscribers even if drafts fail
+    await loadSubscribers();
   }
-}
-
-function togglePreview(idx) {
-  const frame = document.getElementById('preview-' + idx);
-  if (!frame) return;
-  frame.style.display = frame.style.display === 'none' ? 'block' : 'none';
 }
 
 async function sendDraft(email, btn) {
@@ -1190,7 +1266,7 @@ async function sendDraft(email, btn) {
     const data = await res.json();
     if (data.ok && data.sent) {
       btn.textContent = '✅ Sent!';
-      setTimeout(async () => { await loadDrafts(); await loadSentLog(); await loadSubscribers(); }, 1000);
+      setTimeout(async () => { await loadDrafts(); await loadSentLog(); }, 1000);
     } else {
       btn.textContent = '❌ ' + (data.reason || 'Failed');
       setTimeout(() => { btn.textContent = '✅ Approve & Send'; btn.disabled = false; }, 3000);
@@ -1203,6 +1279,16 @@ async function sendDraft(email, btn) {
 
 async function dismissDraft(email, btn) {
   if (!confirm(`Dismiss draft for ${email}? The subscriber won't receive this email.`)) return;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=dismiss-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) await loadDrafts();
+  } catch { btn.textContent = 'Error'; }
+}
+
+async function dismissDraftInline(email, btn) {
+  if (!confirm(`Dismiss draft for ${email}?`)) return;
   btn.disabled = true; btn.textContent = '...';
   try {
     const res = await fetch(`/api/stats?token=${TOKEN}&action=dismiss-draft&email=${encodeURIComponent(email)}`, { method: 'POST' });
@@ -1258,7 +1344,6 @@ async function triggerCron(btn) {
       btn.textContent = `✓ Done: ${data.results.drafts} drafts created, ${data.results.skipped} skipped`;
       await loadDrafts();
       await loadSentLog();
-      await loadSubscribers();
       setTimeout(() => { btn.textContent = '⚡ Run deal matcher now'; btn.disabled = false; }, 5000);
     } else {
       btn.textContent = 'Error: ' + (data.reason || data.error || 'unknown');
@@ -1270,10 +1355,8 @@ async function triggerCron(btn) {
   }
 }
 
-// Load all sections
-loadDrafts();
+// Load all sections (loadDrafts is called inside loadDashboard after DOM renders)
 loadSentLog();
-
 loadDashboard(currentDays);
 </script>
 </body>

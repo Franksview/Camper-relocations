@@ -279,6 +279,7 @@ export default async function handler(req, res) {
     status: 'active',
     emailCount: 0,
     lastEmailed: null,
+    digestSent: false,
   };
 
   console.log('NEW SUBSCRIBER:', JSON.stringify(subscription));
@@ -315,21 +316,40 @@ export default async function handler(req, res) {
     welcomeEmail.fromName = 'Relocamp';
   }
 
-  // Fire and forget — don't slow down the subscribe response
-  sendEmail(welcomeEmail).then(result => {
+  // AWAIT the welcome email — fire-and-forget is unreliable on Vercel serverless
+  // (function may terminate before the Promise resolves, losing the send/log).
+  // Small latency cost (~500ms) is acceptable for guaranteed delivery + logging.
+  try {
+    const result = await sendEmail(welcomeEmail);
     console.log('Welcome email result:', result);
-    // Log the sent email in Redis
-    if (redis && result.sent) {
+    if (redis && result && result.sent) {
+      const sentAt = new Date().toISOString();
       const logEntry = {
         to: normalizedEmail,
         subject: welcomeEmail.subject,
         type: cityNonEU ? 'welcome-non-eu' : 'welcome',
-        sentAt: new Date().toISOString(),
+        sentAt,
       };
-      redis.lpush('email:sent-log', JSON.stringify(logEntry)).catch(() => {});
-      redis.ltrim('email:sent-log', 0, 499).catch(() => {}); // keep last 500
+      try {
+        await redis.lpush('email:sent-log', JSON.stringify(logEntry));
+        await redis.ltrim('email:sent-log', 0, 499); // keep last 500
+      } catch (e) { console.warn('sent-log write failed:', e.message); }
+
+      // Update subscriber record: welcome counts as first email
+      try {
+        subscription.emailCount = 1;
+        subscription.lastEmailed = sentAt;
+        await redis.set(`sub:${normalizedEmail}`, JSON.stringify(subscription));
+        await logEvent(redis, normalizedEmail, 'welcome-sent', {
+          type: cityNonEU ? 'welcome-non-eu' : 'welcome',
+        });
+      } catch (e) { console.warn('subscriber update failed:', e.message); }
+    } else if (result && !result.sent) {
+      console.error('Welcome email NOT sent:', result.error || 'unknown reason');
     }
-  }).catch(err => console.error('Welcome email failed:', err.message));
+  } catch (err) {
+    console.error('Welcome email exception:', err.message);
+  }
 
   return res.status(200).json({
     success: true,
