@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movacamper — Campervan Relocation Deals Across Europe</title>
 <meta name="description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip. Search live deals from Imoova, Roadsurfer, Indie Campers and more.">
-<link rel="canonical" href="https://movacamper.com">
+<link rel="canonical" href="https://www.movacamper.com">
 <meta property="og:title" content="Movacamper — Campervan Relocation Deals Across Europe">
 <meta property="og:description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://movacamper.com">
+<meta property="og:url" content="https://www.movacamper.com">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Movacamper — Campervan Relocation Deals from €1/day">
 <meta name="twitter:description" content="Search live campervan relocation deals across Europe. 5 providers, one search.">
@@ -19,11 +19,11 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Movacamper",
-  "url": "https://movacamper.com",
+  "url": "https://www.movacamper.com",
   "description": "Search campervan relocation deals across Europe from €1/day",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://movacamper.com/?q={search_term_string}",
+    "target": "https://www.movacamper.com/?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
 }
@@ -33,7 +33,7 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Movacamper",
-  "url": "https://movacamper.com",
+  "url": "https://www.movacamper.com",
   "email": "hello@movacamper.com",
   "description": "Campervan relocation deal aggregator for Europe"
 }
@@ -2885,6 +2885,7 @@ function getTripUrl() {
 }
 
 function copyTripLink() {
+  if (window._mcTrack) window._mcTrack('trip_share', { legs: trip.length });
   const url = getTripUrl();
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.querySelector('.btn-share-trip');
@@ -3021,7 +3022,7 @@ const AFFILIATE_LINKS = {
   blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
-  camperdays: (from, to) => `https://www.camperdays.com`,           // → add Awin ?awc=CODE
+  camperdays: (from, to) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}`,  // Awin affiliate (same as Relocamp)
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
   movacar:   (from, to) => to ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/` : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`,                // → add affiliate tracking (€12/lead)
   // ─── GAP DAY: Local experiences ───
@@ -4033,6 +4034,7 @@ function renderResults(data) {
   const cityLabel = meta.from ? displayCity(meta.from) : (meta.to ? displayCity(meta.to) : 'this city');
 
   if (deals.length === 0) {
+    if (window._mcTrack) window._mcTrack('search_no_results', { city: meta.from || meta.to || '' });
     // Find nearest hub for this city
     const fromKey = (meta.from || '').toLowerCase().trim();
     const hubKey = BRIDGE_ALIASES[fromKey] || (BRIDGE_ROUTES[fromKey] ? fromKey : null);
@@ -4075,6 +4077,12 @@ function renderResults(data) {
     // Auto-load fallback deals from featured cache or API
     loadFallbackDeals(nearestHub, cityLabel);
     return;
+  }
+
+  // Track search results + deal impressions
+  if (window._mcTrack) {
+    window._mcTrack('search_results', { city: meta.from || meta.to || '', count: deals.length });
+    window._mcTrack('deal_view', { city: meta.from || meta.to || '', count: deals.length });
   }
 
   // ── Date filtering: split deals into date-matched and different-dates ──
@@ -4290,7 +4298,7 @@ function renderDealCard(deal, index) {
         <span class="provider-badge ${providerClass}">${deal.provider || 'Provider'}</span>
       </div>
       <div class="deal-actions">
-        <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary">
+        <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary" onclick="if(window._mcTrack)window._mcTrack('deal_click',{provider:'${(deal.provider||'').replace(/'/g,'')}',from:'${(deal.from||'').replace(/'/g,'')}',to:'${(deal.to||'').replace(/'/g,'')}'})">
           View deal &#8599;
         </a>
         <button class="btn-book btn-next-leg" data-deal-index="${dealIdx}">
@@ -4321,6 +4329,7 @@ function addToTrip(deal) {
   trip.push(deal);
   saveTrip();
   renderTrip();
+  if (window._mcTrack) window._mcTrack('trip_add', { from: deal.from || '', to: deal.to || '' });
 
   // Pre-fill next search with arrival city
   document.getElementById('fromCity').value = deal.to;
