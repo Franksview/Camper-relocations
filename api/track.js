@@ -3,7 +3,7 @@
 // Called by a tiny beacon in index.html — no cookies, privacy-friendly
 
 let store = null;
-const ALLOWED_EVENTS = new Set(['search', 'subscribe', 'trip_add', 'trip_share', 'deal_click']);
+const ALLOWED_EVENTS = new Set(['search', 'subscribe', 'trip_add', 'trip_share', 'deal_click', 'search_no_results', 'search_results', 'deal_view']);
 
 async function getStore() {
   if (store) return store;
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event, city, source } = req.body || {};
+  const { page, referrer, event, city, source, provider, from, to } = req.body || {};
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
@@ -121,6 +121,25 @@ export default async function handler(req, res) {
     // Track search cities for "top search cities" dashboard
     if (event === 'search' && city) {
       pipe.hincrby(`${pre}stats:cities:${date}`, city.toLowerCase().trim(), 1);
+    }
+
+    // Store deal_click details — provider, route, timestamp (last 200 clicks)
+    if (event === 'deal_click' && (provider || from || to)) {
+      const clickEntry = JSON.stringify({
+        provider: (provider || 'unknown').toLowerCase(),
+        from: from || '',
+        to: to || '',
+        source: source || 'movacamper',
+        ts: new Date().toISOString(),
+      });
+      pipe.lpush(`${pre}stats:deal_clicks_log`, clickEntry);
+      pipe.ltrim(`${pre}stats:deal_clicks_log`, 0, 199); // keep last 200
+      pipe.expire(`${pre}stats:deal_clicks_log`, ttl);
+      // Per-provider counter
+      if (provider) {
+        pipe.hincrby(`${pre}stats:clicks_by_provider:${date}`, provider.toLowerCase(), 1);
+        pipe.expire(`${pre}stats:clicks_by_provider:${date}`, ttl);
+      }
     }
 
     // Set TTL on all keys: 90 days

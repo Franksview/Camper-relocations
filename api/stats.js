@@ -268,6 +268,25 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Deal click log endpoint ──
+  if (req.query.action === 'deal-clicks') {
+    if (!redis) return res.status(200).json({ clicks: [] });
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const [mcClicks, reloClicks] = await Promise.all([
+        redis.lrange('stats:deal_clicks_log', 0, limit - 1).catch(() => []),
+        redis.lrange('relo:stats:deal_clicks_log', 0, limit - 1).catch(() => []),
+      ]);
+      const clicks = [...(mcClicks || []), ...(reloClicks || [])]
+        .map(c => { try { return typeof c === 'string' ? JSON.parse(c) : c; } catch { return null; } })
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.ts) - new Date(a.ts));
+      return res.status(200).json({ clicks, total: clicks.length });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch deal clicks' });
+    }
+  }
+
   // ── Subscriber history endpoint ──
   if (req.query.action === 'subscriber-history') {
     const email = req.query.email;
@@ -361,23 +380,37 @@ export default async function handler(req, res) {
 
     const timeseries = [];
     let totalPV = 0, totalUV = 0, totalSearches = 0, totalSubs = 0;
+    let totalDealClicks = 0, totalDealViews = 0, totalTripAdds = 0, totalTripShares = 0;
+    let totalSearchResults = 0, totalSearchNoResults = 0;
 
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
       const v = vercelByDate[date] || { total: 0, devices: 0 };
-      const r = redisData.daily[i] || { searches: 0, subscribes: 0 };
+      const r = redisData.daily[i] || {};
 
       totalPV += v.total;
       totalUV += v.devices;
-      totalSearches += r.searches;
-      totalSubs += r.subscribes;
+      totalSearches += r.searches || 0;
+      totalSubs += r.subscribes || 0;
+      totalDealClicks += r.deal_clicks || 0;
+      totalDealViews += r.deal_views || 0;
+      totalTripAdds += r.trip_adds || 0;
+      totalTripShares += r.trip_shares || 0;
+      totalSearchResults += r.search_results || 0;
+      totalSearchNoResults += r.search_no_results || 0;
 
       timeseries.push({
         date,
         pageviews: v.total,
         visitors: v.devices,
-        searches: r.searches,
-        subscribes: r.subscribes,
+        searches: r.searches || 0,
+        subscribes: r.subscribes || 0,
+        deal_clicks: r.deal_clicks || 0,
+        deal_views: r.deal_views || 0,
+        trip_adds: r.trip_adds || 0,
+        trip_shares: r.trip_shares || 0,
+        search_results: r.search_results || 0,
+        search_no_results: r.search_no_results || 0,
       });
     }
 
@@ -412,6 +445,12 @@ export default async function handler(req, res) {
         subscribes: totalSubs,
         subscribers_total: subscriberCount,
         avg_pages_per_visitor: avgPagesPerVisitor,
+        deal_clicks: totalDealClicks,
+        deal_views: totalDealViews,
+        trip_adds: totalTripAdds,
+        trip_shares: totalTripShares,
+        search_results: totalSearchResults,
+        search_no_results: totalSearchNoResults,
       },
       timeseries,
       top_referrers: topReferrers,
@@ -434,15 +473,21 @@ export default async function handler(req, res) {
 
 // ── Redis: fetch search/subscribe/city data ──
 async function fetchRedisData(redis, dates) {
-  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0 })), topCities: [] };
+  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [] };
   if (!redis) return empty;
 
   try {
     const pipe = redis.pipeline();
     for (const date of dates) {
-      pipe.get(`stats:evt:search:${date}`);
-      pipe.get(`stats:evt:subscribe:${date}`);
-      pipe.hgetall(`stats:cities:${date}`);
+      pipe.get(`stats:evt:search:${date}`);              // 0: searches
+      pipe.get(`stats:evt:subscribe:${date}`);            // 1: subscribes
+      pipe.hgetall(`stats:cities:${date}`);               // 2: cities
+      pipe.get(`stats:evt:deal_click:${date}`);           // 3: deal clicks
+      pipe.get(`stats:evt:deal_view:${date}`);            // 4: deal views
+      pipe.get(`stats:evt:trip_add:${date}`);             // 5: trip adds
+      pipe.get(`stats:evt:trip_share:${date}`);           // 6: trip shares
+      pipe.get(`stats:evt:search_results:${date}`);       // 7: search results
+      pipe.get(`stats:evt:search_no_results:${date}`);    // 8: search no results
     }
 
     const rawResults = await pipe.exec();
@@ -452,12 +497,18 @@ async function fetchRedisData(redis, dates) {
     const allCities = {};
 
     for (let i = 0; i < dates.length; i++) {
-      const base = i * 3;
+      const base = i * 9;
       const searches = parseInt(results[base]) || 0;
       const subscribes = parseInt(results[base + 1]) || 0;
       const cities = results[base + 2] || {};
+      const dealClicks = parseInt(results[base + 3]) || 0;
+      const dealViews = parseInt(results[base + 4]) || 0;
+      const tripAdds = parseInt(results[base + 5]) || 0;
+      const tripShares = parseInt(results[base + 6]) || 0;
+      const searchResults = parseInt(results[base + 7]) || 0;
+      const searchNoResults = parseInt(results[base + 8]) || 0;
 
-      daily.push({ searches, subscribes });
+      daily.push({ searches, subscribes, deal_clicks: dealClicks, deal_views: dealViews, trip_adds: tripAdds, trip_shares: tripShares, search_results: searchResults, search_no_results: searchNoResults });
 
       for (const [k, v] of Object.entries(cities)) {
         allCities[k] = (allCities[k] || 0) + (parseInt(v) || 0);
@@ -495,6 +546,9 @@ async function fetchRelocampData(redis, dates) {
       pipe.get(`relo:stats:evt:trip_share:${date}`);    // 4: trip shares
       pipe.get(`relo:stats:evt:deal_click:${date}`);    // 5: deal clicks
       pipe.hgetall(`relo:stats:cities:${date}`);        // 6: cities
+      pipe.get(`relo:stats:evt:search_no_results:${date}`); // 7: no results
+      pipe.get(`relo:stats:evt:search_results:${date}`);    // 8: results found
+      pipe.get(`relo:stats:evt:deal_view:${date}`);         // 9: deal views
     }
 
     const rawResults = await pipe.exec();
@@ -503,9 +557,10 @@ async function fetchRelocampData(redis, dates) {
     const timeseries = [];
     const allCities = {};
     let totalPV = 0, totalUV = 0, totalSearches = 0, totalAdds = 0, totalShares = 0, totalClicks = 0;
+    let totalNoResults = 0, totalResults = 0, totalDealViews = 0;
 
     for (let i = 0; i < dates.length; i++) {
-      const base = i * 7;
+      const base = i * 10;
       const pv = parseInt(results[base]) || 0;
       const uv = parseInt(results[base + 1]) || 0;
       const searches = parseInt(results[base + 2]) || 0;
@@ -513,6 +568,9 @@ async function fetchRelocampData(redis, dates) {
       const shares = parseInt(results[base + 4]) || 0;
       const clicks = parseInt(results[base + 5]) || 0;
       const cities = results[base + 6] || {};
+      const noResults = parseInt(results[base + 7]) || 0;
+      const withResults = parseInt(results[base + 8]) || 0;
+      const dealViews = parseInt(results[base + 9]) || 0;
 
       totalPV += pv;
       totalUV += uv;
@@ -520,8 +578,11 @@ async function fetchRelocampData(redis, dates) {
       totalAdds += adds;
       totalShares += shares;
       totalClicks += clicks;
+      totalNoResults += noResults;
+      totalResults += withResults;
+      totalDealViews += dealViews;
 
-      timeseries.push({ date: dates[i], pageviews: pv, visitors: uv, searches });
+      timeseries.push({ date: dates[i], pageviews: pv, visitors: uv, searches, trip_adds: adds, trip_shares: shares, search_no_results: noResults, search_results: withResults, deal_views: dealViews });
 
       for (const [k, v] of Object.entries(cities)) {
         allCities[k] = (allCities[k] || 0) + (parseInt(v) || 0);
@@ -534,7 +595,7 @@ async function fetchRelocampData(redis, dates) {
       .map(([city, count]) => ({ city, count }));
 
     return {
-      totals: { visitors: totalUV, pageviews: totalPV, searches: totalSearches, trip_adds: totalAdds, trip_shares: totalShares, deal_clicks: totalClicks },
+      totals: { visitors: totalUV, pageviews: totalPV, searches: totalSearches, trip_adds: totalAdds, trip_shares: totalShares, deal_clicks: totalClicks, search_no_results: totalNoResults, search_results: totalResults, deal_views: totalDealViews },
       timeseries,
       topCities,
     };

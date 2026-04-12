@@ -535,9 +535,19 @@ function renderDashboard(data) {
   const reloVisData = relo.timeseries.map(d => d.visitors);
   const reloSearchData = relo.timeseries.map(d => d.searches);
 
-  // Funnel rates
+  // Funnel rates (Movacamper)
   const searchRate = totals.visitors > 0 ? Math.round((totals.searches / totals.visitors) * 100) : 0;
-  const subRate = totals.searches > 0 ? Math.round((totals.subscribes / totals.searches) * 100) : 0;
+  const msr = totals.search_results || 0;
+  const mnr = totals.search_no_results || 0;
+  const mdv = totals.deal_views || 0;
+  const mdc = totals.deal_clicks || 0;
+  const mta = totals.trip_adds || 0;
+  const msub = totals.subscribes || 0;
+  const subRate = totals.searches > 0 ? Math.round((msub / totals.searches) * 100) : 0;
+  const mResultsRate = totals.searches > 0 ? Math.round((msr / totals.searches) * 100) : 0;
+  const mViewRate = msr > 0 ? Math.round((mdv / msr) * 100) : 0;
+  const mClickRate = mdv > 0 ? Math.round((mdc / mdv) * 100) : (msr > 0 ? Math.round((mdc / msr) * 100) : 0);
+  const mTripRate = mdc > 0 ? Math.round((mta / mdc) * 100) : 0;
 
   // Insights
   const insights = generateInsights(data);
@@ -693,25 +703,43 @@ function renderDashboard(data) {
           <div class="funnel-step-label">Visitors</div>
           <div class="funnel-step-bar" style="width:100%;background:#38bdf8"></div>
         </div>
-        <div class="funnel-arrow">
-          <span>→</span>
-          <span class="funnel-arrow-rate">${searchRate}%</span>
-        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${searchRate}%</span></div>
         <div class="funnel-step">
           <div class="funnel-step-value" style="color:#4ade80">${totals.searches}</div>
           <div class="funnel-step-label">Searches</div>
           <div class="funnel-step-bar" style="width:${Math.max(searchRate, 5)}%;background:#4ade80"></div>
         </div>
-        <div class="funnel-arrow">
-          <span>→</span>
-          <span class="funnel-arrow-rate">${subRate}%</span>
-        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${mResultsRate}% found</span></div>
         <div class="funnel-step">
-          <div class="funnel-step-value" style="color:#a78bfa">${totals.subscribes}</div>
+          <div class="funnel-step-value" style="color:#2dd4bf">${msr} <small style="color:#ef4444;font-size:0.6em">${mnr} empty</small></div>
+          <div class="funnel-step-label">With Results</div>
+          <div class="funnel-step-bar" style="width:${Math.max(mResultsRate * searchRate / 100, 5)}%;background:#2dd4bf"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${mViewRate}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#a78bfa">${mdv}</div>
+          <div class="funnel-step-label">Deal Views</div>
+          <div class="funnel-step-bar" style="width:${Math.max(mdv / (totals.visitors || 1) * 100, 3)}%;background:#a78bfa"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${mClickRate}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#f87171">${mdc}</div>
+          <div class="funnel-step-label">Deal Clicks</div>
+          <div class="funnel-step-bar" style="width:${Math.max(mdc / (totals.visitors || 1) * 100, 1)}%;background:#f87171"></div>
+        </div>
+        <div class="funnel-arrow"><span>→</span><span class="funnel-arrow-rate">${subRate}%</span></div>
+        <div class="funnel-step">
+          <div class="funnel-step-value" style="color:#fbbf24">${msub}</div>
           <div class="funnel-step-label">Subscribers</div>
-          <div class="funnel-step-bar" style="width:${Math.max(subRate, 3)}%;background:#a78bfa"></div>
+          <div class="funnel-step-bar" style="width:${Math.max(subRate * searchRate / 100, 2)}%;background:#fbbf24"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Deal Click Log -->
+    <div class="sent-card" id="clickLogCard" style="display:none">
+      <h2>🔗 Recent Deal Clicks <span class="badge" id="clickLogBadge">0</span></h2>
+      <div id="clickLogList" style="color:#475569;font-size:0.8rem">Loading...</div>
     </div>
 
     <!-- Email Drafts (needs review) -->
@@ -1298,6 +1326,51 @@ async function dismissDraftInline(email, btn) {
 }
 
 // ─── SENT LOG ───
+async function loadClickLog() {
+  const card = document.getElementById('clickLogCard');
+  const list = document.getElementById('clickLogList');
+  const badge = document.getElementById('clickLogBadge');
+  if (!list) return;
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=deal-clicks&limit=50`);
+    const data = await res.json();
+    const clicks = data.clicks || [];
+    if (clicks.length === 0) {
+      if (card) card.style.display = 'none';
+      return;
+    }
+    if (card) card.style.display = 'block';
+    if (badge) badge.textContent = clicks.length;
+
+    // Check which providers have affiliate tracking
+    const affiliateProviders = new Set(['camperdays']);
+    const referralProviders = new Set(['imoova']);
+
+    list.innerHTML = clicks.map(c => {
+      const time = new Date(c.ts).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const site = c.source === 'relocamp' ? '<span style="background:#c4704b;color:white;font-size:0.6rem;padding:1px 5px;border-radius:3px">RC</span>' : '<span style="background:#2d6a4f;color:white;font-size:0.6rem;padding:1px 5px;border-radius:3px">MC</span>';
+      const prov = (c.provider || 'unknown');
+      let affTag = '';
+      if (affiliateProviders.has(prov)) {
+        affTag = ' <span style="background:#065f46;color:#34d399;font-size:0.6rem;padding:1px 5px;border-radius:3px">💰 affiliate</span>';
+      } else if (referralProviders.has(prov)) {
+        affTag = ' <span style="background:#713f12;color:#fbbf24;font-size:0.6rem;padding:1px 5px;border-radius:3px">🔗 referral</span>';
+      } else {
+        affTag = ' <span style="background:#7f1d1d;color:#fca5a5;font-size:0.6rem;padding:1px 5px;border-radius:3px">⚠ no tracking</span>';
+      }
+      return `<div style="padding:6px 0;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="color:#e2e8f0;font-weight:500">${c.from || '?'} → ${c.to || '?'}</span>
+          <span style="color:#64748b;font-size:0.75rem;margin-left:8px">${prov}</span>${affTag} ${site}
+        </div>
+        <div style="color:#475569;font-size:0.7rem">${time}</div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = '<div style="color:#ef4444">Failed to load click log</div>';
+  }
+}
+
 async function loadSentLog() {
   const list = document.getElementById('sentList');
   const badge = document.getElementById('sentBadge');
@@ -1357,6 +1430,7 @@ async function triggerCron(btn) {
 
 // Load all sections (loadDrafts is called inside loadDashboard after DOM renders)
 loadSentLog();
+loadClickLog();
 loadDashboard(currentDays);
 </script>
 </body>
