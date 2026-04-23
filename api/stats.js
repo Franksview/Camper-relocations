@@ -287,6 +287,93 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Alt click log endpoint (no-results affiliate cards + contextual explore) ──
+  if (req.query.action === 'alt-clicks') {
+    if (!redis) return res.status(200).json({ clicks: [], by_provider: {} });
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const days = Math.max(1, Math.min(parseInt(req.query.days) || 7, 90));
+      // Build date range for by-provider breakdown
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < days; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      const [mcLog, reloLog, ...breakdowns] = await Promise.all([
+        redis.lrange('stats:alt_clicks_log', 0, limit - 1).catch(() => []),
+        redis.lrange('relo:stats:alt_clicks_log', 0, limit - 1).catch(() => []),
+        ...dates.flatMap(date => [
+          redis.hgetall(`stats:alt_clicks_by_provider:${date}`).catch(() => ({})),
+          redis.hgetall(`relo:stats:alt_clicks_by_provider:${date}`).catch(() => ({})),
+        ]),
+      ]);
+      const clicks = [...(mcLog || []), ...(reloLog || [])]
+        .map(c => { try { return typeof c === 'string' ? JSON.parse(c) : c; } catch { return null; } })
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.ts) - new Date(a.ts));
+      // Aggregate by_provider across both sources + all dates
+      const byProvider = {};
+      breakdowns.forEach(hash => {
+        if (!hash) return;
+        Object.entries(hash).forEach(([provider, count]) => {
+          byProvider[provider] = (byProvider[provider] || 0) + parseInt(count, 10);
+        });
+      });
+      return res.status(200).json({ clicks, total: clicks.length, by_provider: byProvider, days });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch alt clicks' });
+    }
+  }
+
+  // ── Subscribe impression breakdown ──
+  // Returns impressions count + subs count + conversion rate per variant.
+  // Answers: are subs dropping because fewer impressions, or fewer conversions?
+  if (req.query.action === 'sub-funnel') {
+    if (!redis) return res.status(200).json({ by_variant: {}, total_impressions: 0, total_subs: 0 });
+    try {
+      const days = Math.max(1, Math.min(parseInt(req.query.days) || 14, 90));
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < days; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      const pipe = redis.pipeline();
+      dates.forEach(date => {
+        pipe.hgetall(`stats:sub_impressions_by_variant:${date}`);
+        pipe.get(`stats:evt:sub_impression:${date}`);
+        pipe.get(`stats:evt:subscribe:${date}`);
+      });
+      const raw = await pipe.exec();
+      const results = raw.map(r => Array.isArray(r) ? r[1] : r);
+      const byVariant = {};
+      let totalImpressions = 0;
+      let totalSubs = 0;
+      for (let i = 0; i < dates.length; i++) {
+        const variantHash = results[i * 3] || {};
+        const impDay = parseInt(results[i * 3 + 1] || 0, 10);
+        const subDay = parseInt(results[i * 3 + 2] || 0, 10);
+        totalImpressions += impDay;
+        totalSubs += subDay;
+        Object.entries(variantHash).forEach(([v, count]) => {
+          byVariant[v] = (byVariant[v] || 0) + parseInt(count, 10);
+        });
+      }
+      return res.status(200).json({
+        by_variant: byVariant,
+        total_impressions: totalImpressions,
+        total_subs: totalSubs,
+        conversion_rate: totalImpressions > 0 ? (totalSubs / totalImpressions * 100).toFixed(2) + '%' : 'n/a',
+        days,
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch sub funnel' });
+    }
+  }
+
   // ── Subscriber history endpoint ──
   if (req.query.action === 'subscriber-history') {
     const email = req.query.email;
@@ -378,6 +465,30 @@ export default async function handler(req, res) {
       }
     }
 
+    // Redis PV/UV fallback — fixes "0 visitors" dashboard bug.
+    // (april 23: Vercel API returned populated date keys with 0 totals → previous
+    //  `if (!vercelHasData)` check was false but every day was still 0. Now we ALWAYS
+    //  fetch Redis PV/UV and take max per-day so numbers never silently disappear,
+    //  regardless of whether Vercel Analytics is broken, delayed, or under-counting.)
+    let redisPvUv = {};
+    if (redis) {
+      try {
+        const pipe = redis.pipeline();
+        dates.forEach(date => {
+          pipe.get(`stats:pv:${date}`);
+          pipe.scard(`stats:uv:${date}`);
+        });
+        const raw = await pipe.exec();
+        const results = raw.map(r => Array.isArray(r) ? r[1] : r);
+        dates.forEach((date, i) => {
+          redisPvUv[date] = {
+            total: parseInt(results[i * 2] || 0, 10),
+            devices: parseInt(results[i * 2 + 1] || 0, 10),
+          };
+        });
+      } catch (e) { /* fall through, use zeros */ }
+    }
+
     const timeseries = [];
     let totalPV = 0, totalUV = 0, totalSearches = 0, totalSubs = 0;
     let totalDealClicks = 0, totalDealViews = 0, totalTripAdds = 0, totalTripShares = 0;
@@ -385,7 +496,15 @@ export default async function handler(req, res) {
 
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
-      const v = vercelByDate[date] || { total: 0, devices: 0 };
+      // Take max(vercel, redis) per-day so we never lose numbers if either source
+      // under-reports or silently returns zeros. Redis is ground truth (our own
+      // tracker pixel); Vercel is a secondary signal that sometimes includes bots.
+      const vcl = vercelByDate[date] || { total: 0, devices: 0 };
+      const rds = redisPvUv[date] || { total: 0, devices: 0 };
+      const v = {
+        total: Math.max(vcl.total, rds.total),
+        devices: Math.max(vcl.devices, rds.devices),
+      };
       const r = redisData.daily[i] || {};
 
       totalPV += v.total;
