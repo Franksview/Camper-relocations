@@ -158,7 +158,14 @@ module.exports = async function handler(req, res) {
           dealCache.set(citySlug, cityResult);
         } catch (e) {
           console.error(`Deal fetch error for ${citySlug}:`, e.message);
-          dealCache.set(citySlug, { exact: [], nearby: [], allNearby: [] });
+          // Do NOT silently proceed — flag every subscriber in this group as an error
+          // so they are retried next cron run rather than receiving a false no-match draft.
+          for (const sub of subs) {
+            results.errors++;
+            results.details.push({ email: sub.email, reason: 'deal fetch error', city: citySlug, error: e.message });
+          }
+          cityGroupsProcessed++;
+          continue; // skip to next city group
         }
       }
       cityGroupsProcessed++;
@@ -176,7 +183,9 @@ module.exports = async function handler(req, res) {
           }
 
           // Anti-spam: don't create draft if emailed within last 7 days
-          if (sub.lastEmailed) {
+          // BUT welcome email (emailCount===1) doesn't count — new subs are most engaged,
+          // drafts are hand-reviewed, so 7-day dead zone post-welcome was blocking matches.
+          if (sub.lastEmailed && (sub.emailCount || 0) > 1) {
             const daysSince = (now - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24);
             if (daysSince < 7) {
               results.skipped++;
@@ -189,7 +198,8 @@ module.exports = async function handler(req, res) {
           const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
 
           // ── Non-EU subscribers ──
-          if (isNonEU(sub.city)) {
+          // Use normalized slug so alias cities (e.g. "Lisboa") are recognized as EU
+          if (isNonEU(normalizeCitySlug(sub.city))) {
             const emailData = buildNonEUWelcomeEmail(sub);
             const draft = {
               to: sub.email, subject: emailData.subject, html: emailData.html,
@@ -315,7 +325,8 @@ module.exports = async function handler(req, res) {
           continue;
         }
 
-        if (sub.lastEmailed) {
+        // Same welcome-exception for generic/digest subs
+        if (sub.lastEmailed && (sub.emailCount || 0) > 1) {
           const daysSince = (now - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24);
           if (daysSince < 7) {
             results.skipped++;
