@@ -45,8 +45,8 @@ module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization;
   const token = req.query.token;
   const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-  const dashToken = process.env.DASH_TOKEN || 'mc-dash-9xK7qW3p';
-  const isDashboard = token === dashToken;
+  const dashToken = process.env.DASH_TOKEN;
+  const isDashboard = !!dashToken && token === dashToken;
 
   if (!isVercelCron && !isDashboard) {
     return res.status(401).json({ error: 'Unauthorized' });

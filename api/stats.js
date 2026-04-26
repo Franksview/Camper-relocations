@@ -76,7 +76,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const token = req.query.token;
-  const dashToken = process.env.DASH_TOKEN || 'mc-dash-9xK7qW3p';
+  const dashToken = process.env.DASH_TOKEN;
+  if (!dashToken) {
+    return res.status(500).json({ error: 'Server misconfigured: DASH_TOKEN not set' });
+  }
   if (token !== dashToken) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
