@@ -5,3 +5,9 @@
 node_modules/
 *.log
 .DS_Store
+
+# Personal-AI-Frank workspace artifacts (not part of the deployable site)
+_learning/
+.claude/
+marketing/
+nul
