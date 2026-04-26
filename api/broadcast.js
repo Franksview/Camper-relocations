@@ -224,38 +224,62 @@ export default async function handler(req, res) {
       s && s.email && s.status !== 'unsubscribed' && !s.unsubscribed && !s.digestOptOut
     );
 
-    // Parallel send with Promise.allSettled (respects Resend rate limits at 30 total)
-    const sendPromises = eligible.map(async (sub) => {
-      try {
-        const html = config.build(sub);
-        const r = await sendEmail({
-          to: sub.email,
-          subject: config.subject,
-          html,
-          fromName: config.fromName,
-        });
-        if (r.sent) {
-          // Log broadcast send
-          const entry = JSON.stringify({
-            email: sub.email,
-            campaign: campaignId,
-            ts: new Date().toISOString(),
-            messageId: r.messageId,
+    // Dedupe: skip subscribers who already received this campaign in a previous run.
+    // Prevents double-sends when re-firing a partial broadcast (e.g. after rate-limit failures).
+    const alreadySent = new Set();
+    try {
+      const logRaw = await redis.lrange('email:broadcast-log', 0, 499);
+      (logRaw || []).forEach(entry => {
+        try {
+          const e = typeof entry === 'string' ? JSON.parse(entry) : entry;
+          if (e && e.campaign === campaignId && e.email) alreadySent.add(e.email);
+        } catch { /* skip */ }
+      });
+    } catch { /* best-effort */ }
+
+    // Batched parallel send — 4 emails in parallel, then wait 1s, repeat.
+    // Resend caps at 5 req/sec; we stay strictly under at 4/sec. Vercel serverless
+    // has a 10s function timeout on free plan, so batching is faster than serial-
+    // with-sleep (28 emails: ~7s instead of ~12s). Previous all-parallel approach
+    // hit 28/33 rate-limit failures.
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const BATCH_SIZE = 4;
+    const queue = eligible.filter(s => !alreadySent.has(s.email));
+    const results = eligible
+      .filter(s => alreadySent.has(s.email))
+      .map(s => ({ email: s.email, sent: false, reason: 'already sent in earlier run' }));
+
+    for (let i = 0; i < queue.length; i += BATCH_SIZE) {
+      const batch = queue.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (sub) => {
+        try {
+          const html = config.build(sub);
+          const r = await sendEmail({
+            to: sub.email,
+            subject: config.subject,
+            html,
+            fromName: config.fromName,
           });
-          await redis.lpush('email:broadcast-log', entry).catch(() => {});
-          return { email: sub.email, sent: true, messageId: r.messageId };
-        } else {
+          if (r.sent) {
+            const entry = JSON.stringify({
+              email: sub.email,
+              campaign: campaignId,
+              ts: new Date().toISOString(),
+              messageId: r.messageId,
+            });
+            await redis.lpush('email:broadcast-log', entry).catch(() => {});
+            return { email: sub.email, sent: true, messageId: r.messageId };
+          }
           return { email: sub.email, sent: false, reason: r.reason };
+        } catch (err) {
+          return { email: sub.email, sent: false, reason: err.message };
         }
-      } catch (err) {
-        return { email: sub.email, sent: false, reason: err.message };
-      }
-    });
-
-    const settled = await Promise.allSettled(sendPromises);
+      }));
+      results.push(...batchResults);
+      // Don't sleep after the last batch
+      if (i + BATCH_SIZE < queue.length) await sleep(1100);
+    }
     await redis.ltrim('email:broadcast-log', 0, 499).catch(() => {});
-
-    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { sent: false, reason: s.reason?.message || 'promise rejected' });
     const sent = results.filter(r => r.sent);
     const failed = results.filter(r => !r.sent);
     const skipped = subs.length - eligible.length;
