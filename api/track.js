@@ -3,7 +3,11 @@
 // Called by a tiny beacon in index.html — no cookies, privacy-friendly
 
 let store = null;
-const ALLOWED_EVENTS = new Set(['search', 'subscribe', 'trip_add', 'trip_share', 'deal_click', 'search_no_results', 'search_results', 'deal_view']);
+const ALLOWED_EVENTS = new Set([
+  'search', 'subscribe', 'trip_add', 'trip_share',
+  'deal_click', 'alt_click', 'sub_impression',
+  'search_no_results', 'search_results', 'deal_view',
+]);
 
 async function getStore() {
   if (store) return store;
@@ -76,7 +80,7 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event, city, source, provider, from, to } = req.body || {};
+  const { page, referrer, event, city, source, provider, from, to, variant } = req.body || {};
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
@@ -87,6 +91,12 @@ export default async function handler(req, res) {
   const ownDomain = source === 'relocamp' ? 'relocamp.vercel.app' : 'movacamper.com';
 
   try {
+    // TTL for all keys: 90 days — MUST be defined before any reference below.
+    // Pre-existing bug (fixed april 20): ttl was declared after deal_click block,
+    // causing ReferenceError (silent via try/catch) → deal_clicks_log + clicks_by_provider never written.
+    // Explains why dashboard showed deal_click counts but no provider breakdown.
+    const ttl = 90 * 24 * 60 * 60;
+
     const pipe = redis.pipeline();
 
     // Pageview count
@@ -142,8 +152,36 @@ export default async function handler(req, res) {
       }
     }
 
-    // Set TTL on all keys: 90 days
-    const ttl = 90 * 24 * 60 * 60;
+    // Store alt_click details — separate from deal_click so we can measure
+    // no-results affiliate cards + contextual explore affiliates distinctly.
+    // Added april 20 to answer: "do no-results Camperdays/Hostelworld/GetYourGuide cards actually convert?"
+    if (event === 'alt_click' && (provider || from)) {
+      const altEntry = JSON.stringify({
+        provider: (provider || 'unknown').toLowerCase(),
+        from: from || '',
+        to: to || '',
+        source: source || 'movacamper',
+        ts: new Date().toISOString(),
+        type: 'alt',
+      });
+      pipe.lpush(`${pre}stats:alt_clicks_log`, altEntry);
+      pipe.ltrim(`${pre}stats:alt_clicks_log`, 0, 199);
+      pipe.expire(`${pre}stats:alt_clicks_log`, ttl);
+      if (provider) {
+        pipe.hincrby(`${pre}stats:alt_clicks_by_provider:${date}`, provider.toLowerCase(), 1);
+        pipe.expire(`${pre}stats:alt_clicks_by_provider:${date}`, ttl);
+      }
+    }
+
+    // Store sub_impression — how often subscribe CTA was shown.
+    // Added april 20 to answer: "are subs dropping because fewer people see the CTA, or fewer convert?"
+    if (event === 'sub_impression') {
+      const v = (typeof variant === 'string' && variant) ? variant.slice(0, 40) : 'unknown';
+      pipe.hincrby(`${pre}stats:sub_impressions_by_variant:${date}`, v, 1);
+      pipe.expire(`${pre}stats:sub_impressions_by_variant:${date}`, ttl);
+    }
+
+    // Set TTL on core keys
     pipe.expire(`${pre}stats:pv:${date}`, ttl);
     pipe.expire(`${pre}stats:uv:${date}`, ttl);
     pipe.expire(`${pre}stats:pages:${date}`, ttl);
