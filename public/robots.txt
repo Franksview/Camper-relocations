@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://movacamper.com/sitemap.xml
+Sitemap: https://www.movacamper.com/sitemap.xml

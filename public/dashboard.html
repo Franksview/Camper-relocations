@@ -1343,8 +1343,8 @@ async function loadClickLog() {
     if (badge) badge.textContent = clicks.length;
 
     // Check which providers have affiliate tracking
-    const affiliateProviders = new Set(['camperdays']);
-    const referralProviders = new Set(['imoova']);
+    const affiliateProviders = new Set(['camperdays', 'imoova']);
+    const referralProviders = new Set([]);
 
     list.innerHTML = clicks.map(c => {
       const time = new Date(c.ts).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });

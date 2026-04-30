@@ -4,35 +4,81 @@
 // ── Constants ──
 export const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 export const ANTHROPIC_VERSION = '2023-06-01';
-export const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/en/relocations?region=EU';
+export const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/en/relocations?region=EU&via=relocamp';
 export const DEFAULT_PRICE = '€1.00/night';
 
 // ── City slug normalization (multilingual) ──
 export const CITY_SLUGS = {
+  // Munich (DE/NL/PT/IT/FR)
   'munchen': 'munich', 'münchen': 'munich', 'muenchen': 'munich',
+  'munique': 'munich', 'monaco di baviera': 'munich',
+  // Berlin (NL/PT/IT)
+  'berlijn': 'berlin', 'berlim': 'berlin', 'berlino': 'berlin',
+  // Hamburg (FR/IT)
+  'hambourg': 'hamburg', 'amburgo': 'hamburg',
+  // Frankfurt (FR/IT)
+  'francfort': 'frankfurt', 'francoforte': 'frankfurt',
+  'frankfurt am main': 'frankfurt', 'frankfurt-am-main': 'frankfurt',
+  // Vienna (NL/FR/IT/ES)
   'wien': 'vienna', 'wenen': 'vienna',
+  'vienne': 'vienna', 'vena': 'vienna',
+  // Lisbon (NL/DE/PT)
   'lissabon': 'lisbon', 'lisboa': 'lisbon',
+  // Copenhagen (DE/NL)
   'kopenhagen': 'copenhagen', 'københavn': 'copenhagen',
+  // Brussels (NL/FR)
   'brussel': 'brussels', 'bruxelles': 'brussels',
+  // Milan (DE/IT)
   'mailand': 'milan', 'milano': 'milan',
-  'rom': 'rome', 'roma': 'rome',
-  'prag': 'prague', 'praha': 'prague',
+  // Rome (DE/IT/ES/FR)
+  'rom': 'rome', 'roma': 'rome', 'rooma': 'rome',
+  // Prague (DE/FR/IT/ES)
+  'prag': 'prague', 'praha': 'prague', 'praga': 'prague',
+  // Warsaw (DE/IT/FR)
   'warschau': 'warsaw', 'warszawa': 'warsaw',
+  'varsavia': 'warsaw', 'varsovie': 'warsaw',
+  // Geneva (DE/FR)
   'genf': 'geneva', 'geneve': 'geneva', 'genève': 'geneva',
+  // London (NL/ES/FR)
   'londen': 'london', 'londres': 'london',
+  // Paris (NL)
   'parijs': 'paris',
-  'antwerpen': 'antwerp',
+  // Antwerp (NL)
+  'antwerpen': 'antwerp', 'anvers': 'antwerp',
+  // The Hague (NL)
   'den haag': 'the-hague',
+  // Seville (ES)
   'sevilla': 'seville',
-  'athene': 'athens', 'athen': 'athens',
-  'boekarest': 'bucharest', 'bukarest': 'bucharest',
+  // Athens (NL/DE)
+  'athene': 'athens', 'athen': 'athens', 'atenas': 'athens',
+  // Bucharest (NL/DE)
+  'boekarest': 'bucharest', 'bukarest': 'bucharest', 'bucuresti': 'bucharest', 'bucurești': 'bucharest',
+  // Cologne (NL/DE/FR/IT)
   'keulen': 'cologne', 'köln': 'cologne', 'koln': 'cologne',
-  'nurnberg': 'nuremberg', 'nürnberg': 'nuremberg',
+  'colonia': 'cologne', 'cologne': 'cologne',
+  // Nuremberg (NL/DE)
+  'nurnberg': 'nuremberg', 'nürnberg': 'nuremberg', 'neurenberg': 'nuremberg',
+  // Hanover (DE)
   'hannover': 'hanover',
+  // Marseille (EN variant)
   'marseilles': 'marseille',
+  // Edinburgh (NL/DE)
   'edinburg': 'edinburgh',
+  // Barcelona (FR/IT)
+  'barcelone': 'barcelona', 'barcellona': 'barcelona',
+  // Amsterdam (DE/FR)
+  'amsterdam': 'amsterdam',
+  // Florence (IT/ES/DE/FR)
+  'firenze': 'florence', 'florencia': 'florence', 'florenz': 'florence',
+  // Venice (IT/ES/DE/FR)
+  'venezia': 'venice', 'venecia': 'venice', 'venedig': 'venice',
+  // Zurich (DE/FR/IT)
+  'zürich': 'zurich', 'zurich': 'zurich', 'zurigo': 'zurich',
+  // Stuttgart (same across languages, but umlaut variant)
   'gütersloh': 'gutersloh',
   'flensburg': 'flensburg', 'flensborg': 'flensburg',
+  // Düsseldorf
+  'dusseldorf': 'dusseldorf', 'düsseldorf': 'dusseldorf',
 };
 
 // ── Nearby cities with driving distances (km) ──

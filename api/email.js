@@ -34,6 +34,84 @@ export function getPrefsUrl(email, source) {
   return `${base}/api/subscribe?action=preferences&email=${encodeURIComponent(email)}&token=${token}`;
 }
 
+// ── City alias normalization (multilingual variants → canonical English slug) ──
+// Keep in sync with CITY_SLUGS in api/lib/search-core.js
+const CITY_ALIASES = {
+  // Munich (DE/NL/PT/IT)
+  'munchen': 'munich', 'münchen': 'munich', 'muenchen': 'munich',
+  'munique': 'munich', 'monaco di baviera': 'munich',
+  // Berlin (NL/PT/IT)
+  'berlijn': 'berlin', 'berlim': 'berlin', 'berlino': 'berlin',
+  // Hamburg (FR/IT)
+  'hambourg': 'hamburg', 'amburgo': 'hamburg',
+  // Frankfurt (FR/IT)
+  'francfort': 'frankfurt', 'francoforte': 'frankfurt',
+  'frankfurt am main': 'frankfurt', 'frankfurt-am-main': 'frankfurt',
+  // Vienna (NL/FR/IT/ES)
+  'wien': 'vienna', 'wenen': 'vienna', 'vienne': 'vienna', 'vena': 'vienna',
+  // Lisbon (NL/DE/PT)
+  'lissabon': 'lisbon', 'lisboa': 'lisbon',
+  // Copenhagen (DE/NL)
+  'kopenhagen': 'copenhagen', 'københavn': 'copenhagen',
+  // Brussels (NL/FR)
+  'brussel': 'brussels', 'bruxelles': 'brussels',
+  // Milan (DE/IT)
+  'mailand': 'milan', 'milano': 'milan',
+  // Rome (DE/IT/ES/FR)
+  'rom': 'rome', 'roma': 'rome', 'rooma': 'rome',
+  // Prague (DE/FR/IT/ES)
+  'prag': 'prague', 'praha': 'prague', 'praga': 'prague',
+  // Warsaw (DE/IT/FR)
+  'warschau': 'warsaw', 'warszawa': 'warsaw',
+  'varsavia': 'warsaw', 'varsovie': 'warsaw',
+  // Geneva (DE/FR)
+  'genf': 'geneva', 'geneve': 'geneva', 'genève': 'geneva',
+  // London (NL/ES/FR)
+  'londen': 'london', 'londres': 'london',
+  // Paris (NL)
+  'parijs': 'paris',
+  // Antwerp (NL/FR)
+  'antwerpen': 'antwerp', 'anvers': 'antwerp',
+  // The Hague (NL)
+  'den haag': 'the-hague', 'den-haag': 'the-hague',
+  // Seville (ES)
+  'sevilla': 'seville',
+  // Athens (NL/DE/ES)
+  'athene': 'athens', 'athen': 'athens', 'atenas': 'athens',
+  // Bucharest (NL/DE/RO)
+  'boekarest': 'bucharest', 'bukarest': 'bucharest',
+  'bucuresti': 'bucharest', 'bucurești': 'bucharest',
+  // Cologne (NL/DE/FR/IT)
+  'keulen': 'cologne', 'köln': 'cologne', 'koln': 'cologne', 'colonia': 'cologne',
+  // Nuremberg (NL/DE)
+  'nurnberg': 'nuremberg', 'nürnberg': 'nuremberg', 'neurenberg': 'nuremberg',
+  // Hanover (DE)
+  'hannover': 'hanover',
+  // Marseille (EN variant)
+  'marseilles': 'marseille',
+  // Edinburgh (NL/DE)
+  'edinburg': 'edinburgh',
+  // Barcelona (FR/IT)
+  'barcelone': 'barcelona', 'barcellona': 'barcelona',
+  // Florence (IT/ES/DE)
+  'firenze': 'florence', 'florencia': 'florence', 'florenz': 'florence',
+  // Venice (IT/ES/DE)
+  'venezia': 'venice', 'venecia': 'venice', 'venedig': 'venice',
+  // Zurich (DE/FR/IT)
+  'zürich': 'zurich', 'zurigo': 'zurich',
+  // Düsseldorf (DE umlaut)
+  'dusseldorf': 'dusseldorf', 'düsseldorf': 'dusseldorf',
+  // Misc
+  'gütersloh': 'gutersloh',
+  'flensburg': 'flensburg', 'flensborg': 'flensburg',
+};
+
+function normalizeCityAlias(city) {
+  if (!city) return city;
+  const slug = city.toLowerCase().trim().replace(/\s+/g, '-');
+  return CITY_ALIASES[slug] || CITY_ALIASES[slug.replace(/-/g, ' ')] || slug;
+}
+
 // ── City → Language Mapping ──
 const CITY_LANG = {
   // German
@@ -80,16 +158,16 @@ const NON_EU_CITIES = new Set([
 
 export function detectLanguage(city) {
   if (!city || city === 'any') return 'en';
-  const normalized = city.toLowerCase().trim().replace(/\s+/g, '-');
-  return CITY_LANG[normalized] || CITY_LANG[normalized.replace(/-/g, '')] || 'en';
+  const slug = normalizeCityAlias(city);
+  return CITY_LANG[slug] || CITY_LANG[slug.replace(/-/g, '')] || 'en';
 }
 
 export function isNonEU(city) {
   if (!city || city === 'any') return false;
   const normalized = city.toLowerCase().trim();
   if (NON_EU_CITIES.has(normalized)) return true;
-  // If city is in our EU mapping, it's EU
-  const slug = normalized.replace(/\s+/g, '-');
+  // Resolve alias before checking CITY_LANG (e.g. "Lisboa" → "lisbon")
+  const slug = normalizeCityAlias(city);
   if (CITY_LANG[slug]) return false;
   // Unknown city — could be small EU town. Don't flag as non-EU.
   return false;
@@ -335,11 +413,15 @@ export function buildDealAlertEmail(subscriber, deals) {
   enContent += `<p>Here's what I've got for you:</p>\n`;
 
   for (const deal of deals.slice(0, 5)) {
+    let dealUrl = deal.url || 'https://movacamper.com';
+    if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
+      dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
+    }
     enContent += `<div class="deal">
   <div class="route">${deal.from} → ${deal.to}</div>
   <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}${deal.seats ? ' · ' + deal.seats + ' seats' : ''}${deal.transmission && deal.transmission !== 'unknown' ? ' · ' + deal.transmission : ''}</div>
   <div class="price">${deal.price || '€1/day'}</div>
-  <a href="${deal.url}">View deal →</a>
+  <a href="${dealUrl}">View deal →</a>
 </div>\n`;
   }
 
@@ -348,6 +430,18 @@ export function buildDealAlertEmail(subscriber, deals) {
   }
 
   enContent += `<div class="tip">⚡ These deals go fast — relocation companies fill them on a first-come basis. If something catches your eye, grab it!</div>\n`;
+
+  // Camperdays upsell
+  const camperCity = hasCity ? cityDisplay.toLowerCase() : '';
+  const camperdaysUrl = camperCity
+    ? `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + camperCity)}`
+    : 'https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
+  enContent += `<hr class="divider">\n`;
+  enContent += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0;text-align:center">
+  <p style="font-size:14px;font-weight:600;color:#1f2937;margin:0 0 8px">🚐 Want a campervan on your own schedule?</p>
+  <p style="font-size:13px;color:#6b7280;margin:0 0 12px">Camperdays compares 30+ rental companies — from €29/day${hasCity ? ' in ' + cityDisplay : ''}.</p>
+  <a href="${camperdaysUrl}" style="display:inline-block;background:#2d6a4f;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600">Compare campervan rentals →</a>
+</div>\n`;
 
   // Local language
   let localContent = '';
@@ -393,15 +487,28 @@ export function buildDigestEmail(subscriber, deals, stats) {
   }
 
   for (const deal of deals.slice(0, 5)) {
+    let dealUrl = deal.url || 'https://movacamper.com';
+    if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
+      dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
+    }
     content += `<div class="deal">
   <div class="route">${deal.from} → ${deal.to}</div>
   <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
   <div class="price">${deal.price || '€1/day'}</div>
-  <a href="${deal.url}">Check it out →</a>
+  <a href="${dealUrl}">Check it out →</a>
 </div>\n`;
   }
 
   content += '<div class="tip">🎯 Want alerts for a specific city instead of the weekly overview? Just reply with your departure city and rough dates — I\'ll set it up for you!</div>\n';
+
+  // Camperdays upsell
+  const camperdaysDigestUrl = 'https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
+  content += `<hr class="divider">\n`;
+  content += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0;text-align:center">
+  <p style="font-size:14px;font-weight:600;color:#1f2937;margin:0 0 8px">🚐 Want a campervan on your own schedule?</p>
+  <p style="font-size:13px;color:#6b7280;margin:0 0 12px">Camperdays compares 30+ rental companies — from €29/day.</p>
+  <a href="${camperdaysDigestUrl}" style="display:inline-block;background:#2d6a4f;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600">Compare campervan rentals →</a>
+</div>\n`;
 
   return {
     to: email,
@@ -442,11 +549,15 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
   <div style="font-size:13px;color:#2d6a4f;margin:4px 0">🚌 Getting there: ${transportTip}</div>\n`;
 
     for (const deal of group.deals.slice(0, 2)) {
+      let dealUrl = deal.url || 'https://movacamper.com';
+      if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
+        dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
+      }
       content += `  <div class="deal" style="margin-top:8px">
     <div class="route">${deal.from} → ${deal.to}</div>
     <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
     <div class="price">${deal.price || '€1/day'}</div>
-    <a href="${deal.url}">Grab this deal →</a>
+    <a href="${dealUrl}">Grab this deal →</a>
   </div>\n`;
     }
     content += '</div>\n';

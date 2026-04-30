@@ -3,6 +3,7 @@
 // Now with welcome emails and unsubscribe
 
 import { sendEmail, buildWelcomeEmail, buildNonEUWelcomeEmail, isNonEU, verifyUnsubToken, verifyPrefsToken, getPrefsUrl } from './email.js';
+import { normalizeCitySlug } from './lib/search-core.js';
 import { logEvent } from './lib/history.js';
 
 let store = null;
@@ -189,8 +190,11 @@ export default async function handler(req, res) {
         const oldCity = sub.city;
         const oldDate = sub.date;
 
-        // Update fields
-        if (newCity !== undefined) sub.city = newCity.trim() || 'any';
+        // Update fields — normalize city alias so stored value is always a canonical slug
+        if (newCity !== undefined) {
+          const rawNewCity = newCity.trim();
+          sub.city = rawNewCity ? normalizeCitySlug(rawNewCity) : 'any';
+        }
         if (newDate !== undefined) sub.date = newDate || null;
         if (newFlex !== undefined) sub.flexibility = parseInt(newFlex) || 7;
 
@@ -268,10 +272,14 @@ export default async function handler(req, res) {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  // Normalize city to canonical English slug (e.g. "Lisboa" → "lisbon", "München" → "munich")
+  // so the cron job and deal-matching always work against a consistent value.
+  const rawCity = city ? city.trim() : '';
+  const normalizedCity = rawCity ? normalizeCitySlug(rawCity) : 'any';
   const subSource = source === 'relocamp' ? 'relocamp' : 'movacamper';
   const subscription = {
     email: normalizedEmail,
-    city: city || 'any',
+    city: normalizedCity,
     date: date || null,
     flexibility: flexibility || 7,
     created: new Date().toISOString(),

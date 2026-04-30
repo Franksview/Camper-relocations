@@ -52,6 +52,9 @@
     --rust: #c4704b;
     --rust-hover: #b5623f;
     --rust-light: #f5e6de;
+    --sunset: #e8734a;
+    --sunset-hover: #d4623b;
+    --gold: #f5b731;
     --forest: #3d6b5e;
     --forest-light: #e4f0eb;
     --sky: #4a7fa5;
@@ -397,19 +400,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
-    padding: 8px;
-    border: none;
-    background: none;
+    padding: 10px 16px;
+    border: 1px dashed var(--sand);
+    border-radius: 8px;
+    background: rgba(196, 112, 75, 0.04);
     font-family: inherit;
-    font-size: 0.78rem;
-    color: var(--stone);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--rust);
     cursor: pointer;
     margin-bottom: 4px;
+    transition: all 0.15s;
   }
 
-  .more-options-toggle:hover { color: var(--rust); }
+  .more-options-toggle:hover { background: rgba(196, 112, 75, 0.10); border-color: var(--rust); }
 
   .more-options-toggle .arrow {
     transition: transform 0.2s;
@@ -942,13 +948,23 @@
   .deal-route .arrow { color: var(--rust); margin: 0 8px; }
 
   .deal-price {
-    background: var(--rust-light);
-    color: var(--rust);
-    padding: 4px 12px;
+    background: linear-gradient(135deg, #fff8e6, #fff3d0);
+    color: #b8860b;
+    padding: 6px 14px;
     border-radius: 20px;
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 1rem;
     white-space: nowrap;
+    text-shadow: 0 0 0.5px #b8860b;
+    border: 1px solid rgba(245,183,49,0.3);
+  }
+
+  .deal-price-total {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    opacity: 0.8;
+    margin-top: 1px;
   }
 
   .deal-meta {
@@ -1024,14 +1040,90 @@
   }
 
   .btn-book-primary {
-    background: var(--rust);
+    background: var(--sunset);
     color: white;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(232,115,74,0.3);
+    letter-spacing: 0.01em;
   }
 
   .btn-book-primary:hover {
-    background: var(--rust-hover);
+    background: var(--sunset-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(232,115,74,0.4);
+  }
+
+  .btn-book-pulse {
+    animation: btn-book-pulse 1.8s ease-out 2;
+  }
+  @keyframes btn-book-pulse {
+    0%, 100% { box-shadow: 0 2px 6px rgba(232,115,74,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(232,115,74,0.2), 0 4px 12px rgba(232,115,74,0.4); }
+  }
+
+  .deal-trust {
+    width: 100%;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--forest);
+    margin-top: 6px;
+    opacity: 0.8;
+  }
+
+  .no-deals-alternatives {
+    margin: 20px 0;
+    padding: 0 4px;
+  }
+  .alt-header {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .alt-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .alt-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: white;
+    border: 1px solid var(--sand);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--ink);
+    transition: all var(--transition);
+  }
+  .alt-card:hover {
+    border-color: var(--forest);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(196, 112, 75, 0.25);
+    box-shadow: var(--shadow-md);
+  }
+  .alt-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  .alt-info {
+    flex: 1;
+  }
+  .alt-info strong {
+    display: block;
+    font-size: 0.9rem;
+  }
+  .alt-info small {
+    color: var(--warm);
+    font-size: 0.78rem;
+  }
+  .alt-arrow {
+    color: var(--forest);
+    font-size: 1.1rem;
+    font-weight: 700;
   }
 
   .btn-next-leg {
@@ -2300,7 +2392,7 @@
       <div class="form-row" style="grid-template-columns:1fr;">
         <div class="form-group">
           <label for="fromCity">From</label>
-          <input type="text" id="fromCity" placeholder="e.g. Berlin, Munich, Milan" autofocus>
+          <input type="text" id="fromCity" placeholder="Try: Munich, Barcelona, Paris..." autofocus>
         </div>
       </div>
       <div class="popular-cities">
@@ -2314,7 +2406,7 @@
       </div>
       <button class="search-btn" id="searchBtn" onclick="doSearch()">Search available deals</button>
       <button type="button" class="more-options-toggle" id="moreOptionsToggle" onclick="toggleMoreOptions()">
-        More options <span class="arrow">&#9660;</span>
+        More search options <span class="arrow">&#9660;</span>
       </button>
       <div class="more-options-body" id="moreOptionsBody">
         <div class="form-row">
@@ -3022,7 +3114,7 @@ const AFFILIATE_LINKS = {
   blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
-  camperdays: (from, to) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}`,  // Awin affiliate (same as Relocamp)
+  camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
   movacar:   (from, to) => to ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/` : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`,                // → add affiliate tracking (€12/lead)
   // ─── GAP DAY: Local experiences ───
@@ -3537,6 +3629,10 @@ function toggleMoreOptions() {
 // ─── SEARCH ───
 async function doSearch() {
   const from = document.getElementById('fromCity').value.trim();
+  // Strip Google-like query prefixes — 52 users typed "available relocations munich"
+  const fromCleaned = from
+    .replace(/^(available\s+relocations?\s*(from|in|near)?|deals?\s*(from|in|near)?|cheap\s+campervan\s*(from|in|near)?|campervan?\s+relocation\s*(from|in|near)?|relocations?\s*(from|in|near)?)\s*/i, '')
+    .trim() || from;
   const rawDate = document.getElementById('travelDate').value.trim();
   const date = parseEuDate(rawDate) || (rawDate.match(/^\d{4}-\d{2}-\d{2}$/) ? rawDate : null);
   const headingTowards = document.getElementById('headingTowards').value.trim();
@@ -3571,7 +3667,7 @@ async function doSearch() {
   btn.textContent = 'Searching providers...';
 
   // Track search event
-  if (window._mcTrack) window._mcTrack('search', { city: from || headingTowards });
+  if (window._mcTrack) window._mcTrack('search', { city: fromCleaned || headingTowards });
 
   // Hide homepage carousel so search results are immediately visible
   const featuredEl = document.getElementById('featuredSection');
@@ -3624,7 +3720,7 @@ async function doSearch() {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: from || null, to: headingTowards || null, date: date || null, flexibility: date ? flexibility : 0, headingTowards, radius: parseInt(radius) }),
+      body: JSON.stringify({ from: fromCleaned || null, to: headingTowards || null, date: date || null, flexibility: date ? flexibility : 0, headingTowards, radius: parseInt(radius) }),
     });
 
     const data = await res.json();
@@ -3900,6 +3996,12 @@ function renderContextualSubscribe(city, variant) {
   const cityDisplay = city ? displayCity(city) : '';
   const formId = 'ctxSubForm-' + Math.random().toString(36).slice(2, 8);
 
+  // Fire sub_impression so we can measure "CTA shown" vs "CTA converted"
+  // Answers: are subs down because fewer impressions, or fewer conversions?
+  if (window._mcTrack) {
+    try { window._mcTrack('sub_impression', { variant: variant || 'unknown' }); } catch(e){}
+  }
+
   let message = '';
   let extraClass = '';
 
@@ -4060,6 +4162,9 @@ function renderResults(data) {
       </div>`;
     }
 
+    const citySlug = (meta.from || meta.to || '').toLowerCase().trim();
+    const citySafe = citySlug.replace(/'/g, '');
+    const cityDisplay = cityLabel;
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">
@@ -4068,6 +4173,43 @@ function renderResults(data) {
         <h3>No camper deals from ${cityLabel} right now</h3>
         <p>Deals change daily — we check all 5 providers for you.</p>
         ${nearbyHtml}
+      </div>
+      <div class="no-deals-alternatives">
+        <div class="alt-header">Still want to travel from ${cityDisplay}? Try these:</div>
+        <div class="alt-cards">
+          <a href="${AFFILIATE_LINKS.camperdays(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'camperdays',from:'${citySafe}'})">
+            <span class="alt-icon">🚐</span>
+            <div class="alt-info">
+              <strong>Rent a campervan</strong>
+              <small>Camperdays · from €29/day</small>
+            </div>
+            <span class="alt-arrow">&rarr;</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.hostelworld(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'hostelworld',from:'${citySafe}'})">
+            <span class="alt-icon">🏨</span>
+            <div class="alt-info">
+              <strong>Book a hostel</strong>
+              <small>Hostelworld · from €15/night</small>
+            </div>
+            <span class="alt-arrow">&rarr;</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.getyourguide(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'getyourguide',from:'${citySafe}'})">
+            <span class="alt-icon">🎫</span>
+            <div class="alt-info">
+              <strong>Book activities</strong>
+              <small>GetYourGuide · tours & experiences</small>
+            </div>
+            <span class="alt-arrow">&rarr;</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.priceline(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'priceline',from:'${citySafe}'})">
+            <span class="alt-icon">🏠</span>
+            <div class="alt-info">
+              <strong>Hotels up to 60% off</strong>
+              <small>Priceline · ${cityDisplay}</small>
+            </div>
+            <span class="alt-arrow">&rarr;</span>
+          </a>
+        </div>
       </div>
       ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
@@ -4282,28 +4424,58 @@ function renderDealCard(deal, index) {
 
   const dealIdx = storeDeal(deal);
 
+  // Calculate total price and duration from date_range
+  const providerName = deal.provider || 'provider';
+  let durationDays = '';
+  let totalPrice = '';
+  if (deal.date_range && deal.date_range !== 'unknown') {
+    const parts = deal.date_range.match(/(\d{1,2})\s*\w*\s*[-–]\s*(\d{1,2})\s*(\w+)/);
+    if (parts) {
+      const dayDiff = parseInt(parts[2]) - parseInt(parts[1]);
+      if (dayDiff > 0) {
+        durationDays = `(${dayDiff} days)`;
+        // Try to extract per-night cost and calculate total
+        const priceMatch = (deal.price || '').match(/€([\d.]+)/);
+        if (priceMatch) {
+          const perNight = parseFloat(priceMatch[1]);
+          const total = (perNight * dayDiff).toFixed(0);
+          totalPrice = `<span class="deal-price-total">€${total} total</span>`;
+        }
+      }
+    }
+  }
+
+  // Build clean detail parts (skip empty values)
+  // ROLLBACK (april 20): exacte datums terug — info asymmetry werkte averechts (0 clicks in 3 dagen op 95 views)
+  const detailParts = [];
+  if (deal.date_range && deal.date_range !== 'unknown') {
+    const dateStr = durationDays ? `${deal.date_range} ${durationDays}` : deal.date_range;
+    detailParts.push(`<span class="icon">&#128197;</span> ${dateStr}`);
+  }
+  else detailParts.push(`<span class="icon">&#128197;</span> Flexible dates`);
+  detailParts.push(`<span class="icon">&#128663;</span> ${deal.vehicle || 'Campervan'}`);
+  if (deal.seats && deal.seats !== '?') detailParts.push(`<span class="icon">&#129485;</span> ${deal.seats} seats`);
+
   return `
     <div class="deal-card ${deal.direction_match ? 'direction-match' : ''}" style="animation-delay: ${index * 0.05}s">
       <div class="deal-top">
         <div class="deal-route">
           ${deal.from}<span class="arrow">&rarr;</span>${deal.to}${nearbyBadge}
         </div>
-        <div class="deal-price">${deal.price || 'See provider'}</div>
+        <div class="deal-price">${deal.price || 'See provider'}${totalPrice}</div>
       </div>
       <div class="deal-meta">
-        <span><span class="icon">&#128197;</span> ${deal.date_range && deal.date_range !== 'unknown' ? deal.date_range : 'Flexible'}</span>
-        ${deal.nights ? `<span><span class="icon">&#127769;</span> ${deal.nights}</span>` : ''}
-        <span><span class="icon">&#128663;</span> ${deal.vehicle || 'Campervan'}</span>
-        ${deal.seats ? `<span><span class="icon">&#129485;</span> ${deal.seats} seats</span>` : ''}
-        <span class="provider-badge ${providerClass}">${deal.provider || 'Provider'}</span>
+        ${detailParts.map(p => `<span>${p}</span>`).join('')}
+        <span class="provider-badge ${providerClass}">${providerName}</span>
       </div>
       <div class="deal-actions">
-        <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary" onclick="if(window._mcTrack)window._mcTrack('deal_click',{provider:'${(deal.provider||'').replace(/'/g,'')}',from:'${(deal.from||'').replace(/'/g,'')}',to:'${(deal.to||'').replace(/'/g,'')}'})">
-          View deal &#8599;
+        <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary btn-book-pulse" onclick="if(window._mcTrack)window._mcTrack('deal_click',{provider:'${(deal.provider||'').replace(/'/g,'')}',from:'${(deal.from||'').replace(/'/g,'')}',to:'${(deal.to||'').replace(/'/g,'')}'})">
+          &#x1F512; Book on ${providerName} &rarr;
         </a>
         <button class="btn-book btn-next-leg" data-deal-index="${dealIdx}">
-          ${trip.length === 0 ? '&#x1F6A9; Start trip from here' : '+ Add as leg ' + (trip.length + 1)}
+          ${trip.length === 0 ? '&#x2795; Plan this leg' : '&#x2795; Add as leg ' + (trip.length + 1)}
         </button>
+        <div class="deal-trust">&#x2705; Secure booking direct with ${providerName}</div>
       </div>
       ${!localStorage.getItem('mc-subscribed') ? `
       <div class="deal-alert-link" onclick="toggleDealAlert(${index})">🔔 Alert me for more ${deal.from} → ${deal.to} deals</div>
@@ -4510,6 +4682,7 @@ function renderTrip() {
             </div>
             <div class="gap-options" style="margin-top:4px;">
               <a href="${AFFILIATE_LINKS.priceline(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Priceline — up to 60% off</a>
+              <a href="${AFFILIATE_LINKS.camperdays(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128656; Camperdays — rent a camper</a>
               <a href="${AFFILIATE_LINKS.hostelworld(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
               <a href="${AFFILIATE_LINKS.booking(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
               <a href="${AFFILIATE_LINKS.airbnb(gapCity)}" target="_blank" rel="noopener" class="gap-option">&#128716;&#65039; Airbnb</a>
@@ -4529,6 +4702,7 @@ function renderTrip() {
               <a href="${AFFILIATE_LINKS.guruwalk(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128694; Free walking tour</a>
               <a href="${AFFILIATE_LINKS.getyourguide(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127903;&#65039; Local experiences</a>
               <a href="${AFFILIATE_LINKS.priceline(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Priceline — up to 60% off</a>
+              <a href="${AFFILIATE_LINKS.camperdays(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#128656; Camperdays — rent a camper</a>
               <a href="${AFFILIATE_LINKS.hostelworld(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127978; Hostelworld</a>
               <a href="${AFFILIATE_LINKS.booking(unknownCity)}" target="_blank" rel="noopener" class="gap-option">&#127968; Booking.com</a>
             </div>`}
