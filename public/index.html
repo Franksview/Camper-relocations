@@ -3535,7 +3535,7 @@ function browseAll() {
       container.innerHTML = html;
     })
     .catch(err => {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x26A0;&#xFE0F;</div><h3>Could not load deals</h3><p>${err.message}. Try searching a specific city instead.</p></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x26A0;&#xFE0F;</div><h3>Could not load deals</h3><p>${escapeHtml(err.message)}. Try searching a specific city instead.</p></div>`;
     });
 }
 
