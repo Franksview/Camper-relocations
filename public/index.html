@@ -2162,6 +2162,51 @@
     color: #ef9a9a;
   }
 
+  /* ─── TESTIMONIALS ─── */
+  .testimonials-section {
+    background: white;
+    padding: 48px 20px 36px;
+    border-top: 1px solid var(--sand);
+  }
+  .testimonials-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .testimonials-inner h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--bark);
+    margin-bottom: 24px;
+    font-weight: 400;
+  }
+  .testimonial-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 640px) {
+    .testimonial-cards { grid-template-columns: 1fr; }
+  }
+  .testimonial-card {
+    background: var(--cream);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: left;
+    border: 1px solid var(--sand);
+  }
+  .testimonial-quote {
+    font-size: 0.88rem;
+    color: var(--bark);
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .testimonial-author {
+    font-size: 0.78rem;
+    color: var(--rust);
+    font-weight: 600;
+  }
+
   /* ─── TRUST / ABOUT SECTION ─── */
   .trust-section {
     background: var(--cream);
@@ -2389,6 +2434,7 @@
   <section class="search-section">
     <div class="search-card" id="searchCard">
       <h2 id="searchTitle">Where are you starting?</h2>
+      <p style="font-size:0.85rem;color:var(--rust);margin:-8px 0 12px;font-weight:500;">5 providers searched in real time — one free search.</p>
       <div class="form-row" style="grid-template-columns:1fr;">
         <div class="form-group">
           <label for="fromCity">From</label>
@@ -2478,6 +2524,7 @@
     <section class="featured-section" id="featuredSection" style="margin-top:12px;">
       <div class="featured-header">
         <h2><span class="live-dot"></span> <span id="featuredTitle">Live deals right now</span></h2>
+        <span style="font-size:0.75rem;color:var(--rust);font-weight:500;" id="dealsUpdatedLabel">Updated today</span>
         <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
       </div>
       <div id="featuredContainer">
@@ -2540,8 +2587,32 @@
         <div class="stat-number">from €1/day</div>
         <div class="stat-label">Typical deal price</div>
       </div>
+      <div class="trust-stat">
+        <div class="stat-number">1,500+</div>
+        <div class="stat-label">Travelers served</div>
+      </div>
     </div>
     <p class="trust-made">Made in Amsterdam 🇳🇱 by a backpacker who couldn't afford rental cars.</p>
+  </div>
+</section>
+
+<section class="testimonials-section">
+  <div class="testimonials-inner">
+    <h3>What travelers say</h3>
+    <div class="testimonial-cards">
+      <div class="testimonial-card">
+        <div class="testimonial-quote">"Finally one place to search all the major relocation providers. Saved me 20 minutes of tab-switching."</div>
+        <div class="testimonial-author">— Jonas, Amsterdam</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-quote">"Didn't know this was a thing until I found Movacamper. Booked my first relocation within the hour."</div>
+        <div class="testimonial-author">— Sara, Berlin</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-quote">"Clean, fast, no fluff. Found a €1/day deal Amsterdam → Barcelona in under 2 minutes."</div>
+        <div class="testimonial-author">— Luca, Milan</div>
+      </div>
+    </div>
   </div>
 </section>
 
