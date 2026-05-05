@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
         // Update subscriber record
         sub.lastEmailed = now.toISOString();
         sub.emailCount = (sub.emailCount || 0) + 1;
-        if (dealFingerprints.length > 0) sub.lastSentDealIds = dealFingerprints;
+        if (dealFingerprints.length > 0) sub.lastSentDealIds = dealFingerprints.slice(0, 20);
         await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
         // Log for dashboard
         await redis.lpush(AUTO_SEND_LOG_KEY, JSON.stringify({
