@@ -271,6 +271,21 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Auto-send log endpoint ──
+  if (req.query.action === 'auto-sent-log') {
+    if (!redis) return res.status(200).json({ log: [] });
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const raw = await redis.lrange('email:auto-sent-log', 0, limit - 1);
+      const log = (raw || []).map(entry => {
+        try { return typeof entry === 'string' ? JSON.parse(entry) : entry; } catch { return null; }
+      }).filter(Boolean);
+      return res.status(200).json({ log, total: log.length });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch auto-send log' });
+    }
+  }
+
   // ── Deal click log endpoint ──
   if (req.query.action === 'deal-clicks') {
     if (!redis) return res.status(200).json({ clicks: [] });

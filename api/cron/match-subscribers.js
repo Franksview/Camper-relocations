@@ -1,7 +1,13 @@
-// Vercel Cron — Daily Subscriber Deal Matcher v2
+// Vercel Cron — Daily Subscriber Deal Matcher v3
 // Runs at 08:00 UTC daily. Matches subscribers to live deals from ALL providers.
-// Three scenarios: exact match, nearby match, no match.
-// ALL matches create DRAFTS — Frank reviews and approves in the dashboard.
+// AUTO-SENDS deal-alert and nearby-alert emails (max 2x/week, only when new deals).
+// No-match emails remain as drafts for Frank to review.
+// Auto-send log visible in dashboard via email:auto-sent-log Redis key.
+
+const AUTO_SEND = true;           // flip to false to revert to draft-only mode
+const MIN_DAYS_BETWEEN = 3.5;     // max 2 emails per week per subscriber
+const AUTO_SEND_LOG_KEY = 'email:auto-sent-log';
+const AUTO_SEND_LOG_MAX = 200;    // keep last 200 entries
 
 async function getEmailHelpers() {
   const mod = await import('../email.js');
@@ -57,11 +63,61 @@ module.exports = async function handler(req, res) {
 
   const now = new Date();
   const isMonday = now.getUTCDay() === 1;
-  const results = { drafts: 0, skipped: 0, errors: 0, details: [] };
+  const results = { sent: 0, drafts: 0, skipped: 0, errors: 0, details: [] };
+
+  // ── Auto-send helper ──
+  // Sends email directly if AUTO_SEND=true and deals are fresh.
+  // Falls back to draft if send fails. Logs all auto-sends for dashboard.
+  async function autoSendOrDraft(sub, emailData, draftPayload, dealFingerprints = []) {
+    // Freshness check: skip if all current deals were already in the last email
+    if (dealFingerprints.length > 0 && sub.lastSentDealIds && sub.lastSentDealIds.length > 0) {
+      const newDeals = dealFingerprints.filter(f => !sub.lastSentDealIds.includes(f));
+      if (newDeals.length === 0) {
+        results.skipped++;
+        results.details.push({ email: sub.email, reason: 'no new deals since last email' });
+        return 'skipped';
+      }
+    }
+
+    if (AUTO_SEND && draftPayload.type !== 'no-match' && draftPayload.type !== 'non-eu') {
+      const sendResult = await sendEmail({
+        to: sub.email,
+        subject: emailData.subject,
+        html: emailData.html,
+        fromName: draftPayload.fromName,
+      });
+
+      if (sendResult.sent) {
+        // Update subscriber record
+        sub.lastEmailed = now.toISOString();
+        sub.emailCount = (sub.emailCount || 0) + 1;
+        if (dealFingerprints.length > 0) sub.lastSentDealIds = dealFingerprints;
+        await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
+        // Log for dashboard
+        await redis.lpush(AUTO_SEND_LOG_KEY, JSON.stringify({
+          email: sub.email, city: sub.city || 'any',
+          type: draftPayload.type, deals: draftPayload.deals?.length || 0,
+          subject: emailData.subject, ts: now.toISOString(),
+        }));
+        await redis.ltrim(AUTO_SEND_LOG_KEY, 0, AUTO_SEND_LOG_MAX - 1);
+        results.sent++;
+        results.details.push({ email: sub.email, action: `auto-sent: ${draftPayload.type} (${draftPayload.deals?.length || 0} deals)` });
+        return 'sent';
+      }
+      // Send failed — fall through to draft
+    }
+
+    // Store as draft (manual review)
+    await redis.set(`draft:${sub.email}`, JSON.stringify(draftPayload));
+    await redis.sadd('email:drafts', sub.email);
+    results.drafts++;
+    results.details.push({ email: sub.email, action: `draft: ${draftPayload.type}` });
+    return 'draft';
+  }
 
   const {
     buildDealAlertEmail, buildDigestEmail, buildNonEUWelcomeEmail,
-    buildNearbyAlertEmail, buildNoMatchEmail, isNonEU,
+    buildNearbyAlertEmail, buildNoMatchEmail, isNonEU, sendEmail,
   } = await getEmailHelpers();
 
   const {
@@ -182,12 +238,11 @@ module.exports = async function handler(req, res) {
             continue;
           }
 
-          // Anti-spam: don't create draft if emailed within last 7 days
-          // BUT welcome email (emailCount===1) doesn't count — new subs are most engaged,
-          // drafts are hand-reviewed, so 7-day dead zone post-welcome was blocking matches.
+          // Anti-spam: max 2 emails per week (3.5 day minimum gap).
+          // Welcome email (emailCount===1) doesn't count toward throttle.
           if (sub.lastEmailed && (sub.emailCount || 0) > 1) {
             const daysSince = (now - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24);
-            if (daysSince < 7) {
+            if (daysSince < MIN_DAYS_BETWEEN) {
               results.skipped++;
               results.details.push({ email: sub.email, reason: `emailed ${Math.floor(daysSince)}d ago` });
               continue;
@@ -197,8 +252,7 @@ module.exports = async function handler(req, res) {
           const subSource = sub.source || 'movacamper';
           const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
 
-          // ── Non-EU subscribers ──
-          // Use normalized slug so alias cities (e.g. "Lisboa") are recognized as EU
+          // ── Non-EU subscribers ── (always draft, Frank decides)
           if (isNonEU(normalizeCitySlug(sub.city))) {
             const emailData = buildNonEUWelcomeEmail(sub);
             const draft = {
@@ -207,11 +261,8 @@ module.exports = async function handler(req, res) {
               created: now.toISOString(), status: 'draft',
               source: subSource, fromName: brandName,
             };
-            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-            await redis.sadd('email:drafts', sub.email);
+            await autoSendOrDraft(sub, emailData, draft);
             await logEvent(redis, sub.email, 'non-eu-drafted', { city: sub.city });
-            results.drafts++;
-            results.details.push({ email: sub.email, action: 'draft created (non-EU)' });
             continue;
           }
 
@@ -219,6 +270,7 @@ module.exports = async function handler(req, res) {
           const matchedDeals = matchDealsToDate(exact, sub.date, sub.flexibility);
           if (matchedDeals.length > 0) {
             const emailData = buildDealAlertEmail(sub, matchedDeals);
+            const dealFingerprints = matchedDeals.map(d => `${d.from}-${d.to}-${d.date_range}`);
             const draft = {
               to: sub.email, subject: emailData.subject, html: emailData.html,
               type: 'deal-alert', city: sub.city,
@@ -229,14 +281,13 @@ module.exports = async function handler(req, res) {
               created: now.toISOString(), status: 'draft',
               source: subSource, fromName: brandName,
             };
-            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-            await redis.sadd('email:drafts', sub.email);
-            await logEvent(redis, sub.email, 'deal-alert-drafted', {
-              city: sub.city, matchCount: matchedDeals.length,
-              providers: [...new Set(matchedDeals.map(d => d.provider || 'Imoova'))],
-            });
-            results.drafts++;
-            results.details.push({ email: sub.email, action: `draft: ${matchedDeals.length} deals from ${sub.city}` });
+            const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
+            if (outcome !== 'skipped') {
+              await logEvent(redis, sub.email, outcome === 'sent' ? 'deal-alert-sent' : 'deal-alert-drafted', {
+                city: sub.city, matchCount: matchedDeals.length,
+                providers: [...new Set(matchedDeals.map(d => d.provider || 'Imoova'))],
+              });
+            }
             continue;
           }
 
@@ -252,27 +303,28 @@ module.exports = async function handler(req, res) {
           if (nearbyWithDateMatch.length > 0) {
             const emailData = buildNearbyAlertEmail(sub, nearbyWithDateMatch);
             const totalNearby = nearbyWithDateMatch.reduce((s, g) => s + g.deals.length, 0);
+            const nearbyDeals = nearbyWithDateMatch.slice(0, 3).flatMap(g =>
+              g.deals.slice(0, 2).map(d => ({
+                from: d.from, to: d.to, price: d.price, date_range: d.date_range,
+                nearbyCity: g.city, nearbyDistance: g.distance,
+              }))
+            );
+            const dealFingerprints = nearbyDeals.map(d => `${d.from}-${d.to}-${d.date_range}`);
             const draft = {
               to: sub.email, subject: emailData.subject, html: emailData.html,
               type: 'nearby-alert', city: sub.city,
-              deals: nearbyWithDateMatch.slice(0, 3).flatMap(g =>
-                g.deals.slice(0, 2).map(d => ({
-                  from: d.from, to: d.to, price: d.price, date_range: d.date_range,
-                  nearbyCity: g.city, nearbyDistance: g.distance,
-                }))
-              ),
+              deals: nearbyDeals,
               matchCount: totalNearby,
               created: now.toISOString(), status: 'draft',
               source: subSource, fromName: brandName,
             };
-            await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-            await redis.sadd('email:drafts', sub.email);
-            await logEvent(redis, sub.email, 'nearby-alert-drafted', {
-              city: sub.city, nearbyCities: nearbyWithDateMatch.map(g => `${g.city} (${g.distance}km)`),
-              totalDeals: totalNearby,
-            });
-            results.drafts++;
-            results.details.push({ email: sub.email, action: `draft: nearby deals (${nearbyWithDateMatch.map(g => g.city).join(', ')})` });
+            const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
+            if (outcome !== 'skipped') {
+              await logEvent(redis, sub.email, outcome === 'sent' ? 'nearby-alert-sent' : 'nearby-alert-drafted', {
+                city: sub.city, nearbyCities: nearbyWithDateMatch.map(g => `${g.city} (${g.distance}km)`),
+                totalDeals: totalNearby,
+              });
+            }
             continue;
           }
 
@@ -287,6 +339,7 @@ module.exports = async function handler(req, res) {
             }
           }
 
+          // No-match stays as draft — Frank decides whether to re-engage
           const emailData = buildNoMatchEmail(sub);
           const draft = {
             to: sub.email, subject: emailData.subject, html: emailData.html,
@@ -294,11 +347,8 @@ module.exports = async function handler(req, res) {
             created: now.toISOString(), status: 'draft',
             source: subSource, fromName: brandName,
           };
-          await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-          await redis.sadd('email:drafts', sub.email);
+          await autoSendOrDraft(sub, emailData, draft);
           await logEvent(redis, sub.email, 'no-match-drafted', { city: sub.city });
-          results.drafts++;
-          results.details.push({ email: sub.email, action: 'draft: no match (watching)' });
 
         } catch (err) {
           results.errors++;
@@ -369,6 +419,7 @@ module.exports = async function handler(req, res) {
             topCity: topCity ? capitalize(topCity[0]) : null,
             topCityCount: topCity ? topCity[1] : 0,
           });
+          const dealFingerprints = uniqueDeals.slice(0, 5).map(d => `${d.from}-${d.to}-${d.date_range}`);
           const draft = {
             to: sub.email, subject: emailData.subject, html: emailData.html,
             type: 'weekly-digest', city: 'all',
@@ -379,22 +430,17 @@ module.exports = async function handler(req, res) {
             created: now.toISOString(), status: 'draft',
             source: subSource, fromName: brandName,
           };
-          await redis.set(`draft:${sub.email}`, JSON.stringify(draft));
-          await redis.sadd('email:drafts', sub.email);
-          await logEvent(redis, sub.email, 'digest-drafted', {
-            totalDeals: uniqueDeals.length,
-            intro: isFirstDigest,
-          });
+          const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
+          if (outcome !== 'skipped') {
+            await logEvent(redis, sub.email, outcome === 'sent' ? 'digest-sent' : 'digest-drafted', {
+              totalDeals: uniqueDeals.length, intro: isFirstDigest,
+            });
+          }
           // Mark digestSent so we don't re-create intro drafts every cron run
           try {
             sub.digestSent = true;
             await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
           } catch (e) { /* best-effort */ }
-          results.drafts++;
-          results.details.push({
-            email: sub.email,
-            action: isFirstDigest ? 'intro digest draft created' : 'digest draft created',
-          });
         } else {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'no deals for digest' });

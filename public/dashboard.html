@@ -399,8 +399,9 @@ async function loadDashboard(days) {
     document.getElementById('lastUpdated').textContent =
       'Updated ' + new Date(data.generated_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
     renderDashboard(data);
-    // Now DOM exists, load drafts → subscribers chain
+    // Now DOM exists, load drafts → subscribers chain + auto-send log
     await loadDrafts();
+    loadAutoSendLog();
   } catch (err) {
     content.innerHTML = `<div class="empty-state"><h2>Error</h2><p>${err.message}</p></div>`;
   }
@@ -762,6 +763,12 @@ function renderDashboard(data) {
     <div class="subs-card" id="subscribersCard">
       <h2>Subscribers <span class="badge" id="subsBadge">loading...</span></h2>
       <div id="subscribersList" style="color:#475569;font-size:0.8rem">Loading subscribers...</div>
+    </div>
+
+    <!-- Auto-send Log -->
+    <div class="sent-card" id="autoSendCard">
+      <h2>🤖 Auto-sent <span class="badge" id="autoSendBadge">0</span></h2>
+      <div id="autoSendList" style="color:#475569;font-size:0.8rem">Loading...</div>
     </div>
 
     <!-- Sent Email Log -->
@@ -1398,6 +1405,43 @@ async function loadSentLog() {
         <span class="sent-to">${entry.to}</span>
         <span class="sent-subject">${entry.subject || ''}${deals}</span>
         <span class="sent-type ${typeClass}">${entry.type || 'welcome'}</span>
+        <span class="sent-date">${date}</span>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = `<div style="color:#f87171;font-size:0.8rem">Error: ${err.message}</div>`;
+  }
+}
+
+// ─── AUTO-SEND LOG ───
+async function loadAutoSendLog() {
+  const list = document.getElementById('autoSendList');
+  const badge = document.getElementById('autoSendBadge');
+  if (!list) return;
+
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=auto-sent-log&limit=30`);
+    const data = await res.json();
+    const log = data.log || [];
+
+    badge.textContent = log.length;
+    badge.style.background = log.length > 0 ? '#10b981' : '#64748b';
+
+    if (log.length === 0) {
+      list.innerHTML = '<div style="color:#475569;font-size:0.8rem;padding:8px 0">No auto-sends yet. Will populate after first cron run with AUTO_SEND=true.</div>';
+      return;
+    }
+
+    list.innerHTML = log.map(entry => {
+      const icon = entry.type === 'deal-alert' ? '🎯' : entry.type === 'nearby-alert' ? '📍' : entry.type === 'weekly-digest' ? '📰' : '📧';
+      const date = entry.ts ? new Date(entry.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      const city = entry.city ? `<span style="color:var(--accent);font-weight:600">${entry.city}</span>` : '';
+      const deals = entry.deals > 0 ? `<span style="color:#64748b">(${entry.deals} deals)</span>` : '';
+      return `<div class="sent-item">
+        <span class="sent-icon">${icon}</span>
+        <span class="sent-to">${entry.email}</span>
+        ${city} ${deals}
+        <span class="sent-type">${entry.type || ''}</span>
         <span class="sent-date">${date}</span>
       </div>`;
     }).join('');
