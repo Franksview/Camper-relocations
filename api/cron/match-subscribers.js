@@ -231,8 +231,9 @@ module.exports = async function handler(req, res) {
       // Process each subscriber in this city group
       for (const sub of subs) {
         try {
-          // Skip if draft already exists (use pre-fetched set, fallback to Redis)
-          if (existingDrafts.has(sub.email)) {
+          // Skip if draft already exists — only in manual mode.
+          // In AUTO_SEND mode we ignore pending drafts (they're stale from old system).
+          if (!AUTO_SEND && existingDrafts.has(sub.email)) {
             results.skipped++;
             results.details.push({ email: sub.email, reason: 'draft already pending' });
             continue;
@@ -368,11 +369,14 @@ module.exports = async function handler(req, res) {
           continue;
         }
 
-        const existingDraft = await redis.get(`draft:${sub.email}`);
-        if (existingDraft) {
-          results.skipped++;
-          results.details.push({ email: sub.email, reason: 'draft already pending' });
-          continue;
+        // Only block on existing draft in manual mode
+        if (!AUTO_SEND) {
+          const existingDraft = await redis.get(`draft:${sub.email}`);
+          if (existingDraft) {
+            results.skipped++;
+            results.details.push({ email: sub.email, reason: 'draft already pending' });
+            continue;
+          }
         }
 
         // Same welcome-exception for generic/digest subs
