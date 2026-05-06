@@ -184,14 +184,16 @@ module.exports = async function handler(req, res) {
     });
 
     for (const [citySlug, subs] of sortedCityGroups) {
-      // Skip entire city group if all subscribers already have pending drafts
-      const needsDraft = subs.some(s => !existingDrafts.has(s.email));
-      if (!needsDraft) {
-        for (const sub of subs) {
-          results.skipped++;
-          results.details.push({ email: sub.email, reason: 'draft already pending' });
+      // Skip entire city group if all subscribers already have pending drafts — manual mode only
+      if (!AUTO_SEND) {
+        const needsDraft = subs.some(s => !existingDrafts.has(s.email));
+        if (!needsDraft) {
+          for (const sub of subs) {
+            results.skipped++;
+            results.details.push({ email: sub.email, reason: 'draft already pending' });
+          }
+          continue; // Does NOT count toward batch limit
         }
-        continue; // Does NOT count toward batch limit
       }
 
       // Timeout safety: max 15 city groups per cron run
