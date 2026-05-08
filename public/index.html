@@ -3187,7 +3187,17 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
-  movacar:   (from, to) => to ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/` : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`,                // → add affiliate tracking (€12/lead)
+  // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
+  // Format: https://t.adcell.com/click.php?bid=ADCELL_MOVACAR_BID&link=DESTINATION_URL
+  movacar:   (from, to) => {
+    const dest = to
+      ? `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/${encodeURIComponent(to)}/`
+      : `https://www.movacar.com/mietwagen/${encodeURIComponent(from)}/`;
+    const ADCELL_MOVACAR_BID = null; // TODO: fill in after Adcell approval
+    return ADCELL_MOVACAR_BID
+      ? `https://t.adcell.com/click.php?bid=${ADCELL_MOVACAR_BID}&link=${encodeURIComponent(dest)}`
+      : dest;
+  },
   // ─── GAP DAY: Local experiences ───
   getyourguide: (city) => `https://www.getyourguide.com/s/?q=${encodeURIComponent(city)}&et=cycling`,  // → add affiliate tracking
   guruwalk:     (city) => `https://www.guruwalk.com/walks/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}`,
