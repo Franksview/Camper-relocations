@@ -3180,6 +3180,7 @@ function getKiwiUrl(from, to) {
 
 const AFFILIATE_LINKS = {
   trainline: (from, to) => `https://www.thetrainline.com/book/results?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`,  // → add Partnerize tracking
+  europcar: (from, to) => `https://www.awin1.com/cread.php?awinmid=7629&awinaffid=1795498&ued=${encodeURIComponent('https://www.europcar.it/it-it/noleggio-auto/' + from.toLowerCase().replace(/\s+/g,'-') + '/' + to.toLowerCase().replace(/\s+/g,'-'))}`,  // Awin Europcar IT — 6% commissie
   flixbus:   (from, to) => `https://global.flixbus.com/bus-routes/bus-${from.toLowerCase().replace(/\s+/g,'-')}-${to.toLowerCase().replace(/\s+/g,'-')}`,  // → add Awin tracking
   kiwi:      (from, to) => getKiwiUrl(from, to),                    // → wrap with Travelpayouts shmarker after signup
   blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
@@ -3241,6 +3242,14 @@ function renderDestinationBridge(dealDestination, finalDestination) {
             <div class="transport-detail">One-way rental car via Movacar from ${from}</div>
           </div>
           <span class="transport-price">€1</span>
+        </a>
+        <a href="${AFFILIATE_LINKS.europcar(from, to)}" target="_blank" rel="noopener" class="bridge-option car-relocation" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'europcar',from:'${escapeHtml(from)}',to:'${escapeHtml(to)}'})">
+          <span class="transport-icon">🚗</span>
+          <div class="transport-info">
+            <div class="transport-name">Rent a car · Europcar</div>
+            <div class="transport-detail">One-way from ${from} to ${to}</div>
+          </div>
+          <span class="transport-price">Check prices</span>
         </a>
         <a href="${AFFILIATE_LINKS.trainline(from, to)}" target="_blank" rel="noopener" class="bridge-option train">
           <span class="transport-icon">&#128646;</span>
