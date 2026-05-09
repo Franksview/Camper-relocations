@@ -275,7 +275,11 @@ If no deals: []` }],
       const distA = a.nearby_distance || 0;
       const distB = b.nearby_distance || 0;
       if (distA !== distB) return distA - distB;
-      return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
+      if (a.direction_match !== b.direction_match) return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
+      // Imoova first — only provider with active affiliate tracking (commissions doubled May 2026)
+      const aImoova = (a.provider || '').toLowerCase().includes('imoova') ? 0 : 1;
+      const bImoova = (b.provider || '').toLowerCase().includes('imoova') ? 0 : 1;
+      return aImoova - bImoova;
     });
 
     // Deduplicate
