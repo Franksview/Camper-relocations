@@ -271,15 +271,17 @@ If no deals: []` }],
       }));
     }
 
+    // Imoova affiliate priority: treat Imoova deals as if they are 25km closer than other providers.
+    // Commissions doubled May 2026 — only provider with active tracking.
+    const IMOOVA_DISTANCE_BONUS = 25;
     allDeals.sort((a, b) => {
-      const distA = a.nearby_distance || 0;
-      const distB = b.nearby_distance || 0;
+      const aImoova = (a.provider || '').toLowerCase().includes('imoova');
+      const bImoova = (b.provider || '').toLowerCase().includes('imoova');
+      const distA = (a.nearby_distance || 0) - (aImoova ? IMOOVA_DISTANCE_BONUS : 0);
+      const distB = (b.nearby_distance || 0) - (bImoova ? IMOOVA_DISTANCE_BONUS : 0);
       if (distA !== distB) return distA - distB;
       if (a.direction_match !== b.direction_match) return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
-      // Imoova first — only provider with active affiliate tracking (commissions doubled May 2026)
-      const aImoova = (a.provider || '').toLowerCase().includes('imoova') ? 0 : 1;
-      const bImoova = (b.provider || '').toLowerCase().includes('imoova') ? 0 : 1;
-      return aImoova - bImoova;
+      return aImoova === bImoova ? 0 : (aImoova ? -1 : 1);
     });
 
     // Deduplicate
