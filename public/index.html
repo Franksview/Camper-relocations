@@ -2671,6 +2671,18 @@ let flexibility = 3;
 let currentDeals = [];
 let roundTripEnabled = false;
 
+// ─── SECURITY HELPERS ───
+function escapeHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function safeUrl(url) {
+  if (!url) return '#';
+  const s = String(url).trim();
+  if (/^(javascript|data|vbscript):/i.test(s)) return '#';
+  return s;
+}
+
 // Secure deal store — avoids inline JSON in onclick attributes (XSS prevention)
 const _dealStore = [];
 function storeDeal(deal) { _dealStore.push(deal); return _dealStore.length - 1; }
@@ -4660,11 +4672,11 @@ function addToTrip(deal) {
 // ─── ACCOMMODATION UPSELL (after deal results — high intent moment) ───
 function renderAccommodationUpsell(city) {
   if (!city) return '';
-  const citySafe = city.replace(/'/g, '');
-  const cityDisplay = displayCity(city);
+  const citySafe = escapeHtml(city);
+  const cityDisplay = escapeHtml(displayCity(city));
   return `
     <div class="accommodation-upsell">
-      <a href="${AFFILIATE_LINKS.hostelworld(city)}" target="_blank" rel="noopener"
+      <a href="${safeUrl(AFFILIATE_LINKS.hostelworld(city))}" target="_blank" rel="noopener"
          onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'hostelworld',from:'${citySafe}',placement:'after_results'})">
         <span class="upsell-icon">🏨</span>
         <div class="upsell-text">
