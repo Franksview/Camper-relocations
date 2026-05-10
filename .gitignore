@@ -11,3 +11,4 @@ _learning/
 .claude/
 marketing/
 nul
+.env*.local

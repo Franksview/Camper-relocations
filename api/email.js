@@ -431,14 +431,16 @@ export function buildDealAlertEmail(subscriber, deals) {
 
   enContent += `<div class="tip">⚡ These deals go fast — relocation companies fill them on a first-come basis. If something catches your eye, grab it!</div>\n`;
 
-  // Europcar promo (valid until 17 May 2026) — show as subtle transport tip
+  // Europcar promo (valid until 17 May 2026) — Awin tracked link, merchant 7629
   const promoExpiry = new Date('2026-05-17');
   if (new Date() < promoExpiry) {
     const fromCity = deals[0]?.from || cityDisplay || '';
     const toCity = deals[0]?.to || '';
+    const europcarDest = fromCity.toLowerCase().replace(/\s+/g, '-');
+    const europcarUrl = `https://www.awin1.com/cread.php?awinmid=7629&awinaffid=1795498&ued=${encodeURIComponent('https://www.europcar.it/it-it/p/offerte/noleggio-internazionale')}`;
     enContent += `<p style="font-size:12px;color:#6b7280;font-style:italic;margin:8px 0 0;text-align:center">
   🚗 <em>Need transport to ${fromCity || 'your pickup city'}${toCity ? ` or onward from ${toCity}` : ''}?
-  <a href="https://www.europcar.it/it-it/p/offerte/noleggio-internazionale" style="color:#6b7280">Europcar has 20% off international rentals until 17 May.</a></em>
+  <a href="${europcarUrl}" style="color:#6b7280">Europcar has 20% off international rentals until 17 May.</a></em>
 </p>\n`;
   }
 

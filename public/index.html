@@ -1135,6 +1135,33 @@
     font-weight: 500;
   }
 
+  /* ─── Accommodation upsell card (after deal results) ─── */
+  .accommodation-upsell {
+    margin: 20px 0 8px;
+    background: white;
+    border: 1px solid var(--sand);
+    border-left: 3px solid var(--forest);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .accommodation-upsell a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: var(--ink);
+    transition: background var(--transition);
+  }
+  .accommodation-upsell a:hover {
+    background: var(--forest-light);
+  }
+  .accommodation-upsell .upsell-icon { font-size: 1.5rem; flex-shrink: 0; }
+  .accommodation-upsell .upsell-text { flex: 1; }
+  .accommodation-upsell .upsell-text strong { display: block; font-size: 0.88rem; }
+  .accommodation-upsell .upsell-text small { color: var(--warm); font-size: 0.78rem; }
+  .accommodation-upsell .upsell-arrow { color: var(--forest); font-weight: 700; font-size: 1rem; }
+
   .btn-next-leg:hover {
     border-color: var(--forest);
     color: var(--forest);
@@ -3206,7 +3233,14 @@ const AFFILIATE_LINKS = {
   donkeyrepublic: (city) => `https://www.donkey.bike/cities/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
   // ─── GAP DAY: Accommodation ───
   priceline:    (city) => `https://www.jdoqocy.com/click-101710044-12090567?url=${encodeURIComponent('https://www.priceline.com/hotel-deals/' + city.toLowerCase().replace(/\s+/g, '-') + '-hotels')}`,
-  hostelworld:  (city) => `https://www.hostelworld.com/st/hostels/${encodeURIComponent(city.toLowerCase().replace(/\s+/g,'-'))}/`,
+  // Hostelworld: 18-22% commission. Replace HW_AFFILIATE_ID with your Impact/Hostelworld publisher ID.
+  // Affiliate URL: https://www.hostelworld.com/st/hostels/{city}/?affiliate={id}&source=affiliates
+  hostelworld:  (city) => {
+    const slug = city.toLowerCase().replace(/\s+/g, '-');
+    const HW_AFFILIATE_ID = null; // TODO: fill in after Hostelworld approval (Impact publisher ID)
+    const base = `https://www.hostelworld.com/st/hostels/${encodeURIComponent(slug)}/`;
+    return HW_AFFILIATE_ID ? `${base}?affiliate=${HW_AFFILIATE_ID}&source=affiliates` : base;
+  },
   booking:      (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,
   airbnb:       (city) => `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes`,
   // ─── GAP DAY: Explore ───
@@ -4488,6 +4522,11 @@ function renderResults(data) {
   // Show bridge block when few deals
   if (meta.from) html += renderBridgeBlock(meta.from, dateMatchedDeals.length);
 
+  // Accommodation upsell — natural fit: user just found deals, may need a place to stay the night before pickup
+  if (meta.from && dateMatchedDeals.length > 0) {
+    html += renderAccommodationUpsell(meta.from);
+  }
+
   // Contextual subscribe prompt after search results
   const subCity = meta.from || meta.to || '';
   html += renderContextualSubscribe(subCity, 'after-results');
@@ -4616,6 +4655,25 @@ function addToTrip(deal) {
     document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => doSearch(), 400);
   }
+}
+
+// ─── ACCOMMODATION UPSELL (after deal results — high intent moment) ───
+function renderAccommodationUpsell(city) {
+  if (!city) return '';
+  const citySafe = city.replace(/'/g, '');
+  const cityDisplay = displayCity(city);
+  return `
+    <div class="accommodation-upsell">
+      <a href="${AFFILIATE_LINKS.hostelworld(city)}" target="_blank" rel="noopener"
+         onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'hostelworld',from:'${citySafe}',placement:'after_results'})">
+        <span class="upsell-icon">🏨</span>
+        <div class="upsell-text">
+          <strong>Need a place to stay in ${cityDisplay}?</strong>
+          <small>Find hostels from €15/night · Hostelworld</small>
+        </div>
+        <span class="upsell-arrow">&rarr;</span>
+      </a>
+    </div>`;
 }
 
 function renderGapTransport(fromCity, toCity) {
