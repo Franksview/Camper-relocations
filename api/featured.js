@@ -65,13 +65,18 @@ async function fetchImoovaDeals(city) {
 
     const deals = [];
     let match;
+    const cleanCity = s => s
+      .replace(/^.*?relocations\s+/i, '')
+      .replace(/\s+available\s.*$/i, '')
+      .replace(/\s+\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*$/i, '')
+      .trim();
     while ((match = dealPattern.exec(text)) !== null) {
       const vehicle = match[1].trim();
       if (vehicle.length < 3) continue;
       deals.push({
         vehicle,
-        from: match[2].trim(),
-        to: match[3].trim(),
+        from: cleanCity(match[2]),
+        to: cleanCity(match[3]),
         seats: parseInt(match[4]),
         transmission: match[5],
         price: match[6] + '/day',
@@ -98,11 +103,17 @@ async function fetchImoovaDeals(city) {
       const routes = [...text.matchAll(routePattern)]
         .filter(r => !/sort|filter|map|menu|nav/i.test(r[1] + r[2]));
 
+    const cleanCity = s => s
+      .replace(/^.*?relocations\s+/i, '')
+      .replace(/\s+available\s.*$/i, '')
+      .replace(/\s+\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*$/i, '')
+      .trim();
+
       for (let i = 0; i < Math.min(routes.length, 30); i++) {
         deals.push({
           vehicle: 'Campervan',
-          from: routes[i][1].trim(),
-          to: routes[i][2].trim(),
+          from: cleanCity(routes[i][1]),
+          to: cleanCity(routes[i][2]),
           seats: 0,
           transmission: 'unknown',
           price: '€1/day',
