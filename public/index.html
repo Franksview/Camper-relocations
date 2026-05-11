@@ -4337,11 +4337,11 @@ function renderResults(data) {
             </div>
             <span class="alt-arrow">&rarr;</span>
           </a>
-          <a href="${AFFILIATE_LINKS.priceline(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'priceline',from:'${citySafe}'})">
-            <span class="alt-icon">🏠</span>
+          <a href="${AFFILIATE_LINKS.booking(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'booking',from:'${citySafe}'})">
+            <span class="alt-icon">🏨</span>
             <div class="alt-info">
-              <strong>Hotels up to 60% off</strong>
-              <small>Priceline · ${cityDisplay}</small>
+              <strong>Book a hotel</strong>
+              <small>Booking.com · ${cityDisplay}</small>
             </div>
             <span class="alt-arrow">&rarr;</span>
           </a>
@@ -4681,7 +4681,16 @@ function renderAccommodationUpsell(city) {
         <span class="upsell-icon">🏨</span>
         <div class="upsell-text">
           <strong>Need a place to stay in ${cityDisplay}?</strong>
-          <small>Find hostels from €15/night · Hostelworld</small>
+          <small>Hostels from €15/night · Hostelworld</small>
+        </div>
+        <span class="upsell-arrow">&rarr;</span>
+      </a>
+      <a href="${safeUrl(AFFILIATE_LINKS.booking(city))}" target="_blank" rel="noopener"
+         onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'booking',from:'${citySafe}',placement:'after_results'})">
+        <span class="upsell-icon">🏩</span>
+        <div class="upsell-text">
+          <strong>Prefer a hotel?</strong>
+          <small>Hotels in ${cityDisplay} · Booking.com</small>
         </div>
         <span class="upsell-arrow">&rarr;</span>
       </a>
