@@ -3226,6 +3226,7 @@ const AFFILIATE_LINKS = {
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
+  bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
   // Format: https://t.adcell.com/click.php?bid=ADCELL_MOVACAR_BID&link=DESTINATION_URL
@@ -4318,6 +4319,14 @@ function renderResults(data) {
             <div class="alt-info">
               <strong>Rent a campervan</strong>
               <small>Camperdays · from €29/day</small>
+            </div>
+            <span class="alt-arrow">&rarr;</span>
+          </a>
+          <a href="${AFFILIATE_LINKS.bestcamper(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'bestcamper',from:'${citySafe}'})">
+            <span class="alt-icon">🏕️</span>
+            <div class="alt-info">
+              <strong>Campervan rentals DE</strong>
+              <small>Bestcamper · ${cityDisplay}</small>
             </div>
             <span class="alt-arrow">&rarr;</span>
           </a>
