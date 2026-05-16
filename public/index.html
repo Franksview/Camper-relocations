@@ -3219,13 +3219,13 @@ function getKiwiUrl(from, to) {
 
 const AFFILIATE_LINKS = {
   trainline: (from, to) => `https://www.thetrainline.com/book/results?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`,  // → add Partnerize tracking
-  europcar: (from, to) => `https://www.awin1.com/cread.php?awinmid=7629&awinaffid=1795498&ued=${encodeURIComponent('https://www.europcar.it/it-it/noleggio-auto/' + from.toLowerCase().replace(/\s+/g,'-') + '/' + to.toLowerCase().replace(/\s+/g,'-'))}`,  // Awin Europcar IT — 6% commissie
+  europcar: (from, to) => `https://www.awin1.com/cread.php?awinmid=7629&awinaffid=2818714&ued=${encodeURIComponent('https://www.europcar.it/it-it/noleggio-auto/' + from.toLowerCase().replace(/\s+/g,'-') + '/' + to.toLowerCase().replace(/\s+/g,'-'))}`,  // Awin Europcar IT — 6% commissie
   flixbus:   (from, to) => `https://global.flixbus.com/bus-routes/bus-${from.toLowerCase().replace(/\s+/g,'-')}-${to.toLowerCase().replace(/\s+/g,'-')}`,  // → add Awin tracking
   kiwi:      (from, to) => getKiwiUrl(from, to),                    // → wrap with Travelpayouts shmarker after signup
   blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
-  camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
+  camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=2818714&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
   bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
   imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
