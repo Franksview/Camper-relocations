@@ -331,6 +331,42 @@ module.exports = async function handler(req, res) {
             continue;
           }
 
+          // ── Scenario 2.5: >7 days no contact → nearby-alert ignoring date preference ──
+          // If subscriber hasn't heard from us in 7+ days and nearby cities have deals
+          // (even if dates don't match), auto-send a nearby-alert as re-engagement.
+          const daysSinceLastEmail = sub.lastEmailed
+            ? (now - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24)
+            : 999;
+          const nearbyAnyDate = nearby.filter(g => g.deals.length > 0);
+
+          if (nearbyAnyDate.length > 0 && daysSinceLastEmail >= 7) {
+            const emailData = buildNearbyAlertEmail(sub, nearbyAnyDate);
+            const totalNearby = nearbyAnyDate.reduce((s, g) => s + g.deals.length, 0);
+            const nearbyDeals = nearbyAnyDate.slice(0, 3).flatMap(g =>
+              g.deals.slice(0, 2).map(d => ({
+                from: d.from, to: d.to, price: d.price, date_range: d.date_range,
+                nearbyCity: g.city, nearbyDistance: g.distance,
+              }))
+            );
+            const dealFingerprints = nearbyDeals.map(d => `${d.from}-${d.to}-${d.date_range}`);
+            const draft = {
+              to: sub.email, subject: emailData.subject, html: emailData.html,
+              type: 'nearby-alert', city: sub.city,
+              deals: nearbyDeals,
+              matchCount: totalNearby,
+              created: now.toISOString(), status: 'draft',
+              source: subSource, fromName: brandName,
+            };
+            const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
+            if (outcome !== 'skipped') {
+              await logEvent(redis, sub.email, outcome === 'sent' ? 'nearby-alert-sent' : 'nearby-alert-drafted', {
+                city: sub.city, nearbyCities: nearbyAnyDate.map(g => `${g.city} (${g.distance}km)`),
+                totalDeals: totalNearby, trigger: 're-engage-7d',
+              });
+            }
+            continue;
+          }
+
           // ── Scenario 3: No match anywhere ──
           // Throttle: max 1 no-match email per 14 days
           if (sub.lastNoMatchSent) {
