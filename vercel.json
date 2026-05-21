@@ -10,7 +10,8 @@
     { "source": "/api/cron/match-subscribers", "destination": "/api/cron/match-subscribers" }
   ],
   "crons": [
-    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" }
+    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" },
+    { "path": "/api/morning-briefing?token=mc-dash-9xK7qW3p", "schedule": "30 6 * * *" }
   ],
   "headers": [
     {
