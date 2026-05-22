@@ -10,8 +10,7 @@
     { "source": "/api/cron/match-subscribers", "destination": "/api/cron/match-subscribers" }
   ],
   "crons": [
-    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" },
-    { "path": "/api/morning-briefing", "schedule": "30 6 * * *" }
+    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" }
   ],
   "headers": [
     {
