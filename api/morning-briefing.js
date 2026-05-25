@@ -1,14 +1,14 @@
 // api/morning-briefing.js
 // Daily 8:30 AM briefing email — Movacamper + Relocamp
-// Trigger: GET /api/morning-briefing?token=<DASHBOARD_TOKEN>
+// Trigger: GET /api/morning-briefing?token=<DASH_TOKEN>
 //
 // Required env vars (all already set in your Vercel project):
 //   RESEND_API_KEY      — your Resend API key
-//   DASHBOARD_TOKEN     — auth token (required — no fallback, fails closed)
+//   DASH_TOKEN     — auth token (required — no fallback, fails closed)
 //   BRIEFING_FROM       — from address, e.g. briefing@movacamper.com (must be verified in Resend)
 //   BRIEFING_TO         — recipient, defaults to snelders.f@gmail.com
 
-const TOKEN    = process.env.DASHBOARD_TOKEN;
+const TOKEN    = process.env.DASH_TOKEN;
 const FROM     = process.env.BRIEFING_FROM   || 'Movacamper Dashboard <frank@movacamper.com>';
 const TO       = process.env.BRIEFING_TO     || 'snelders.f@gmail.com';
 const BASE     = 'https://www.movacamper.com';
