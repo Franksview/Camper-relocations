@@ -687,6 +687,36 @@ export async function fetchAllDealsForCity(city, { radiusKm = 300, timeoutMs = 5
   };
 }
 
+// Map of citySlug → distance for cities within radius (incl. the city itself at 0).
+export function cityRegionMap(city, radiusKm) {
+  const slug = normalizeCitySlug(city || '');
+  const map = new Map();
+  if (slug) map.set(slug, 0);
+  for (const n of getNearbyCities(city || '', radiusKm)) {
+    map.set(n.city, n.distance);
+  }
+  return map;
+}
+
+// "Perfect" deal = pickup OR drop-off within 50 km of sub's city AND
+// date inside sub's window with (flexibility + 2) days extra slack.
+// Perfect deals bypass throttles and the "always draft" rule.
+export function isPerfectDeal(deal, sub) {
+  if (!sub || !sub.city) return false;
+  const perfectRegion = cityRegionMap(sub.city, 50);
+  const fromSlug = normalizeCitySlug(deal.from || '');
+  const toSlug = normalizeCitySlug(deal.to || '');
+  if (!perfectRegion.has(fromSlug) && !perfectRegion.has(toSlug)) return false;
+  if (!sub.date || !deal.date_start) return true;
+  const subDate = new Date(sub.date).getTime();
+  const flexMs = ((sub.flexibility || 7) + 2) * 86400000;
+  const dealStart = new Date(deal.date_start).getTime();
+  const dealEnd = deal.date_end ? new Date(deal.date_end).getTime() : dealStart;
+  if (dealEnd < subDate - flexMs) return false;
+  if (dealStart > subDate + flexMs) return false;
+  return true;
+}
+
 // ── Match deals to subscriber date preferences ──
 export function matchDealsToDate(deals, date, flexibility) {
   if (!date) return deals; // No date filter = all deals match

@@ -1,7 +1,24 @@
-// Vercel Cron — Daily Subscriber Deal Matcher v3
+// Vercel Cron — Daily Subscriber Deal Matcher v4
 // Runs at 08:00 UTC daily. Matches subscribers to live deals from ALL providers.
-// AUTO-SENDS deal-alert and nearby-alert emails (max 2x/week, only when new deals).
-// No-match emails remain as drafts for Frank to review.
+//
+// Matching:
+//   - Pickup match: deal departs from sub's city OR nearby (within 300km).
+//   - Drop-off match: deal ENDS in sub's city OR nearby (within 300km).
+//     Uses a global pool pre-fetched from HUB_CITIES so we can spot deals from
+//     anywhere that happen to terminate in the sub's region.
+//
+// Throttling:
+//   - Normal: max 2 emails/week per sub (3.5d minimum gap). Welcome doesn't count.
+//   - PERFECT-DEAL OVERRIDE: if at least one matched deal is "perfect" — pickup OR
+//     drop-off within 50km AND date within sub's window + (flexibility + 2) days —
+//     we bypass the throttle and send ASAP. Perfect deals appear first in the email.
+//
+// No drafts:
+//   - In AUTO_SEND mode the cron never creates drafts. If we have no deals in the
+//     sub's region today, we silently skip and try again tomorrow.
+//   - Non-EU subs are handled by the same pipeline (no special-case draft). In
+//     practice they get nothing unless a perfect deal somehow matches.
+//
 // Auto-send log visible in dashboard via email:auto-sent-log Redis key.
 
 const AUTO_SEND = true;           // flip to false to revert to draft-only mode
@@ -79,7 +96,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    if (AUTO_SEND && draftPayload.type !== 'no-match' && draftPayload.type !== 'non-eu') {
+    if (AUTO_SEND) {
       const sendResult = await sendEmail({
         to: sub.email,
         subject: emailData.subject,
@@ -104,10 +121,13 @@ module.exports = async function handler(req, res) {
         results.details.push({ email: sub.email, action: `auto-sent: ${draftPayload.type} (${draftPayload.deals?.length || 0} deals)` });
         return 'sent';
       }
-      // Send failed — fall through to draft
+      // Send failed — log and skip (drafts retired; next cron retries)
+      results.errors++;
+      results.details.push({ email: sub.email, action: `send-failed: ${draftPayload.type}`, reason: sendResult.reason });
+      return 'error';
     }
 
-    // Store as draft (manual review)
+    // AUTO_SEND off (manual mode) — keep drafting so Frank can review.
     await redis.set(`draft:${sub.email}`, JSON.stringify(draftPayload));
     await redis.sadd('email:drafts', sub.email);
     results.drafts++;
@@ -116,13 +136,14 @@ module.exports = async function handler(req, res) {
   }
 
   const {
-    buildDealAlertEmail, buildDigestEmail, buildNonEUWelcomeEmail,
-    buildNearbyAlertEmail, buildNoMatchEmail, isNonEU, sendEmail,
+    buildDealAlertEmail, buildDigestEmail,
+    buildNearbyAlertEmail, sendEmail,
   } = await getEmailHelpers();
 
   const {
     normalizeCitySlug, fetchAllDealsForCity, matchDealsToDate,
     HUB_CITIES, fetchImoovaPage, parseImoovaHtml, capitalize,
+    cityRegionMap, isPerfectDeal,
   } = await getSearchCore();
 
   const { logEvent } = await getHistory();
@@ -166,6 +187,20 @@ module.exports = async function handler(req, res) {
     // ── Process city-specific subscribers (grouped by city) ──
     const dealCache = new Map(); // slug → { exact, nearby }
     let cityGroupsProcessed = 0;
+
+    // Pre-fetch HUB_CITIES once so we have a global pool to find drop-off matches
+    // (deals ENDING in a subscriber's region, not just starting there).
+    const globalDealPool = [];
+    await Promise.all(HUB_CITIES.map(async hub => {
+      try {
+        const result = await fetchAllDealsForCity(hub, { radiusKm: 0, timeoutMs: 5000 });
+        dealCache.set(hub, result);
+        for (const d of (result.exact || [])) {
+          // Tag origin so we know where each deal was fetched from (debug + dedupe)
+          globalDealPool.push({ ...d, _origin: hub });
+        }
+      } catch (e) { /* best-effort */ }
+    }));
 
     // Pre-check which subscribers already have drafts, so we can skip entire city groups
     const existingDrafts = new Set();
@@ -233,17 +268,29 @@ module.exports = async function handler(req, res) {
       // Process each subscriber in this city group
       for (const sub of subs) {
         try {
-          // Skip if draft already exists — only in manual mode.
-          // In AUTO_SEND mode we ignore pending drafts (they're stale from old system).
-          if (!AUTO_SEND && existingDrafts.has(sub.email)) {
-            results.skipped++;
-            results.details.push({ email: sub.email, reason: 'draft already pending' });
-            continue;
-          }
+          const subSource = sub.source || 'movacamper';
+          const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
 
-          // Anti-spam: max 2 emails per week (3.5 day minimum gap).
-          // Welcome email (emailCount===1) doesn't count toward throttle.
-          if (sub.lastEmailed && (sub.emailCount || 0) > 1) {
+          // Drop-off pool: deals from the global hub pool whose `to` is in sub's region
+          // (300 km radius, same as nearby pickups). Avoids double-counting deals
+          // already in `exact` (their pickup is the sub's own city).
+          const subRegion = cityRegionMap(sub.city, 300);
+          const sameCityKeys = new Set((exact || []).map(d => `${d.from}-${d.to}-${d.date_range || ''}`));
+          const dropOffDeals = globalDealPool.filter(d => {
+            const toSlug = normalizeCitySlug(d.to || '');
+            if (!subRegion.has(toSlug)) return false;
+            const key = `${d.from}-${d.to}-${d.date_range || ''}`;
+            return !sameCityKeys.has(key);
+          });
+
+          // Combined exact-region candidates (pickup in city + drop-off in region)
+          const exactCandidates = [...(exact || []), ...dropOffDeals];
+          const matchedDeals = matchDealsToDate(exactCandidates, sub.date, sub.flexibility);
+          const perfectDeals = matchedDeals.filter(d => isPerfectDeal(d, sub));
+
+          // Throttle: max 2/week (3.5d gap). Welcome (emailCount===1) doesn't count.
+          // BYPASSED if at least one perfect deal hit (perfect = within 50km + dates ±2d on flex).
+          if (perfectDeals.length === 0 && sub.lastEmailed && (sub.emailCount || 0) > 1) {
             const daysSince = (now - new Date(sub.lastEmailed)) / (1000 * 60 * 60 * 24);
             if (daysSince < MIN_DAYS_BETWEEN) {
               results.skipped++;
@@ -252,43 +299,32 @@ module.exports = async function handler(req, res) {
             }
           }
 
-          const subSource = sub.source || 'movacamper';
-          const brandName = subSource === 'relocamp' ? 'Relocamp' : 'Movacamper';
-
-          // ── Non-EU subscribers ── (always draft, Frank decides)
-          if (isNonEU(normalizeCitySlug(sub.city))) {
-            const emailData = buildNonEUWelcomeEmail(sub);
-            const draft = {
-              to: sub.email, subject: emailData.subject, html: emailData.html,
-              type: 'non-eu', city: sub.city, deals: [],
-              created: now.toISOString(), status: 'draft',
-              source: subSource, fromName: brandName,
-            };
-            await autoSendOrDraft(sub, emailData, draft);
-            await logEvent(redis, sub.email, 'non-eu-drafted', { city: sub.city });
-            continue;
-          }
-
-          // ── Scenario 1: Exact city match ──
-          const matchedDeals = matchDealsToDate(exact, sub.date, sub.flexibility);
+          // ── Scenario 1: Exact/drop-off region match ──
           if (matchedDeals.length > 0) {
-            const emailData = buildDealAlertEmail(sub, matchedDeals);
-            const dealFingerprints = matchedDeals.map(d => `${d.from}-${d.to}-${d.date_range}`);
+            // Perfect deals get top billing in the email
+            const orderedDeals = [
+              ...perfectDeals,
+              ...matchedDeals.filter(d => !perfectDeals.includes(d)),
+            ];
+            const emailData = buildDealAlertEmail(sub, orderedDeals);
+            const dealFingerprints = orderedDeals.map(d => `${d.from}-${d.to}-${d.date_range}`);
             const draft = {
               to: sub.email, subject: emailData.subject, html: emailData.html,
               type: 'deal-alert', city: sub.city,
-              deals: matchedDeals.slice(0, 5).map(d => ({
+              deals: orderedDeals.slice(0, 5).map(d => ({
                 from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'Imoova',
               })),
-              matchCount: matchedDeals.length,
+              matchCount: orderedDeals.length,
+              perfectCount: perfectDeals.length,
               created: now.toISOString(), status: 'draft',
               source: subSource, fromName: brandName,
             };
             const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
-            if (outcome !== 'skipped') {
+            if (outcome === 'sent' || outcome === 'draft') {
               await logEvent(redis, sub.email, outcome === 'sent' ? 'deal-alert-sent' : 'deal-alert-drafted', {
-                city: sub.city, matchCount: matchedDeals.length,
-                providers: [...new Set(matchedDeals.map(d => d.provider || 'Imoova'))],
+                city: sub.city, matchCount: orderedDeals.length,
+                perfectCount: perfectDeals.length,
+                providers: [...new Set(orderedDeals.map(d => d.provider || 'Imoova'))],
               });
             }
             continue;
@@ -322,7 +358,7 @@ module.exports = async function handler(req, res) {
               source: subSource, fromName: brandName,
             };
             const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
-            if (outcome !== 'skipped') {
+            if (outcome === 'sent' || outcome === 'draft') {
               await logEvent(redis, sub.email, outcome === 'sent' ? 'nearby-alert-sent' : 'nearby-alert-drafted', {
                 city: sub.city, nearbyCities: nearbyWithDateMatch.map(g => `${g.city} (${g.distance}km)`),
                 totalDeals: totalNearby,
@@ -358,7 +394,7 @@ module.exports = async function handler(req, res) {
               source: subSource, fromName: brandName,
             };
             const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
-            if (outcome !== 'skipped') {
+            if (outcome === 'sent' || outcome === 'draft') {
               await logEvent(redis, sub.email, outcome === 'sent' ? 'nearby-alert-sent' : 'nearby-alert-drafted', {
                 city: sub.city, nearbyCities: nearbyAnyDate.map(g => `${g.city} (${g.distance}km)`),
                 totalDeals: totalNearby, trigger: 're-engage-7d',
@@ -367,27 +403,11 @@ module.exports = async function handler(req, res) {
             continue;
           }
 
-          // ── Scenario 3: No match anywhere ──
-          // Throttle: max 1 no-match email per 14 days
-          if (sub.lastNoMatchSent) {
-            const daysSinceNoMatch = (now - new Date(sub.lastNoMatchSent)) / (1000 * 60 * 60 * 24);
-            if (daysSinceNoMatch < 14) {
-              results.skipped++;
-              results.details.push({ email: sub.email, reason: `no-match sent ${Math.floor(daysSinceNoMatch)}d ago` });
-              continue;
-            }
-          }
-
-          // No-match stays as draft — Frank decides whether to re-engage
-          const emailData = buildNoMatchEmail(sub);
-          const draft = {
-            to: sub.email, subject: emailData.subject, html: emailData.html,
-            type: 'no-match', city: sub.city, deals: [],
-            created: now.toISOString(), status: 'draft',
-            source: subSource, fromName: brandName,
-          };
-          await autoSendOrDraft(sub, emailData, draft);
-          await logEvent(redis, sub.email, 'no-match-drafted', { city: sub.city });
+          // ── Scenario 3: No match anywhere → silently skip (no drafts) ──
+          // System decides Y/N. If we have nothing for them today, we wait until
+          // tomorrow's cron finds something. No "we have nothing yet" emails.
+          results.skipped++;
+          results.details.push({ email: sub.email, reason: 'no deals in region today' });
 
         } catch (err) {
           results.errors++;
@@ -473,7 +493,7 @@ module.exports = async function handler(req, res) {
             source: subSource, fromName: brandName,
           };
           const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
-          if (outcome !== 'skipped') {
+          if (outcome === 'sent' || outcome === 'draft') {
             await logEvent(redis, sub.email, outcome === 'sent' ? 'digest-sent' : 'digest-drafted', {
               totalDeals: uniqueDeals.length, intro: isFirstDigest,
             });
