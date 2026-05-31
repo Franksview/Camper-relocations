@@ -363,13 +363,23 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-// Token must be in URL: /dashboard?token=xxx
+// Token from URL (?token=xxx) or remembered in localStorage. Prompts once.
 const urlToken = new URLSearchParams(window.location.search).get('token');
-if (!urlToken) {
-  document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#64748b;font-family:Inter,sans-serif"><h2>Access denied</h2></div>';
-  throw new Error('No token');
+let storedToken = null;
+try { storedToken = localStorage.getItem('movacamper_dash_token'); } catch(e) {}
+let TOKEN = urlToken || storedToken;
+if (!TOKEN) {
+  TOKEN = window.prompt('Enter dashboard token:');
+  if (!TOKEN) {
+    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#64748b;font-family:Inter,sans-serif"><h2>Access denied</h2></div>';
+    throw new Error('No token');
+  }
 }
-const TOKEN = urlToken;
+try { localStorage.setItem('movacamper_dash_token', TOKEN); } catch(e) {}
+// Clean token out of URL bar if it was pasted there
+if (urlToken) {
+  try { history.replaceState({}, '', window.location.pathname); } catch(e) {}
+}
 let currentDays = 14;
 let charts = {};
 
