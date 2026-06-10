@@ -60,10 +60,13 @@ export default async function handler(req, res) {
       imoovaPromise = Promise.all(
         citiesToFetch.map(({ city, distance }) =>
           fetchImoovaPage(city, 5000)
-            .then(({ html }) => ({
-              city, distance, html,
-              deals: html ? parseImoovaHtml(html) : [],
-            }))
+            .then(({ html }) => {
+              const all = html ? parseImoovaHtml(html) : [];
+              // 2026-06: Imoova fetch returns global EU pool; filter to origin city.
+              const citySlug = normalizeCitySlug(city);
+              const deals = all.filter(d => normalizeCitySlug(d.from || '') === citySlug);
+              return { city, distance, html, deals };
+            })
             .catch(() => ({ city, distance, html: null, deals: [] }))
         )
       );

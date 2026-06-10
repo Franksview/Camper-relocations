@@ -114,6 +114,8 @@ module.exports = async function handler(req, res) {
         await redis.lpush(AUTO_SEND_LOG_KEY, JSON.stringify({
           email: sub.email, city: sub.city || 'any',
           type: draftPayload.type, deals: draftPayload.deals?.length || 0,
+          matchCount: draftPayload.matchCount || (draftPayload.deals?.length || 0),
+          perfectCount: draftPayload.perfectCount || 0,
           subject: emailData.subject, ts: now.toISOString(),
         }));
         await redis.ltrim(AUTO_SEND_LOG_KEY, 0, AUTO_SEND_LOG_MAX - 1);

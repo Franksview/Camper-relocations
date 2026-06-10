@@ -411,10 +411,24 @@ export function getNearbyCities(city, radiusKm) {
 
 // ── Imoova Scraping ──
 
+// In-memory dedupe cache so parallel callers (e.g. HUB_CITIES loop, 4-city search)
+// hit Imoova at most once per request cycle. Short TTL (60s) since this only needs
+// to bridge a single function invocation's parallel fan-out — not persist across runs.
+const _imoovaCache = new Map(); // url → { html, expiresAt }
+
 export async function fetchImoovaPage(city, timeoutMs = 10000) {
-  const slug = normalizeCitySlug(city);
-  const url = `https://www.imoova.com/en/relocations?region=EU&departure_city=${encodeURIComponent(slug)}`;
-  console.log('Fetching Imoova:', url);
+  // 2026-06-10: Imoova rebuilt their site. Per-city URLs (?departure_city=X) now
+  // redirect to client-rendered SPA pages with no deals in HTML. The global EU page
+  // still server-renders ~50 deals. Strategy: fetch global once, filter by origin
+  // city at the caller. `city` param kept for log/debug only.
+  const url = 'https://www.imoova.com/en/relocations?region=EU';
+  const now = Date.now();
+  const cached = _imoovaCache.get(url);
+  if (cached && cached.expiresAt > now) {
+    return { html: cached.html };
+  }
+
+  console.log('Fetching Imoova (global EU):', url, 'for city:', city);
 
   try {
     const resp = await fetch(url, {
@@ -433,10 +447,11 @@ export async function fetchImoovaPage(city, timeoutMs = 10000) {
     }
 
     const html = await resp.text();
-    console.log(`Imoova ${city} HTML length:`, html.length);
+    console.log(`Imoova global HTML length:`, html.length);
+    _imoovaCache.set(url, { html, expiresAt: now + 60_000 });
     return { html };
   } catch (err) {
-    console.log(`Imoova ${city} fetch error:`, err.message);
+    console.log(`Imoova fetch error (city=${city}):`, err.message);
     return { html: null };
   }
 }
@@ -445,17 +460,20 @@ export function parseImoovaHtml(html) {
   const deals = [];
 
   const urlMap = {};
-  const urlRegex = /href="\/en\/relocations\/deal\/([^"]+)"/g;
+  // Imoova 2026-06 rebuild dropped /en/ prefix. Accept both for robustness.
+  const urlRegex = /href="\/(?:en\/)?relocations\/deal\/([^"]+)"/g;
   let um;
   while ((um = urlRegex.exec(html)) !== null) {
     const slug = um[1];
     const refMatch = slug.match(/(RLC\d+)$/);
     if (refMatch) {
-      urlMap[refMatch[1]] = 'https://www.imoova.com/en/relocations/deal/' + slug;
+      urlMap[refMatch[1]] = 'https://www.imoova.com/relocations/deal/' + slug;
     }
   }
 
-  const refs = [...html.matchAll(/reference:"(RLC\d+)",created_at:"[^"]*",name:"([^"]+)"/g)];
+  // 2026-06: Imoova inserted a `deal_slug:"..."` field between `reference` and `created_at`.
+  // Allow any field ordering between reference and name by skipping non-`}` chars.
+  const refs = [...html.matchAll(/reference:"(RLC\d+)"[^}]*?name:"([^"]+)"/g)];
   const dates = [...html.matchAll(/available_from_date:"(\d{4}-\d{2}-\d{2})",available_to_date:"(\d{4}-\d{2}-\d{2})"/g)];
   const rates = [...html.matchAll(/,hire_unit_rate:(\d+)/g)];
   const vehicles = [...html.matchAll(/seatbelts:(\d+),sleeps:[^,]*,transmission:"(\w+)"/g)];
@@ -614,13 +632,18 @@ export async function fetchAllDealsForCity(city, { radiusKm = 300, timeoutMs = 5
     ...nearby.slice(0, 3),
   ];
 
-  // Fetch Imoova in parallel for all cities
+  // Fetch Imoova in parallel for all cities. Since 2026-06 the fetch always returns
+  // the global EU pool (Imoova removed per-city SSR), so we filter each result down
+  // to deals originating in the requested city.
   const imoovaResults = await Promise.all(
     citiesToFetch.map(({ city: c, distance }) =>
       fetchImoovaPage(c, timeoutMs)
-        .then(({ html }) => ({
-          city: c, distance, deals: html ? parseImoovaHtml(html) : [],
-        }))
+        .then(({ html }) => {
+          const all = html ? parseImoovaHtml(html) : [];
+          const cSlug = normalizeCitySlug(c);
+          const deals = all.filter(d => normalizeCitySlug(d.from || '') === cSlug);
+          return { city: c, distance, deals };
+        })
         .catch(() => ({ city: c, distance, deals: [] }))
     )
   );
