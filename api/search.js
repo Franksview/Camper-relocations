@@ -341,27 +341,17 @@ If no deals: []` }],
     // Urgency/social-proof signals — best-effort, never blocks the response.
     // views_today: HGET stats:city_views:<today>:<from-slug> (populated by track.js
     // on deal_view events). Threshold 3 = avoid anti-social-proof for tiny numbers.
+    // Note: this project uses standard REDIS_URL (ioredis), not the @upstash/redis
+    // env vars — that's the only branch of getRedis() that returns a client here.
     let signals = null;
-    let _signals_debug = 'skipped:no-from-or-no-deals';
     try {
       if (from && allDeals.length > 0) {
         const redisClient = await getRedis();
-        if (!redisClient) {
-          const envFlags = [
-            'KV_URL=' + !!process.env.KV_REST_API_URL,
-            'KV_TOK=' + !!process.env.KV_REST_API_TOKEN,
-            'UP_URL=' + !!process.env.UPSTASH_REDIS_REST_URL,
-            'UP_TOK=' + !!process.env.UPSTASH_REDIS_REST_TOKEN,
-            'REDIS_URL=' + !!process.env.REDIS_URL,
-          ].join(',');
-          _signals_debug = 'no-redis-client · ' + envFlags;
-        } else {
+        if (redisClient) {
           const today = new Date().toISOString().slice(0, 10);
           const fromSlug = normalizeCitySlug(from);
-          const key = `stats:city_views:${today}`;
-          const raw = await redisClient.hget(key, fromSlug);
+          const raw = await redisClient.hget(`stats:city_views:${today}`, fromSlug);
           const viewsToday = parseInt(raw) || 0;
-          _signals_debug = `key=${key} field=${fromSlug} raw=${JSON.stringify(raw)} parsed=${viewsToday}`;
           signals = {
             views_today: viewsToday,
             primary: viewsToday >= 3 ? 'views' : null,
@@ -369,7 +359,6 @@ If no deals: []` }],
         }
       }
     } catch (e) {
-      _signals_debug = `error:${e.message}`;
       console.log('[search] signals lookup failed:', e.message);
     }
 
@@ -393,7 +382,6 @@ If no deals: []` }],
         imoovaNearbyCityDeals: nearbyDealCount,
         imoovaFallbackUsed: formattedImoovaDeals.length === 0,
         otherParsed: otherDeals.length,
-        signals: _signals_debug,
       },
     };
 
