@@ -32,6 +32,17 @@ async function getRedis() {
       return _redis;
     } catch { /* fall through */ }
   }
+  // Option 3: standard Redis URL via ioredis — matches track.js fallback chain
+  if (process.env.REDIS_URL) {
+    try {
+      const Redis = (await import('ioredis')).default;
+      _redis = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 1, connectTimeout: 3000, lazyConnect: true,
+      });
+      await _redis.connect();
+      return _redis;
+    } catch { _redis = null; /* fall through */ }
+  }
   return null;
 }
 
@@ -336,7 +347,14 @@ If no deals: []` }],
       if (from && allDeals.length > 0) {
         const redisClient = await getRedis();
         if (!redisClient) {
-          _signals_debug = 'skipped:no-redis-client';
+          const envFlags = [
+            'KV_URL=' + !!process.env.KV_REST_API_URL,
+            'KV_TOK=' + !!process.env.KV_REST_API_TOKEN,
+            'UP_URL=' + !!process.env.UPSTASH_REDIS_REST_URL,
+            'UP_TOK=' + !!process.env.UPSTASH_REDIS_REST_TOKEN,
+            'REDIS_URL=' + !!process.env.REDIS_URL,
+          ].join(',');
+          _signals_debug = 'no-redis-client · ' + envFlags;
         } else {
           const today = new Date().toISOString().slice(0, 10);
           const fromSlug = normalizeCitySlug(from);
