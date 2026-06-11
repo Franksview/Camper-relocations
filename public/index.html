@@ -880,6 +880,29 @@
     margin-bottom: 16px;
   }
 
+  /* EXP-016 urgency / social-proof banner — sits above results header */
+  .signal-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff8e6;
+    border: 1px solid #f5b731;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 0 0 12px;
+    font-size: 0.88rem;
+    color: #92400e;
+    line-height: 1.4;
+  }
+  .signal-banner .signal-icon {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+  }
+  .signal-banner strong {
+    color: #1f2937;
+    font-weight: 700;
+  }
+
   .results-header h2 {
     font-family: 'DM Serif Display', serif;
     font-size: 1.3rem;
@@ -4399,6 +4422,22 @@ function renderResults(data) {
 
   // ── Sticky subscribe bar at top of results ──
   let html = renderStickyBar(meta.from || meta.to || '');
+
+  // ── Urgency / social-proof signal (EXP-016) ──
+  // Server side picks the primary signal (currently only "views"); we render
+  // only when it's set. Hidden silently if views_today < 3 to avoid anti-
+  // social-proof for tiny numbers. Honest data only — never fake counts.
+  if (meta.signals && meta.signals.primary === 'views' && meta.signals.views_today >= 3) {
+    const n = meta.signals.views_today;
+    const noun = n === 1 ? 'traveller has' : 'travellers have';
+    const cityName = displayCity(meta.from || meta.to || 'this city');
+    html += `
+      <div class="signal-banner" role="status" aria-live="polite">
+        <span class="signal-icon">👀</span>
+        <span><strong>${n}</strong> ${noun} viewed ${cityName} deals today</span>
+      </div>
+    `;
+  }
 
   // ── Header: when searching with a direction, show direction-matched count prominently ──
   if (hasDirection) {

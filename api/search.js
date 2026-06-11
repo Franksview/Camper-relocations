@@ -12,6 +12,29 @@ import {
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+// Lazy Redis singleton for cheap stat lookups (views_today). Same pattern as
+// stats.js / broadcast.js. Best-effort: if Redis is unreachable, signals just
+// stay null and the UI hides the badge — never blocks the main search response.
+let _redis = null;
+async function getRedis() {
+  if (_redis) return _redis;
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { Redis } = await import('@upstash/redis');
+      _redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
+      return _redis;
+    } catch { /* fall through */ }
+  }
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const { Redis } = await import('@upstash/redis');
+      _redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+      return _redis;
+    } catch { /* fall through */ }
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -303,6 +326,29 @@ If no deals: []` }],
     });
 
     const nearbyDealCount = formattedImoovaDeals.filter(d => d.nearby_from).length;
+
+    // Urgency/social-proof signals — best-effort, never blocks the response.
+    // views_today: HGET stats:city_views:<today>:<from-slug> (populated by track.js
+    // on deal_view events). Threshold 3 = avoid anti-social-proof for tiny numbers.
+    let signals = null;
+    try {
+      if (from && allDeals.length > 0) {
+        const redisClient = await getRedis();
+        if (redisClient) {
+          const today = new Date().toISOString().slice(0, 10);
+          const fromSlug = normalizeCitySlug(from);
+          const raw = await redisClient.hget(`stats:city_views:${today}`, fromSlug);
+          const viewsToday = parseInt(raw) || 0;
+          signals = {
+            views_today: viewsToday,
+            primary: viewsToday >= 3 ? 'views' : null,
+          };
+        }
+      }
+    } catch (e) {
+      console.log('[search] signals lookup failed:', e.message);
+    }
+
     const result = {
       deals: allDeals,
       meta: {
@@ -314,6 +360,7 @@ If no deals: []` }],
         cached: false,
         timestamp: new Date().toISOString(),
         sources: { imoova_direct: formattedImoovaDeals.length, web_search: otherDeals.length },
+        signals,
       },
       debug: {
         imoovaFetched: true,

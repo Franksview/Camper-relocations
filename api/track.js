@@ -80,7 +80,7 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event, city, source, provider, from, to, variant } = req.body || {};
+  const { page, referrer, event, city, source, provider, from, to, variant, count } = req.body || {};
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';
@@ -131,6 +131,15 @@ export default async function handler(req, res) {
     // Track search cities for "top search cities" dashboard
     if (event === 'search' && city) {
       pipe.hincrby(`${pre}stats:cities:${date}`, city.toLowerCase().trim(), 1);
+    }
+
+    // Track deal-views per city per day → feeds urgency badges on deal cards
+    // ("👀 12 viewed Lisbon today"). Increment by reported count (deals shown
+    // in this search-results batch), capped at 20 to prevent payload abuse.
+    if (event === 'deal_view' && city) {
+      const inc = Math.max(1, Math.min(parseInt(count) || 1, 20));
+      pipe.hincrby(`${pre}stats:city_views:${date}`, city.toLowerCase().trim(), inc);
+      pipe.expire(`${pre}stats:city_views:${date}`, ttl);
     }
 
     // Store deal_click details — provider, route, timestamp (last 200 clicks)
