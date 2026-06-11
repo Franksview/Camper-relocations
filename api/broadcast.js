@@ -56,6 +56,13 @@ const CAMPAIGNS = {
     validUntil: '2026-04-30',
     build: (sub) => buildCamperdaysEmail(sub),
   },
+  'comeback-jun26': {
+    subject: 'Sorry for the silence \u2014 weekly digests resume Monday',
+    fromName: 'Frank from Movacamper',
+    validFrom: '2026-06-11',
+    validUntil: '2026-06-30',
+    build: (sub) => buildComebackEmail(sub),
+  },
 };
 
 // ─── HTML escape helper ───
@@ -63,6 +70,59 @@ function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ─── Comeback email builder (jun 2026) ───
+// Audience: subs that didn't hear from us in 30+ days because our Imoova
+// scraper silently broke on 2026-05-24 (Imoova rebuild). Honest "our fault,
+// we're back" note with a clear promise (weekly digests resume Monday) and
+// a low-pressure CTA. Camperdays partner link as soft fallback so the email
+// has something actionable beyond "sit tight".
+function buildComebackEmail(sub) {
+  const email = sub?.email || 'preview@example.com';
+  const firstName = (sub?.name || '').trim().split(' ')[0];
+  const greeting = firstName ? `Hey ${esc(firstName)}` : 'Hey there';
+  const unsubUrl = getUnsubUrl(email);
+
+  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}&clickref=${encodeURIComponent('comeback-jun26-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movacamper — we're back</title>
+</head>
+<body style="margin:0;padding:0;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;line-height:1.6;">
+<div style="max-width:560px;margin:0 auto;padding:24px 20px;">
+
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-family:Georgia,serif;font-size:1.5rem;color:#2d6a4f;font-weight:700;">Movacamper</div>
+  </div>
+
+  <h2 style="font-family:Georgia,serif;font-size:1.4rem;font-weight:400;color:#1f2937;margin:0 0 16px;">${greeting} — sorry for the silence.</h2>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">You may have noticed: no Movacamper deal updates from us for the past few weeks. That's on us, not on you.</p>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">One of our deal sources rebuilt their site at the end of May, and our scraper quietly went blind. We didn't catch it for longer than we should have. It's fixed now, and emails are flowing again.</p>
+
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 18px;margin:22px 0;">
+    <p style="font-size:14px;color:#1f2937;margin:0;line-height:1.6;">📬 <strong>What to expect from here:</strong><br>
+    Your <strong>weekly digest resumes this Monday</strong>. As soon as a relocation deal lights up near you mid-week, you'll hear about it that day — same as before.</p>
+  </div>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">If you can't wait until Monday and you're itching to plan something — <a href="${camperdaysUrl}" style="color:#2d6a4f;">our partner Camperdays</a> compares 30+ campervan rental companies across Europe. Not relocation deals, but a useful shortcut if your dates are fixed.</p>
+
+  <p style="font-size:15px;color:#374151;margin:18px 0 6px;">Thanks for sticking around,</p>
+  <p style="font-size:15px;color:#374151;margin:0 0 24px;">Frank · Movacamper</p>
+
+  <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
+    <a href="${esc(unsubUrl)}" style="font-size:12px;color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
+  </div>
+
+</div>
+</body>
+</html>`;
 }
 
 // ─── Camperdays email builder ───
@@ -221,9 +281,21 @@ export default async function handler(req, res) {
     }).filter(Boolean);
 
     // Filter out unsubscribed / opt-out
-    const eligible = subs.filter(s =>
+    let eligible = subs.filter(s =>
       s && s.email && s.status !== 'unsubscribed' && !s.unsubscribed && !s.digestOptOut
     );
+
+    // Optional: narrow to an explicit recipient list. Use for targeted catch-up
+    // broadcasts (e.g. "sorry for the silence" to subs >30d inactive).
+    // Comma-separated emails, case-insensitive, max 50 to prevent abuse.
+    if (req.query.onlyEmails) {
+      const wanted = String(req.query.onlyEmails)
+        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean).slice(0, 50);
+      if (wanted.length > 0) {
+        const wantedSet = new Set(wanted);
+        eligible = eligible.filter(s => wantedSet.has((s.email || '').toLowerCase()));
+      }
+    }
 
     // Dedupe: skip subscribers who already received this campaign in a previous run.
     // Prevents double-sends when re-firing a partial broadcast (e.g. after rate-limit failures).
