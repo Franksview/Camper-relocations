@@ -331,14 +331,19 @@ If no deals: []` }],
     // views_today: HGET stats:city_views:<today>:<from-slug> (populated by track.js
     // on deal_view events). Threshold 3 = avoid anti-social-proof for tiny numbers.
     let signals = null;
+    let _signals_debug = 'skipped:no-from-or-no-deals';
     try {
       if (from && allDeals.length > 0) {
         const redisClient = await getRedis();
-        if (redisClient) {
+        if (!redisClient) {
+          _signals_debug = 'skipped:no-redis-client';
+        } else {
           const today = new Date().toISOString().slice(0, 10);
           const fromSlug = normalizeCitySlug(from);
-          const raw = await redisClient.hget(`stats:city_views:${today}`, fromSlug);
+          const key = `stats:city_views:${today}`;
+          const raw = await redisClient.hget(key, fromSlug);
           const viewsToday = parseInt(raw) || 0;
+          _signals_debug = `key=${key} field=${fromSlug} raw=${JSON.stringify(raw)} parsed=${viewsToday}`;
           signals = {
             views_today: viewsToday,
             primary: viewsToday >= 3 ? 'views' : null,
@@ -346,6 +351,7 @@ If no deals: []` }],
         }
       }
     } catch (e) {
+      _signals_debug = `error:${e.message}`;
       console.log('[search] signals lookup failed:', e.message);
     }
 
@@ -369,6 +375,7 @@ If no deals: []` }],
         imoovaNearbyCityDeals: nearbyDealCount,
         imoovaFallbackUsed: formattedImoovaDeals.length === 0,
         otherParsed: otherDeals.length,
+        signals: _signals_debug,
       },
     };
 
