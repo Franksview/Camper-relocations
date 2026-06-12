@@ -219,33 +219,61 @@ module.exports = async function handler(req, res) {
     // (the actual reason for low send-volume) vs our own scraper/throttle bugs.
     // Best-effort: a snapshot write must never block the email-send flow below.
     try {
-      const origins = {};
-      const destinations = {};
-      const seenRefs = new Set();
+      // ── (1) cron-pool snapshot: dedupe HUB_CITIES results
+      const cronOrigins = {};
+      const cronDestinations = {};
+      const cronSeen = new Set();
       for (const d of globalDealPool) {
-        // Dedupe across HUB_CITIES nearby-radius overlap (same deal can appear
-        // for multiple hubs). Use route+date as fingerprint when no ref.
         const fp = `${(d.from||'').toLowerCase()}-${(d.to||'').toLowerCase()}-${d.date_range||''}`;
-        if (seenRefs.has(fp)) continue;
-        seenRefs.add(fp);
+        if (cronSeen.has(fp)) continue;
+        cronSeen.add(fp);
         const o = (d.from || '').toLowerCase().trim();
         const t = (d.to || '').toLowerCase().trim();
-        if (o) origins[o] = (origins[o] || 0) + 1;
-        if (t) destinations[t] = (destinations[t] || 0) + 1;
+        if (o) cronOrigins[o] = (cronOrigins[o] || 0) + 1;
+        if (t) cronDestinations[t] = (cronDestinations[t] || 0) + 1;
       }
+
+      // ── (2) global-pool snapshot: parse Imoova's full EU page once.
+      // fetchImoovaPage is cached (60s) so this hits memory, not Imoova.
+      // This catches origin cities that AREN'T in HUB_CITIES (Florence,
+      // Oslo, Nantes, …) — the honest "what does Imoova have at all" view.
+      const globalOrigins = {};
+      const globalDestinations = {};
+      let globalUnique = 0;
+      try {
+        const { html } = await fetchImoovaPage('global', 5000);
+        if (html) {
+          const all = parseImoovaHtml(html);
+          const globalSeen = new Set();
+          for (const d of all) {
+            const fp = `${(d.from||'').toLowerCase()}-${(d.to||'').toLowerCase()}-${d.date_range||''}`;
+            if (globalSeen.has(fp)) continue;
+            globalSeen.add(fp);
+            const o = (d.from || '').toLowerCase().trim();
+            const t = (d.to || '').toLowerCase().trim();
+            if (o) globalOrigins[o] = (globalOrigins[o] || 0) + 1;
+            if (t) globalDestinations[t] = (globalDestinations[t] || 0) + 1;
+          }
+          globalUnique = globalSeen.size;
+        }
+      } catch (e) {
+        console.log('[cron] global-pool snapshot failed:', e.message);
+      }
+
       const todayDate = now.toISOString().slice(0, 10);
       const snapshot = {
         date: todayDate,
         ts: now.toISOString(),
-        unique_deals: seenRefs.size,
+        // Cron view: what HUB_CITIES-filtered pool looked like (what subs were actually matched against)
+        unique_deals: cronSeen.size,
         raw_pool_size: globalDealPool.length,
-        origins,
-        destinations,
+        origins: cronOrigins,
+        destinations: cronDestinations,
+        // Global view: full Imoova EU page (catches non-HUB origins too)
+        global_unique_deals: globalUnique,
+        global_origins: globalOrigins,
+        global_destinations: globalDestinations,
       };
-      // 90-day retention is enough to spot seasonality + week-over-week trends.
-      // Use ioredis-compatible variadic EX form; the broader project (track.js,
-      // broadcast.js) all use this style. Avoid the {ex: N} options object —
-      // that's node-redis v4 syntax and silently no-ops on ioredis/upstash.
       await redis.set(`stats:imoova_pool:${todayDate}`, JSON.stringify(snapshot), 'EX', 90 * 24 * 3600);
     } catch (e) {
       console.log('[cron] inventory snapshot failed:', e.message);

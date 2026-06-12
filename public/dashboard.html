@@ -1507,23 +1507,33 @@ async function loadInventoryHistory() {
     if (card) card.style.display = 'block';
     if (badge) badge.textContent = withData.length + 'd';
 
-    // Build a compact table: date · unique deals · top-3 origins · top-3 destinations
+    // Build a compact table. Two deal counts per row:
+    //   • global = full Imoova EU page (honest "what's available at all")
+    //   • cron   = HUB_CITIES-filtered pool (what subs were actually matched against)
+    // The difference tells Frank if our HUB_CITIES list is missing trending origins.
     const rows = days.map(d => {
       if (!d.snapshot) {
-        return `<tr style="opacity:0.4"><td style="padding:4px 8px">${d.date.slice(5)}</td><td style="padding:4px 8px;color:#94a3b8">—</td><td colspan="2" style="padding:4px 8px;color:#94a3b8;font-style:italic">no snapshot</td></tr>`;
+        return `<tr style="opacity:0.4"><td style="padding:4px 8px">${d.date.slice(5)}</td><td style="padding:4px 8px;color:#94a3b8">—</td><td style="padding:4px 8px;color:#94a3b8">—</td><td colspan="2" style="padding:4px 8px;color:#94a3b8;font-style:italic">no snapshot</td></tr>`;
       }
       const s = d.snapshot;
       const fmt = (obj) => Object.entries(obj || {})
         .sort((a,b) => b[1]-a[1]).slice(0,3)
         .map(([city,n]) => `<span style="white-space:nowrap">${city} <span style="color:#f5b731">${n}</span></span>`)
         .join(' · ') || '<span style="color:#94a3b8">—</span>';
-      const sizeClass = s.unique_deals >= 30 ? '#34d399' : s.unique_deals >= 10 ? '#f5b731' : '#ef4444';
+      // Prefer global_unique_deals when available; older snapshots only had unique_deals
+      const globalCount = s.global_unique_deals ?? s.unique_deals ?? 0;
+      const cronCount = s.unique_deals ?? 0;
+      const sizeClass = globalCount >= 30 ? '#34d399' : globalCount >= 10 ? '#f5b731' : '#ef4444';
+      // Show global origins if present, falling back to cron-only origins
+      const showOrigins = s.global_origins && Object.keys(s.global_origins).length > 0 ? s.global_origins : s.origins;
+      const showDests = s.global_destinations && Object.keys(s.global_destinations).length > 0 ? s.global_destinations : s.destinations;
       return `
         <tr>
           <td style="padding:4px 8px;white-space:nowrap">${d.date.slice(5)}</td>
-          <td style="padding:4px 8px;text-align:right;font-weight:700;color:${sizeClass}">${s.unique_deals}</td>
-          <td style="padding:4px 8px;font-size:0.78rem">${fmt(s.origins)}</td>
-          <td style="padding:4px 8px;font-size:0.78rem;color:#94a3b8">→ ${fmt(s.destinations)}</td>
+          <td style="padding:4px 8px;text-align:right;font-weight:700;color:${sizeClass}">${globalCount}</td>
+          <td style="padding:4px 8px;text-align:right;color:#94a3b8;font-size:0.78rem">${cronCount}</td>
+          <td style="padding:4px 8px;font-size:0.78rem">${fmt(showOrigins)}</td>
+          <td style="padding:4px 8px;font-size:0.78rem;color:#94a3b8">→ ${fmt(showDests)}</td>
         </tr>`;
     }).join('');
     list.innerHTML = `
@@ -1532,7 +1542,8 @@ async function loadInventoryHistory() {
         <thead>
           <tr style="border-bottom:1px solid #334155;color:#94a3b8;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">
             <th style="padding:6px 8px;text-align:left">Datum</th>
-            <th style="padding:6px 8px;text-align:right">Deals</th>
+            <th style="padding:6px 8px;text-align:right" title="Imoova's volledige EU pool die dag">Pool</th>
+            <th style="padding:6px 8px;text-align:right" title="Filtered op HUB_CITIES (waar subs op gematcht zijn)">Match</th>
             <th style="padding:6px 8px;text-align:left">Top vertrekken</th>
             <th style="padding:6px 8px;text-align:left">Top aankomsten</th>
           </tr>
