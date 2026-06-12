@@ -243,9 +243,10 @@ module.exports = async function handler(req, res) {
         destinations,
       };
       // 90-day retention is enough to spot seasonality + week-over-week trends.
-      await redis.set(`stats:imoova_pool:${todayDate}`, JSON.stringify(snapshot), {
-        ex: 90 * 24 * 3600,
-      });
+      // Use ioredis-compatible variadic EX form; the broader project (track.js,
+      // broadcast.js) all use this style. Avoid the {ex: N} options object —
+      // that's node-redis v4 syntax and silently no-ops on ioredis/upstash.
+      await redis.set(`stats:imoova_pool:${todayDate}`, JSON.stringify(snapshot), 'EX', 90 * 24 * 3600);
     } catch (e) {
       console.log('[cron] inventory snapshot failed:', e.message);
     }
