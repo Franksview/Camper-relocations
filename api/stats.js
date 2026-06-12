@@ -286,6 +286,35 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Imoova inventory history endpoint ──
+  // Returns the daily snapshot written by match-subscribers cron — how thin or
+  // thick Imoova's EU pool is, with origin/destination breakdown. Shows whether
+  // the bottleneck is "upstream has nothing" vs. "we have a bug".
+  if (req.query.action === 'imoova-pool-history') {
+    if (!redis) return res.status(200).json({ days: [] });
+    try {
+      const n = Math.min(parseInt(req.query.days) || 14, 90);
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < n; i++) {
+        const d = new Date(today.getTime() - i * 86400000);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      const pipe = redis.pipeline();
+      dates.forEach(d => pipe.get(`stats:imoova_pool:${d}`));
+      const rawResults = await pipe.exec();
+      const days = dates.map((date, i) => {
+        const v = Array.isArray(rawResults[i]) ? rawResults[i][1] : rawResults[i];
+        if (!v) return { date, snapshot: null };
+        try { return { date, snapshot: typeof v === 'string' ? JSON.parse(v) : v }; }
+        catch { return { date, snapshot: null }; }
+      });
+      return res.status(200).json({ days });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch inventory history', detail: err.message });
+    }
+  }
+
   // ── Deal click log endpoint ──
   if (req.query.action === 'deal-clicks') {
     if (!redis) return res.status(200).json({ clicks: [] });

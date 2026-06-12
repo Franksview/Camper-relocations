@@ -753,6 +753,15 @@ function renderDashboard(data) {
       <div id="clickLogList" style="color:#475569;font-size:0.8rem">Loading...</div>
     </div>
 
+    <!-- Imoova Inventory History (snapshot per dag van de globale EU pool) -->
+    <div class="sent-card" id="inventoryCard" style="display:none">
+      <h2>📦 Imoova EU pool — 14 dagen <span class="badge" id="inventoryBadge">0</span></h2>
+      <div style="color:#94a3b8;font-size:0.72rem;margin-bottom:6px">
+        Pool-grootte en top-origins per dag. Toont of stille dagen door upstream-inventory komen (Imoova heeft niks) of door onze kant (scraper/throttle bugs).
+      </div>
+      <div id="inventoryList" style="color:#475569;font-size:0.8rem">Loading...</div>
+    </div>
+
     <!-- Email Drafts (needs review) -->
     <div class="drafts-card" id="draftsCard" style="display:none">
       <h2>📋 Drafts to review <span class="badge" id="draftsBadge">0</span>
@@ -1482,9 +1491,64 @@ async function triggerCron(btn) {
   }
 }
 
+// ─── IMOOVA INVENTORY HISTORY ───
+async function loadInventoryHistory() {
+  const card = document.getElementById('inventoryCard');
+  const list = document.getElementById('inventoryList');
+  const badge = document.getElementById('inventoryBadge');
+  if (!list) return;
+  try {
+    const res = await fetch(`/api/stats?token=${TOKEN}&action=imoova-pool-history&days=14`);
+    const data = await res.json();
+    const days = data.days || [];
+    // Only show card if at least one day has data (cron hasn't run yet on fresh install otherwise)
+    const withData = days.filter(d => d.snapshot);
+    if (withData.length === 0) { if (card) card.style.display = 'none'; return; }
+    if (card) card.style.display = 'block';
+    if (badge) badge.textContent = withData.length + 'd';
+
+    // Build a compact table: date · unique deals · top-3 origins · top-3 destinations
+    const rows = days.map(d => {
+      if (!d.snapshot) {
+        return `<tr style="opacity:0.4"><td style="padding:4px 8px">${d.date.slice(5)}</td><td style="padding:4px 8px;color:#94a3b8">—</td><td colspan="2" style="padding:4px 8px;color:#94a3b8;font-style:italic">no snapshot</td></tr>`;
+      }
+      const s = d.snapshot;
+      const fmt = (obj) => Object.entries(obj || {})
+        .sort((a,b) => b[1]-a[1]).slice(0,3)
+        .map(([city,n]) => `<span style="white-space:nowrap">${city} <span style="color:#f5b731">${n}</span></span>`)
+        .join(' · ') || '<span style="color:#94a3b8">—</span>';
+      const sizeClass = s.unique_deals >= 30 ? '#34d399' : s.unique_deals >= 10 ? '#f5b731' : '#ef4444';
+      return `
+        <tr>
+          <td style="padding:4px 8px;white-space:nowrap">${d.date.slice(5)}</td>
+          <td style="padding:4px 8px;text-align:right;font-weight:700;color:${sizeClass}">${s.unique_deals}</td>
+          <td style="padding:4px 8px;font-size:0.78rem">${fmt(s.origins)}</td>
+          <td style="padding:4px 8px;font-size:0.78rem;color:#94a3b8">→ ${fmt(s.destinations)}</td>
+        </tr>`;
+    }).join('');
+    list.innerHTML = `
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <thead>
+          <tr style="border-bottom:1px solid #334155;color:#94a3b8;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">
+            <th style="padding:6px 8px;text-align:left">Datum</th>
+            <th style="padding:6px 8px;text-align:right">Deals</th>
+            <th style="padding:6px 8px;text-align:left">Top vertrekken</th>
+            <th style="padding:6px 8px;text-align:left">Top aankomsten</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+  } catch (err) {
+    if (list) list.innerHTML = '<span style="color:#ef4444">Failed to load inventory history</span>';
+  }
+}
+
 // Load all sections (loadDrafts is called inside loadDashboard after DOM renders)
 loadSentLog();
 loadClickLog();
+loadInventoryHistory();
 loadDashboard(currentDays);
 </script>
 </body>

@@ -214,6 +214,42 @@ module.exports = async function handler(req, res) {
       } catch (e) { /* best-effort */ }
     }));
 
+    // Inventory snapshot — daily record of what Imoova's EU pool looked like
+    // when this cron ran. Lets the dashboard show if upstream inventory is thin
+    // (the actual reason for low send-volume) vs our own scraper/throttle bugs.
+    // Best-effort: a snapshot write must never block the email-send flow below.
+    try {
+      const origins = {};
+      const destinations = {};
+      const seenRefs = new Set();
+      for (const d of globalDealPool) {
+        // Dedupe across HUB_CITIES nearby-radius overlap (same deal can appear
+        // for multiple hubs). Use route+date as fingerprint when no ref.
+        const fp = `${(d.from||'').toLowerCase()}-${(d.to||'').toLowerCase()}-${d.date_range||''}`;
+        if (seenRefs.has(fp)) continue;
+        seenRefs.add(fp);
+        const o = (d.from || '').toLowerCase().trim();
+        const t = (d.to || '').toLowerCase().trim();
+        if (o) origins[o] = (origins[o] || 0) + 1;
+        if (t) destinations[t] = (destinations[t] || 0) + 1;
+      }
+      const todayDate = now.toISOString().slice(0, 10);
+      const snapshot = {
+        date: todayDate,
+        ts: now.toISOString(),
+        unique_deals: seenRefs.size,
+        raw_pool_size: globalDealPool.length,
+        origins,
+        destinations,
+      };
+      // 90-day retention is enough to spot seasonality + week-over-week trends.
+      await redis.set(`stats:imoova_pool:${todayDate}`, JSON.stringify(snapshot), {
+        ex: 90 * 24 * 3600,
+      });
+    } catch (e) {
+      console.log('[cron] inventory snapshot failed:', e.message);
+    }
+
     // Pre-check which subscribers already have drafts, so we can skip entire city groups
     const existingDrafts = new Set();
     try {
