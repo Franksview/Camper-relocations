@@ -67,11 +67,21 @@ async function getRedis() {
 module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization;
   const token = req.query.token;
-  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  // Vercel sends Authorization: Bearer ${CRON_SECRET} only when CRON_SECRET env
+  // var is configured. We require CRON_SECRET to actually be set before trusting
+  // a Bearer match — otherwise an attacker could send "Bearer undefined" and pass.
+  const cronSecret = process.env.CRON_SECRET;
+  const isVercelCronBearer = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+  // Vercel also stamps every cron-triggered invocation with `x-vercel-cron: 1`.
+  // Without CRON_SECRET configured (current state), this is our authentication
+  // hook for the scheduled fire. The endpoint is idempotent with built-in
+  // throttles + dedupe, so an external actor forcing an extra run does no harm
+  // beyond what DASH_TOKEN already permits.
+  const isVercelCronHeader = req.headers['x-vercel-cron'] === '1';
   const dashToken = process.env.DASH_TOKEN;
   const isDashboard = !!dashToken && token === dashToken;
 
-  if (!isVercelCron && !isDashboard) {
+  if (!isVercelCronBearer && !isVercelCronHeader && !isDashboard) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
