@@ -3277,19 +3277,48 @@ const AFFILIATE_LINKS = {
     const base = `https://www.hostelworld.com/st/hostels/${encodeURIComponent(slug)}/`;
     return HW_AFFILIATE_ID ? `${base}?affiliate=${HW_AFFILIATE_ID}&source=affiliates` : base;
   },
-  // Booking.com via CJ — approved 12 jun 2026 (FranksView publisher 7905868).
-  // Commissions: 4% stays · €2/flight · 6% car rentals · 4% attractions.
-  // CJ deeplink pattern (same as Priceline above): website-id + advertiser-id.
-  // Frank: pull Booking.com's advertiser ID once from CJ → Advertisers →
-  // Booking.com → Get Link, paste below. While empty, falls back to bare URL
-  // (deal still works, just 0% commission — no broken UX).
-  booking:      (city) => {
+  // Booking.com via CJ — approved 12 jun 2026 (FranksView publisher).
+  // 6 regional programs approved, each with own advertiser ID. We pick the
+  // matching regional program based on the searched city and fall back to
+  // Private EMEA (4347392) as catch-all for everything else (UK/FR/BENELUX
+  // applications were declined but Private EMEA covers those countries too).
+  // Commission rates: 4% completed stays across all programs.
+  booking: (city) => {
     const slug = encodeURIComponent(city);
-    const BOOKING_CJ_ADVERTISER_ID = ''; // TODO Frank: paste numeric advertiser ID from CJ Get Link output
+    const c = (city || '').toLowerCase().trim();
+    // Region → advertiser ID mapping (CJ Advertisers screen, juni 13 2026)
+    const REGIONS = {
+      dach:  '4297289',  // Booking.com DACH (DE/AT/CH)
+      es:    '4347393',  // Booking.com ES
+      it:    '4347401',  // Booking.com IT
+      nor:   '5095558',  // Booking.com Nordics
+      cee:   '5096493',  // Booking.com Central & Eastern Europe
+      emea:  '4347392',  // Booking.com Private EMEA — catch-all
+    };
+    const CITY_TO_REGION = {
+      // DACH
+      munich:'dach', berlin:'dach', hamburg:'dach', frankfurt:'dach', dusseldorf:'dach',
+      cologne:'dach', stuttgart:'dach', leipzig:'dach', dresden:'dach', nuremberg:'dach',
+      bremen:'dach', hannover:'dach', vienna:'dach', salzburg:'dach', innsbruck:'dach',
+      graz:'dach', zurich:'dach', geneva:'dach', bern:'dach', basel:'dach', lucerne:'dach',
+      // ES
+      madrid:'es', barcelona:'es', valencia:'es', seville:'es', malaga:'es', bilbao:'es',
+      alicante:'es', granada:'es', palma:'es', zaragoza:'es', cordoba:'es', murcia:'es',
+      // IT
+      rome:'it', milan:'it', florence:'it', venice:'it', naples:'it', turin:'it',
+      bologna:'it', palermo:'it', verona:'it', genoa:'it', bari:'it', catania:'it', pisa:'it',
+      // Nordics
+      copenhagen:'nor', stockholm:'nor', oslo:'nor', helsinki:'nor', gothenburg:'nor',
+      malmo:'nor', tromso:'nor', bergen:'nor', reykjavik:'nor', aarhus:'nor', trondheim:'nor',
+      // Central & Eastern Europe
+      prague:'cee', warsaw:'cee', budapest:'cee', krakow:'cee', bucharest:'cee', sofia:'cee',
+      ljubljana:'cee', bratislava:'cee', riga:'cee', tallinn:'cee', vilnius:'cee',
+      zagreb:'cee', belgrade:'cee', dubrovnik:'cee', split:'cee', wroclaw:'cee', gdansk:'cee',
+    };
+    const regionKey = CITY_TO_REGION[c] || 'emea';
+    const advertiserId = REGIONS[regionKey];
     const dest = `https://www.booking.com/searchresults.html?ss=${slug}`;
-    return BOOKING_CJ_ADVERTISER_ID
-      ? `https://www.jdoqocy.com/click-101710044-${BOOKING_CJ_ADVERTISER_ID}?url=${encodeURIComponent(dest)}`
-      : dest;
+    return `https://www.jdoqocy.com/click-101710044-${advertiserId}?url=${encodeURIComponent(dest)}`;
   },
   airbnb:       (city) => `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes`,
   // ─── GAP DAY: Explore ───
