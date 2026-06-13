@@ -3277,7 +3277,20 @@ const AFFILIATE_LINKS = {
     const base = `https://www.hostelworld.com/st/hostels/${encodeURIComponent(slug)}/`;
     return HW_AFFILIATE_ID ? `${base}?affiliate=${HW_AFFILIATE_ID}&source=affiliates` : base;
   },
-  booking:      (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,
+  // Booking.com via CJ — approved 12 jun 2026 (FranksView publisher 7905868).
+  // Commissions: 4% stays · €2/flight · 6% car rentals · 4% attractions.
+  // CJ deeplink pattern (same as Priceline above): website-id + advertiser-id.
+  // Frank: pull Booking.com's advertiser ID once from CJ → Advertisers →
+  // Booking.com → Get Link, paste below. While empty, falls back to bare URL
+  // (deal still works, just 0% commission — no broken UX).
+  booking:      (city) => {
+    const slug = encodeURIComponent(city);
+    const BOOKING_CJ_ADVERTISER_ID = ''; // TODO Frank: paste numeric advertiser ID from CJ Get Link output
+    const dest = `https://www.booking.com/searchresults.html?ss=${slug}`;
+    return BOOKING_CJ_ADVERTISER_ID
+      ? `https://www.jdoqocy.com/click-101710044-${BOOKING_CJ_ADVERTISER_ID}?url=${encodeURIComponent(dest)}`
+      : dest;
+  },
   airbnb:       (city) => `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes`,
   // ─── GAP DAY: Explore ───
   googlemaps:   (city) => `https://www.google.com/maps/search/things+to+do+in+${encodeURIComponent(city)}/`,
