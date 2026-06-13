@@ -20,10 +20,15 @@ export default async function handler(req, res) {
 
   try {
     // ── 1. Fetch all data in parallel ────────────────────────────────────────
-    const [statsRes, subsRes, logRes] = await Promise.all([
+    // Inventory snapshot tells us whether the cron actually fired, independent
+    // of whether any emails were sent. "0 sent" can happen for legitimate
+    // reasons (thin Imoova pool, all subs throttled) — we shouldn't alert in
+    // those cases. The snapshot is the honest "did cron run yesterday" signal.
+    const [statsRes, subsRes, logRes, invRes] = await Promise.all([
       fetch(`${BASE}/api/stats?token=${TOKEN}&days=60`),
       fetch(`${BASE}/api/stats?token=${TOKEN}&action=subscribers`),
       fetch(`${BASE}/api/stats?token=${TOKEN}&action=auto-sent-log&limit=200`),
+      fetch(`${BASE}/api/stats?token=${TOKEN}&action=imoova-pool-history&days=2`),
     ]);
 
     if (!statsRes.ok || !subsRes.ok || !logRes.ok) {
@@ -89,7 +94,19 @@ export default async function handler(req, res) {
 
     const sentToday     = allLogs.filter(e => e.ts?.startsWith(todayStr)).length;
     const sentYesterday = allLogs.filter(e => e.ts?.startsWith(yesterdayStr)).length;
-    const cronRanYesterday = sentYesterday > 0;
+
+    // Did the cron actually run yesterday? Best signal = inventory snapshot
+    // existence (cron writes one every run, even when 0 emails go out).
+    // Fall back to "emails sent" as a weak positive signal.
+    let yesterdayInventory = null;
+    try {
+      if (invRes && invRes.ok) {
+        const invData = await invRes.json();
+        const ydEntry = (invData.days || []).find(d => d.date === yesterdayStr);
+        yesterdayInventory = ydEntry?.snapshot || null;
+      }
+    } catch { /* best-effort */ }
+    const cronRanYesterday = !!yesterdayInventory || sentYesterday > 0;
 
     // ── 4. Rotating marketing tip (based on day of week) ────────────────────
     const tips = [
@@ -161,9 +178,19 @@ export default async function handler(req, res) {
         </tr>`;
     }
 
-    const cronBadge = cronRanYesterday
-      ? `<span style="color:#4ade80;font-weight:700">✓ Ran yesterday (${sentYesterday} emails)</span>`
-      : `<span style="color:#fbbf24;font-weight:700">⚠ No emails logged yesterday — check cron</span>`;
+    // Three states: (a) snapshot exists → cron healthy, show pool size for context
+    // (b) no snapshot but emails went out → legacy fallback, still healthy
+    // (c) no snapshot AND no emails → real problem, alert
+    const cronBadge = (() => {
+      if (yesterdayInventory) {
+        const pool = yesterdayInventory.global_unique_deals ?? yesterdayInventory.unique_deals ?? 0;
+        return `<span style="color:#4ade80;font-weight:700">✓ Ran yesterday · ${sentYesterday} emails sent · ${pool} deals in Imoova pool</span>`;
+      }
+      if (sentYesterday > 0) {
+        return `<span style="color:#4ade80;font-weight:700">✓ Ran yesterday (${sentYesterday} emails)</span>`;
+      }
+      return `<span style="color:#fbbf24;font-weight:700">⚠ No cron activity yesterday — check Vercel cron</span>`;
+    })();
 
     const html = `<!DOCTYPE html>
 <html lang="nl">
