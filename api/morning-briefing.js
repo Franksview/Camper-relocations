@@ -108,35 +108,72 @@ export default async function handler(req, res) {
     } catch { /* best-effort */ }
     const cronRanYesterday = !!yesterdayInventory || sentYesterday > 0;
 
-    // ── 4. Rotating marketing tip (based on day of week) ────────────────────
+    // ── 4. Rotating marketing tip — 5-section proposal format ──────────────
+    // Each tip is a complete worked-out proposal, not a one-liner. Sections:
+    //   what / how / hypothesis / risk / effort. Frank approves with ja/nee.
     const tips = [
       {
-        emoji: '📋', title: 'Review your pending drafts',
-        body: `You have ${subscribersTotal} active subscribers and a backlog of pending draft emails. Approving them takes 10 minutes and is your single highest-leverage action this week — each approved draft is a potential affiliate click.`,
+        // Sunday
+        emoji: '📊', title: 'Weekly inventory review: prune dead HUB_CITIES',
+        what: `Audit which HUB_CITIES actually saw deals in the last 7 days of inventory snapshots, and decide whether to swap inactive ones for current-trending origins (Florence, Stuttgart, Düsseldorf).`,
+        how: `Read \`stats:imoova_pool\` for last 7 days, list origins per day, mark any HUB_CITY with 0 appearances. Edit HUB_CITIES in api/lib/search-core.js + add multilingual aliases in email.js. Update Relocamp city pages to match (already done for Florence/Stuttgart/Düsseldorf).`,
+        hypothesis: `Cron pre-fetches 10 cities daily. Replacing dead hubs with trending ones raises cron-pool from 4-6 → 10-15 deals on the same daily fetch budget.`,
+        risk: `Removing a hub kills future matches for subs in that city. Mitigation: keep all sub-cities (Amsterdam, Lisbon, Valencia, London, Paris, Munich, Berlin) regardless of inventory — only swap unused legacy hubs.`,
+        effort: `30 min code + 30 min verify.`,
       },
       {
-        emoji: '🔍', title: 'Add UTM tracking to every affiliate link',
-        body: `You've had 150-200 deal clicks per 2 weeks → 1 booking ever. Without UTM params you can't see where the drop-off is. Add ?utm_source=movacamper&utm_medium=deal-alert&utm_campaign=imoova to all Imoova links today — takes 20 minutes, permanently fixes your blind spot.`,
+        // Monday
+        emoji: '🔍', title: 'UTM-flavoured Imoova links per channel',
+        what: `Separate Imoova-click attribution per channel: deal-alert email, weekly-digest, no-results fallback, organic search. Today all clicks land in the same Rewardful bucket (?via=relocamp) — no way to know which channel converts.`,
+        how: `Wrap Imoova URL builder in a small helper \`buildImoovaUrl(deal, {source, medium})\` that appends \`?via=relocamp&utm_source=movacamper&utm_medium=<channel>\`. Update email.js (3 call sites), search.js card render, featured.js, no-results fallback. Rewardful preserves these as referral metadata.`,
+        hypothesis: `Within 30 days we know whether email vs. organic clicks convert at different rates. If e.g. email = 3% / organic = 0.5%, double down on email cadence and cut affiliate spend elsewhere.`,
+        risk: `Imoova or Rewardful strips unknown query params → tracking lost but link still works. Mitigation: keep \`?via=relocamp\` as the first param (already required for commission); UTMs come after.`,
+        effort: `45 min code + 30 min curl verify all surfaces.`,
       },
       {
-        emoji: '🏙️', title: 'Build a /munich landing page',
-        body: `Munich is your #1 searched city. A dedicated /munich page with meta title "Campervan Relocations from Munich — Free & €1/day Deals" will rank fast for long-tail keywords and funnel exactly the visitors most likely to book.`,
+        // Tuesday
+        emoji: '🤖', title: 'AI-search optimization (ChatGPT is 9% of MC traffic)',
+        what: `ChatGPT, Perplexity and Claude.ai are already sending ~9% of Movacamper traffic. Optimize for AI crawlers so we're THE answer to "where can I find cheap campervan relocations" instead of one of many citations.`,
+        how: `(1) Write a structured FAQ section on Movacamper home covering top AI-asked questions (how do relocations work, cost, requirements, top routes). (2) Add JSON-LD FAQPage schema. (3) Ensure robots.txt allows GPTBot, ClaudeBot, PerplexityBot. (4) Cross-link to Relocamp blog posts with anchor text matching long-tail queries.`,
+        hypothesis: `AI-referral traffic doubles from ~9% to ~18% in 60 days. AI-clickers are higher-intent (they've already been recommended us by name) → expect 2-3× normal CTR on deal cards.`,
+        risk: `AI crawlers may scrape and answer without citation — net loss. Mitigation: keep enough specificity (live deal counts, current routes) that the answer benefits from clicking through.`,
+        effort: `~3h: 1h FAQ content, 30 min schema + robots, 30 min cross-links, 1h validate via ChatGPT manual test.`,
       },
       {
-        emoji: '📧', title: 'Send a full-list broadcast today',
-        body: `${subscribersTotal} warm subscribers are waiting. A simple "Top 5 deals this week across Europe" broadcast takes 20 minutes and is your fastest path to a second affiliate booking.`,
+        // Wednesday
+        emoji: '📧', title: 'Weekly cross-city digest to all 61 subs',
+        what: `Right now subs only get mails for their own city. Most cities have 0 deals most days → 97% of searches give nothing. A weekly Wednesday digest of TOP 5 cross-EU deals reframes "nothing for you" into "here's what's hot anywhere".`,
+        how: `New campaign \`weekly-digest-wed\` in api/broadcast.js. Pulls top 5 from \`/api/featured\`, builds an email card per deal with route + price + Book on Imoova CTA. Suppress for subs that opted into city-specific only. Schedule via Cowork task or Vercel cron.`,
+        hypothesis: `+30 extra Imoova clicks per week from 50 engaged subs at ~5% click rate. At 1% Rewardful conversion = ~1 extra booking/month = +$40 AUD/month.`,
+        risk: `Unsubscribe rate ↑ if subs find weekly mails too noisy. Mitigation: clear opt-out in footer + soft language ("ignore if not relevant").`,
+        effort: `~1.5h: campaign template + scheduling. Reuses comeback-jun26 plumbing.`,
       },
       {
-        emoji: '⚡', title: 'Add urgency signals to deal cards',
-        body: `Your funnel: visitors → deal clicks (33%) → ~0 bookings. Add "X people viewed this deal today" or a countdown near your Imoova links. Urgency + social proof increases affiliate click-through by 20–40% with zero new traffic needed.`,
+        // Thursday
+        emoji: '⏰', title: 'Per-deal expiry countdown on deal cards',
+        what: `Every Imoova deal has an \`available_to_date\`. Render a real countdown badge per card: "🔥 Expires in 2 days" (red), "Expires this week" (amber), "X days left" (subtle). Real urgency, no fake countdowns.`,
+        how: `Calculate \`days_remaining = available_to_date - today\` in search.js (already in the deal object). Add to deal payload. In public/index.html renderDealCard: small badge above price block. Sort deals so most-urgent come first.`,
+        hypothesis: `Per-deal urgency lifts CTR on result pages from ~5/page baseline to ~7/page. Most-urgent-first sort also drives bookings to the deals that genuinely need a driver fast = higher Imoova conversion.`,
+        risk: `Sorting by urgency demotes flexible deals which may be better matches for some users. Mitigation: keep secondary sort by perfectness (date+location match).`,
+        effort: `45 min code + 30 min CSS tuning + verify.`,
       },
       {
-        emoji: '🌱', title: 'Cross-link Relocamp from Movacamper',
-        body: `Relocamp is running at ~20% of Movacamper's traffic. Add 3–5 contextual internal links from your highest-traffic Movacamper pages to Relocamp. Free SEO equity that compounds over months.`,
+        // Friday
+        emoji: '🌱', title: 'Cross-link Relocamp from Movacamper SEO pages',
+        what: `Relocamp does ~20% of Movacamper traffic. Each Movacamper city result page should link to its Relocamp counterpart ("plan a full trip from Berlin →") and vice versa. Free SEO juice for both domains.`,
+        how: `In public/index.html search-results render, when there's a Relocamp \`/deals/<city>\` page (current set: Munich, Berlin, Amsterdam, Milan, Paris, Barcelona, Florence, Düsseldorf, Stuttgart), add a soft callout below the deal list: "Plan a multi-leg trip from <City> on Relocamp →". Same direction back from Relocamp city pages.`,
+        hypothesis: `Movacamper → Relocamp click-through ~5% on city pages. Boosts Relocamp organic visibility (more user-time, more shares, more backlinks).`,
+        risk: `Sends traffic AWAY from Movacamper without immediate Imoova click. Mitigation: only show callout AFTER user has seen 3+ deals (i.e. didn't click any yet) — captures the "this isn't for me" segment.`,
+        effort: `~45 min: lookup table of existing Relocamp city pages + conditional render.`,
       },
       {
-        emoji: '📩', title: 'Add an exit-intent subscribe prompt',
-        body: `Only 2% of deal-clickers subscribe. An exit-intent modal — "Get notified when this deal returns 🔔" — catches warm visitors leaving without converting. Conservative estimate: +30–50% subscriber growth rate.`,
+        // Saturday
+        emoji: '📩', title: 'Exit-intent / scroll-up subscribe modal',
+        what: `Modal triggered on desktop exit-intent (mouse leaves viewport top) and mobile scroll-up (user scrolled past content, then up — strong leave intent). Headline pre-filled with city they searched: "Don't see what you need? Get notified when <City> deals appear."`,
+        how: `Desktop: mouseout y<5. Mobile: scroll-up >100px after scrolled ≥80% AND ≥5s engagement. Suppression: localStorage 7-day cooldown, 14d after dismiss, never if already subscribed. Reuses subscribeFromCity() — no backend changes.`,
+        hypothesis: `Subscriber rate from 3.1% of visitors → 4.5-5.5% within 14 days. At today's 50 visitors/day = +1 sub/day → +30 subs/month → larger weekly-digest audience compounds with the Wednesday-digest tip above.`,
+        risk: `Google mobile interstitial penalty if shown too early. Mitigation: trigger only AFTER engagement (5s + 80% scroll), occupies <70% viewport, easy close. Track dismiss rate — kill if >50% in week 1.`,
+        effort: `~2h: modal HTML/CSS, trigger logic, suppression localStorage, tracking events.`,
       },
     ];
 
@@ -253,15 +290,22 @@ export default async function handler(req, res) {
   <tr><td style="height:12px"></td></tr>
   <tr><td style="background:#0f2318;border:1px solid #14532d;border-radius:12px;padding:18px 20px">
     <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#4ade80;letter-spacing:1.5px;text-transform:uppercase">
-      ${tip.emoji} Marketing tip — ${['Zon','Ma','Di','Wo','Do','Vr','Za'][new Date().getDay()]}
+      ${tip.emoji} Proposal — ${['Zon','Ma','Di','Wo','Do','Vr','Za'][new Date().getDay()]}
     </p>
-    <p style="margin:0 0 8px;color:#fff;font-size:15px;font-weight:700">${tip.title}</p>
-    <p style="margin:0;color:#86efac;font-size:13px;line-height:1.65">${tip.body}</p>
+    <p style="margin:0 0 12px;color:#fff;font-size:16px;font-weight:700">${tip.title}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.55">
+      <tr><td style="padding:4px 0;color:#86efac;width:78px;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Wat</td><td style="color:#dcfce7;padding:4px 0">${tip.what}</td></tr>
+      <tr><td style="padding:4px 0;color:#86efac;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Hoe</td><td style="color:#dcfce7;padding:4px 0">${tip.how}</td></tr>
+      <tr><td style="padding:4px 0;color:#86efac;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Hypothese</td><td style="color:#dcfce7;padding:4px 0">${tip.hypothesis}</td></tr>
+      <tr><td style="padding:4px 0;color:#86efac;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Risico</td><td style="color:#dcfce7;padding:4px 0">${tip.risk}</td></tr>
+      <tr><td style="padding:4px 0;color:#86efac;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Effort</td><td style="color:#dcfce7;padding:4px 0">${tip.effort}</td></tr>
+    </table>
+    <p style="margin:14px 0 0;color:#86efac;font-size:12px;font-style:italic">Reply "ja", "nee" of een aanpassing.</p>
   </td></tr>
   <tr><td style="height:20px"></td></tr>
   <tr><td style="text-align:center">
     <p style="margin:0;color:#334155;font-size:11px">
-      <a href="${BASE}/dashboard?token=${TOKEN}" style="color:#38bdf8;text-decoration:none">Open dashboard</a>
+      <a href="${BASE}/dashboard.html" style="color:#38bdf8;text-decoration:none">Open dashboard</a>
       &nbsp;&middot;&nbsp;Movacamper + Relocamp Daily Briefing
     </p>
   </td></tr>
