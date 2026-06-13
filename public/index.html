@@ -4272,18 +4272,28 @@ async function loadFallbackDeals(nearestHub, searchedCity) {
     } catch(e) {}
   }
 
-  const top3 = deals.slice(0, 3);
-  if (top3.length === 0) { fallbackEl.innerHTML = ''; return; }
+  // EXP-018: when no-results, fallback deals are now the headline content
+  // (was buried below). Show up to 5 instead of 3 — these are the user's main
+  // action surface, not a footnote. Each card uses the same renderDealCard()
+  // path so deal_view + deal_click tracking fires the same way as normal results.
+  const top5 = deals.slice(0, 5);
+  if (top5.length === 0) { fallbackEl.innerHTML = ''; return; }
 
-  const hubName = nearestHub ? displayCity(nearestHub) : (top3[0]?.from || 'Europe');
+  // Track that fallback deals were shown — lets us measure EXP-018 lift
+  // (% of no-results visitors that get presented these vs. baseline)
+  if (window._mcTrack) {
+    window._mcTrack('deal_view', { city: 'fallback', count: top5.length, variant: 'no-results-fallback' });
+  }
+
+  const hubName = nearestHub ? displayCity(nearestHub) : (top5[0]?.from || 'Europe');
   fallbackEl.innerHTML = `
-    <div style="margin:16px 0 12px;padding:0 4px;">
-      <h3 style="margin:0 0 4px;font-size:1.1em;color:var(--espresso);">&#x1F69A; Available deals across Europe</h3>
+    <div style="margin:8px 0 10px;padding:0 4px;">
+      <h3 style="margin:0;font-size:1.05em;color:var(--espresso);font-weight:600;">🔥 Available right now in Europe — ${top5.length} live ${top5.length === 1 ? 'deal' : 'deals'}</h3>
     </div>
-    ${top3.map((d, i) => renderDealCard(d, i)).join('')}
-    <div style="text-align:center;margin:16px 0 24px;">
-      <button onclick="browseAll();" class="bridge-search-btn" style="font-size:1em;padding:10px 24px;">Browse all deals &rarr;</button>
-      ${nearestHub ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:1em;padding:10px 24px;margin-left:8px;">Search from ${hubName}</button>` : ''}
+    ${top5.map((d, i) => renderDealCard(d, i)).join('')}
+    <div style="text-align:center;margin:14px 0 24px;">
+      <button onclick="browseAll();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;">Browse all available deals &rarr;</button>
+      ${nearestHub ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;margin-left:8px;">Search from ${hubName}</button>` : ''}
     </div>
   `;
 }
@@ -4325,62 +4335,71 @@ function renderResults(data) {
     const citySlug = (meta.from || meta.to || '').toLowerCase().trim();
     const citySafe = citySlug.replace(/'/g, '');
     const cityDisplay = cityLabel;
+    // EXP-018 (2026-06-13): Restructured no-results UX so available European deals
+    // appear FIRST, not buried under 5 affiliate cards. 14-day data: 97% of searches
+    // return 0 results yet we have 119 deal_clicks on the 2.6% that do — the funnel
+    // works, it's just rarely fed. Promoting the fallback to the top puts real
+    // bookable deals in front of every visitor regardless of search outcome.
     container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">
-          <img src="/empty-van.png" alt="Campervan at a dead end" />
+      <div class="empty-state" style="padding-bottom:8px">
+        <div class="empty-icon" style="opacity:0.7">
+          <img src="/empty-van.png" alt="Campervan at a dead end" style="max-height:90px" />
         </div>
-        <h3>No camper deals from ${cityLabel} right now</h3>
-        <p>Deals change daily — we check all 5 providers for you.</p>
-        ${nearbyHtml}
+        <h3 style="margin:6px 0 4px;font-size:1.15em">${cityLabel} is quiet today — but Europe isn't</h3>
+        <p style="font-size:0.9em;color:#666;margin:0 0 4px">No deals from ${cityLabel} right now. Here's what's bookable right now in Europe:</p>
       </div>
-      <div class="no-deals-alternatives">
-        <div class="alt-header">Still want to travel from ${cityDisplay}? Try these:</div>
-        <div class="alt-cards">
-          <a href="${AFFILIATE_LINKS.camperdays(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'camperdays',from:'${citySafe}'})">
-            <span class="alt-icon">🚐</span>
-            <div class="alt-info">
-              <strong>Rent a campervan</strong>
-              <small>Camperdays · from €29/day</small>
-            </div>
-            <span class="alt-arrow">&rarr;</span>
-          </a>
-          <a href="${AFFILIATE_LINKS.bestcamper(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'bestcamper',from:'${citySafe}'})">
-            <span class="alt-icon">🏕️</span>
-            <div class="alt-info">
-              <strong>Campervan rentals DE</strong>
-              <small>Bestcamper · ${cityDisplay}</small>
-            </div>
-            <span class="alt-arrow">&rarr;</span>
-          </a>
-          <a href="${AFFILIATE_LINKS.hostelworld(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'hostelworld',from:'${citySafe}'})">
-            <span class="alt-icon">🏨</span>
-            <div class="alt-info">
-              <strong>Book a hostel</strong>
-              <small>Hostelworld · from €15/night</small>
-            </div>
-            <span class="alt-arrow">&rarr;</span>
-          </a>
-          <a href="${AFFILIATE_LINKS.getyourguide(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'getyourguide',from:'${citySafe}'})">
-            <span class="alt-icon">🎫</span>
-            <div class="alt-info">
-              <strong>Book activities</strong>
-              <small>GetYourGuide · tours & experiences</small>
-            </div>
-            <span class="alt-arrow">&rarr;</span>
-          </a>
-          <a href="${AFFILIATE_LINKS.booking(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'booking',from:'${citySafe}'})">
-            <span class="alt-icon">🏨</span>
-            <div class="alt-info">
-              <strong>Book a hotel</strong>
-              <small>Booking.com · ${cityDisplay}</small>
-            </div>
-            <span class="alt-arrow">&rarr;</span>
-          </a>
-        </div>
-      </div>
-      ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       <div id="fallbackDeals"></div>
+      ${nearbyHtml ? `<div style="background:#f9fafb;border-radius:10px;padding:12px;margin:12px 0">${nearbyHtml}</div>` : ''}
+      <details style="margin:18px 0;border:1px solid #e5e7eb;border-radius:10px">
+        <summary style="cursor:pointer;padding:12px 14px;font-weight:600;font-size:0.9em;color:#374151;list-style:none">
+          🚐 Plan B — flexible rentals & activities from ${cityDisplay} <span style="float:right;color:#9ca3af">▾</span>
+        </summary>
+        <div class="no-deals-alternatives" style="padding:0 8px 12px">
+          <div class="alt-cards">
+            <a href="${AFFILIATE_LINKS.camperdays(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'camperdays',from:'${citySafe}'})">
+              <span class="alt-icon">🚐</span>
+              <div class="alt-info">
+                <strong>Rent a campervan</strong>
+                <small>Camperdays · from €29/day</small>
+              </div>
+              <span class="alt-arrow">&rarr;</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.bestcamper(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'bestcamper',from:'${citySafe}'})">
+              <span class="alt-icon">🏕️</span>
+              <div class="alt-info">
+                <strong>Campervan rentals DE</strong>
+                <small>Bestcamper · ${cityDisplay}</small>
+              </div>
+              <span class="alt-arrow">&rarr;</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.hostelworld(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'hostelworld',from:'${citySafe}'})">
+              <span class="alt-icon">🏨</span>
+              <div class="alt-info">
+                <strong>Book a hostel</strong>
+                <small>Hostelworld · from €15/night</small>
+              </div>
+              <span class="alt-arrow">&rarr;</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.getyourguide(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'getyourguide',from:'${citySafe}'})">
+              <span class="alt-icon">🎫</span>
+              <div class="alt-info">
+                <strong>Book activities</strong>
+                <small>GetYourGuide · tours & experiences</small>
+              </div>
+              <span class="alt-arrow">&rarr;</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.booking(citySlug)}" target="_blank" rel="noopener" class="alt-card" onclick="if(window._mcTrack)window._mcTrack('alt_click',{provider:'booking',from:'${citySafe}'})">
+              <span class="alt-icon">🏨</span>
+              <div class="alt-info">
+                <strong>Book a hotel</strong>
+                <small>Booking.com · ${cityDisplay}</small>
+              </div>
+              <span class="alt-arrow">&rarr;</span>
+            </a>
+          </div>
+        </div>
+      </details>
+      ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
       ${renderContextualSubscribe(meta.from || meta.to || '', 'no-results')}
     `;
 
