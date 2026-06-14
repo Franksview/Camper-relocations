@@ -355,7 +355,16 @@ export const NEARBY_CITIES = {
 };
 
 // Hub cities for weekly digest
-export const HUB_CITIES = ['munich', 'berlin', 'hamburg', 'frankfurt', 'lisbon', 'porto', 'barcelona', 'london', 'amsterdam', 'paris'];
+// EXP-017 inventory data (juni 12-14): Imoova rotation shifted toward Italy +
+// southern Germany + western France hubs. Florence alone supplied 50%+ of the
+// EU pool on multiple days; Stuttgart/Düsseldorf/Nantes consistently appeared
+// outside our HUB_CITIES coverage. Adding (not replacing) — see decision file
+// 13 juni: legacy hubs stay for seasonal recovery.
+export const HUB_CITIES = [
+  'munich', 'berlin', 'hamburg', 'frankfurt', 'lisbon', 'porto', 'barcelona',
+  'london', 'amsterdam', 'paris',
+  'florence', 'stuttgart', 'dusseldorf', 'nantes',
+];
 
 // ── Helper Functions ──
 
