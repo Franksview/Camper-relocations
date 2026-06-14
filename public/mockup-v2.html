@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Movacamper — design v2 mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Fresher palette: more white, forest as second accent next to rust */
+    --ink: #111;
+    --ink-soft: #4b4842;
+    --paper: #ffffff;        /* was #faf9f7 — more white */
+    --bg: #fbfaf7;           /* very subtle warm wash, only on body */
+    --sand: #f5f1ea;         /* accent cards only */
+    --rust: #c4704b;
+    --rust-hover: #b5623f;
+    --rust-light: #f6e8de;
+    --forest: #2f6b59;       /* trust + step-complete (slightly deeper for contrast) */
+    --forest-light: #e3f0eb;
+    --gold: #e9a82a;
+    --line: #ebe6df;         /* dividers + card borders */
+    --line-strong: #d8cfc1;
+    --warm: #6f5c4c;         /* secondary text (matches just-fixed --warm sitewide) */
+    --shadow-sm: 0 1px 2px rgba(40,30,15,0.04);
+    --shadow-md: 0 4px 18px rgba(40,30,15,0.06);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --eyebrow: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --display: 'DM Serif Display', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── TOP STEPPER (sticky on desktop, compact on mobile) ─── */
+  .stepper-wrap {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .stepper {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--eyebrow);
+    font-size: 0.82rem;
+    color: var(--warm);
+  }
+  .stepper .step {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: transparent;
+    transition: 0.2s;
+  }
+  .stepper .step .num {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: var(--line); color: var(--warm);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.78rem;
+  }
+  .stepper .step.done .num { background: var(--forest); color: white; }
+  .stepper .step.done .label { color: var(--forest); }
+  .stepper .step.done .num::after { content: ''; }
+  .stepper .step.active {
+    background: var(--rust-light);
+  }
+  .stepper .step.active .num { background: var(--rust); color: white; }
+  .stepper .step.active .label { color: var(--rust); font-weight: 600; }
+  .stepper .sep { flex: 1; height: 1px; background: var(--line); margin: 0 2px; }
+  @media (max-width: 600px) {
+    .stepper .label { display: none; }
+    .stepper .step.active .label { display: inline; }
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    max-width: 920px; margin: 0 auto;
+    padding: 56px 24px 32px;
+    text-align: center;
+  }
+  .logo {
+    font-family: var(--display);
+    font-size: 2.4rem;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .logo span { color: var(--rust); }
+  .tagline {
+    margin: 16px auto 0;
+    max-width: 540px;
+    color: var(--warm);
+    font-size: 1.02rem;
+  }
+  .tagline strong { color: var(--ink); }
+  .tagline .gold { color: var(--rust); font-weight: 600; }
+
+  /* ─── SECTION + EYEBROW PATTERN ─── */
+  .section {
+    max-width: 920px; margin: 28px auto;
+    padding: 0 24px;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--eyebrow);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--forest);
+    background: var(--forest-light);
+    padding: 5px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .section h2 {
+    font-family: var(--display);
+    font-size: 1.6rem;
+    margin: 0 0 6px;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .section .lede {
+    color: var(--warm);
+    margin: 0 0 18px;
+    font-size: 0.95rem;
+  }
+
+  /* ─── CARD SHELL ─── */
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ─── SEARCH ─── */
+  .search-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .search-row input {
+    flex: 1; min-width: 200px;
+    padding: 14px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-family: var(--body); font-size: 1rem;
+    background: white; color: var(--ink);
+  }
+  .search-row input:focus {
+    outline: none; border-color: var(--rust);
+    box-shadow: 0 0 0 3px var(--rust-light);
+  }
+  .btn-primary {
+    background: var(--rust); color: white;
+    border: none; padding: 14px 24px;
+    border-radius: var(--radius-sm);
+    font-family: var(--body); font-weight: 600; font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    transition: 0.18s;
+  }
+  .btn-primary:hover { background: var(--rust-hover); }
+  .meta-line {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px;
+    color: var(--warm); font-size: 0.85rem;
+  }
+  .meta-line .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg);
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+
+  /* ─── RESULTS HEADER ─── */
+  .results-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; margin-bottom: 14px;
+  }
+  .results-head .count {
+    font-family: var(--eyebrow); color: var(--warm); font-size: 0.85rem;
+  }
+
+  /* ─── DEAL CARD ─── */
+  .deal {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: 0.18s;
+  }
+  .deal:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .deal-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 12px;
+  }
+  .deal-route {
+    font-family: var(--display);
+    font-size: 1.35rem;
+    color: var(--ink);
+    line-height: 1.15;
+  }
+  .deal-route .arrow { color: var(--rust); margin: 0 8px; font-family: var(--body); }
+  .deal-price {
+    background: linear-gradient(135deg, #fff4d6, #ffe6a8);
+    border: 1px solid #f0d486;
+    border-radius: 14px;
+    padding: 10px 16px;
+    text-align: right;
+    min-width: 110px;
+  }
+  .deal-price .per { font-weight: 700; color: #8a5a00; font-size: 1.1rem; }
+  .deal-price .total { display: block; color: var(--warm); font-size: 0.78rem; margin-top: 2px; }
+  .deal-meta {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    color: var(--ink-soft); font-size: 0.9rem;
+    margin-bottom: 16px;
+  }
+  .deal-meta .item { display: inline-flex; align-items: center; gap: 6px; }
+  .deal-actions {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  .btn-book {
+    background: var(--rust); color: white;
+    padding: 11px 20px; border-radius: 10px;
+    text-decoration: none; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: 0.18s; border: none; cursor: pointer; font-family: var(--body); font-size: 0.95rem;
+  }
+  .btn-book:hover { background: var(--rust-hover); }
+  .btn-secondary {
+    background: white; color: var(--ink);
+    border: 1px solid var(--line-strong);
+    padding: 10px 18px; border-radius: 10px;
+    font-weight: 500; cursor: pointer; font-family: var(--body); font-size: 0.95rem;
+  }
+  .btn-secondary:hover { border-color: var(--rust); color: var(--rust); }
+  .trust {
+    margin-left: auto;
+    color: var(--forest); font-size: 0.85rem;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 500;
+  }
+
+  /* ─── STEP 3 — TRIP BUILDER PANEL ─── */
+  .trip {
+    background: var(--forest-light);
+    border: 1px solid #bfddd0;
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .trip .leg {
+    display: flex; align-items: center; gap: 14px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+  .trip .leg-num {
+    width: 28px; height: 28px; border-radius: 999px;
+    background: var(--forest); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .trip .leg-route { font-family: var(--display); font-size: 1.05rem; }
+  .trip .leg-meta { color: var(--warm); font-size: 0.82rem; margin-left: auto; }
+  .trip-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+  /* ─── MOCKUP FRAME LABEL ─── */
+  /* ─── EXPLAINER (What & Why) — tight, no icons ─── */
+  .explainer {
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 6px 0 22px;
+  }
+  .explainer-inner {
+    max-width: 760px; margin: 0 auto; padding: 0 24px;
+  }
+  .explainer-lead {
+    font-family: var(--display);
+    font-size: 1.2rem; line-height: 1.35;
+    color: var(--ink);
+    margin: 0 auto 4px;
+    text-align: center;
+  }
+  .explainer-lead .hl { color: var(--rust); }
+  .explainer-sub {
+    color: var(--warm); font-size: 0.88rem;
+    text-align: center; margin: 0 auto 16px;
+  }
+  .how-row {
+    display: flex; gap: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .how-step {
+    flex: 1;
+    padding: 12px 14px;
+    border-right: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .how-step:last-child { border-right: none; }
+  .how-step .n {
+    font-family: var(--eyebrow);
+    font-weight: 700; color: var(--forest);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+  .how-step .t {
+    font-size: 0.84rem; line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .how-step .t b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 640px) {
+    .how-row { flex-direction: column; }
+    .how-step { border-right: none; border-bottom: 1px solid var(--line); padding: 9px 14px; }
+    .how-step:last-child { border-bottom: none; }
+    .explainer-lead { font-size: 1.05rem; }
+  }
+
+  .frame-label {
+    background: #1a1a1a; color: #e8d4b8;
+    text-align: center; padding: 10px 16px;
+    font-family: var(--eyebrow); font-size: 0.82rem; font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .frame-label a { color: var(--gold); text-decoration: none; margin-left: 8px; }
+  .compare {
+    max-width: 920px; margin: 40px auto;
+    padding: 0 24px;
+  }
+  .compare h3 {
+    font-family: var(--display); font-size: 1.4rem;
+    margin: 28px 0 12px; color: var(--ink);
+  }
+  .compare ul {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 16px 22px;
+    color: var(--ink-soft);
+  }
+  .compare li { margin: 6px 0; }
+  .compare li strong { color: var(--forest); }
+  footer {
+    max-width: 920px; margin: 0 auto;
+    padding: 36px 24px 60px;
+    color: var(--warm); font-size: 0.85rem;
+    text-align: center;
+    border-top: 1px solid var(--line);
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="frame-label">
+  🎨 DESIGN MOCKUP v2 — not the live site.
+  <a href="/">← back to live movacamper.com</a>
+</div>
+
+<!-- ─── HERO ─── -->
+<header class="hero" style="padding-bottom:18px;">
+  <div class="logo">Mova<span>camper</span></div>
+  <p class="tagline" style="margin-top:10px;">
+    Drive a campervan across Europe from <span class="gold">€1/day</span>. <strong>Seriously.</strong>
+  </p>
+</header>
+
+<!-- ─── EXPLAINER (what & why — before any flow) ─── -->
+<section class="explainer">
+  <div class="explainer-inner">
+    <p class="explainer-lead">
+      Rental companies have campers stuck in the <span class="hl">wrong city</span>. They need them <span class="hl">moved back</span>. You drive — they pay (almost) all of it.
+    </p>
+    <p class="explainer-sub">
+      It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
+    </p>
+
+    <div class="how-row">
+      <div class="how-step"><span class="n">1.</span><span class="t"><b>Find a route</b> — pick a start city, we show live deals.</span></div>
+      <div class="how-step"><span class="n">2.</span><span class="t"><b>Book direct</b> — you pay the rental company, not us.</span></div>
+      <div class="how-step"><span class="n">3.</span><span class="t"><b>Drive 3–10 days</b> — pick up, road-trip, drop off.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BOOKING FLOW STEPPER ─── -->
+<div class="stepper-wrap">
+  <div class="stepper" role="navigation" aria-label="Booking flow">
+    <div class="step done">
+      <div class="num">✓</div><div class="label">Pick start</div>
+    </div>
+    <div class="sep"></div>
+    <div class="step active">
+      <div class="num">2</div><div class="label">Choose a deal</div>
+    </div>
+    <div class="sep"></div>
+    <div class="step">
+      <div class="num">3</div><div class="label">Book or build trip</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STEP 1: SEARCH ─── -->
+<section class="section">
+  <span class="eyebrow">Step 1 · Where are you starting?</span>
+  <h2>Pick a city — we'll check 5 providers live.</h2>
+  <p class="lede">One search covers Imoova, Roadsurfer, Indie Campers, Movacar & more. Always free, no signup.</p>
+  <div class="card">
+    <div class="search-row">
+      <input value="Berlin" placeholder="e.g. Munich, Berlin, Amsterdam" />
+      <button class="btn-primary">Find deals →</button>
+    </div>
+    <div class="meta-line">
+      <span class="chip">📅 Anytime</span>
+      <span class="chip">🚐 Any vehicle</span>
+      <span class="chip">🎲 Surprise me</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STEP 2: RESULTS ─── -->
+<section class="section">
+  <span class="eyebrow">Step 2 · Pick a deal</span>
+  <div class="results-head">
+    <div>
+      <h2>2 live deals from Berlin</h2>
+      <p class="lede" style="margin:0;">Tap Book to book directly with the provider, or Plan to add this leg to a multi-stop trip.</p>
+    </div>
+    <span class="count">refreshed just now</span>
+  </div>
+
+  <div class="deal">
+    <div class="deal-top">
+      <div class="deal-route">Berlin <span class="arrow">→</span> Dublin</div>
+      <div class="deal-price">
+        <span class="per">€1.00 / night</span>
+        <span class="total">€7 total</span>
+      </div>
+    </div>
+    <div class="deal-meta">
+      <span class="item">📅 16–23 Jun (7 days)</span>
+      <span class="item">🚐 Campervan</span>
+      <span class="item">👤 5 seats</span>
+    </div>
+    <div class="deal-actions">
+      <a class="btn-book" href="#">🔒 Book on Imoova →</a>
+      <button class="btn-secondary">+ Plan this leg</button>
+      <span class="trust">✓ Secure booking direct with Imoova</span>
+    </div>
+  </div>
+
+  <div class="deal">
+    <div class="deal-top">
+      <div class="deal-route">Berlin <span class="arrow">→</span> Bristol <span style="font-size:0.75rem; color:var(--forest); background:var(--forest-light); padding:3px 8px; border-radius:6px; vertical-align: middle; margin-left:6px; font-family:var(--eyebrow);">Ferry included</span></div>
+      <div class="deal-price">
+        <span class="per">€1.00 / night</span>
+        <span class="total">€5 total</span>
+      </div>
+    </div>
+    <div class="deal-meta">
+      <span class="item">📅 19–24 Jun (5 days)</span>
+      <span class="item">🚐 Campervan</span>
+      <span class="item">👤 5 seats</span>
+    </div>
+    <div class="deal-actions">
+      <a class="btn-book" href="#">🔒 Book on Imoova →</a>
+      <button class="btn-secondary">+ Plan this leg</button>
+      <span class="trust">✓ Secure booking direct with Imoova</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STEP 3: TRIP BUILDER PREVIEW ─── -->
+<section class="section">
+  <span class="eyebrow">Step 3 · Build your trip (optional)</span>
+  <h2>One-leg or multi-stop — your call.</h2>
+  <p class="lede">Add legs to chain relocations across Europe. Book each provider directly when you're ready.</p>
+  <div class="trip">
+    <div class="leg">
+      <div class="leg-num">1</div>
+      <div class="leg-route">Berlin → Dublin</div>
+      <span class="leg-meta">16–23 Jun · €7 · Imoova</span>
+    </div>
+    <div class="leg" style="opacity:0.55; border-style:dashed;">
+      <div class="leg-num" style="background:var(--line); color:var(--warm);">2</div>
+      <div class="leg-route" style="color:var(--warm);">What's next from Dublin?</div>
+      <span class="leg-meta">add another leg ↓</span>
+    </div>
+    <div class="trip-actions">
+      <button class="btn-primary">🔒 Book all legs now</button>
+      <button class="btn-secondary">+ Add another leg</button>
+      <button class="btn-secondary">📤 Share trip</button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── COMPARE ─── -->
+<div class="compare">
+  <h3>What changed vs. current site</h3>
+  <ul>
+    <li><strong>Stepper</strong> (top, sticky): user always sees where they are in the flow.</li>
+    <li><strong>Eyebrow labels</strong> per section ("Step 1 · Where are you starting?") + one-line lede explaining the action.</li>
+    <li><strong>More white</strong>: paper background, sand only for accent cards, lighter shadows.</li>
+    <li><strong>Forest green</strong> as second accent (trust lines, step-complete, leg numbers). Was: rust everywhere.</li>
+    <li><strong>Body font</strong>: Inter (sans-serif) for readability. DM Serif Display kept for headlines + deal routes.</li>
+    <li><strong>Deal card</strong>: cleaner — 3 actions only, trust line moved right. No provider badge (already in CTA + trust).</li>
+    <li><strong>Trip builder</strong>: visible "Step 3" with a placeholder next-leg slot so the multi-stop flow is obvious from the start.</li>
+  </ul>
+  <h3 style="margin-top:24px;">Same as current site (kept on purpose)</h3>
+  <ul>
+    <li>Rust as primary CTA color (brand recognition)</li>
+    <li>DM Serif Display for headlines + deal routes (character)</li>
+    <li>Gold/cream price pill (the visual anchor for €1/day)</li>
+    <li>Empty-van illustration, copy tone, affiliate model</li>
+  </ul>
+</div>
+
+<footer>
+  Mockup-only. No tracking, no live search. To approve & build → reply "go" (full) / "go but skip stepper" / "stepper only" / "tweak X".
+</footer>
+
+</body>
+</html>

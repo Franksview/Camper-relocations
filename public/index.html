@@ -48,7 +48,7 @@
     --paper: #faf9f7;
     --sand: #f0ede8;
     --stone: #d4cfc7;
-    --warm: #b8a99a;
+    --warm: #6f5c4c; /* secondary text — was #b8a99a (2.5:1 on rust-light, fails AA). Now 5.7:1 on rust-light, 6.8:1 on white = AAA. Used in ~25 places sitewide. */
     --rust: #c4704b;
     --rust-hover: #b5623f;
     --rust-light: #f5e6de;
@@ -110,6 +110,63 @@
   .tagline strong {
     color: var(--rust);
     font-weight: 700;
+  }
+
+  /* ─── EXPLAINER (what & why) — compact, no icons ─── */
+  .explainer {
+    background: var(--cream);
+    border-top: 1px solid rgba(0,0,0,0.04);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    padding: 14px 0 18px;
+    margin: 0 0 8px;
+  }
+  .explainer-inner {
+    max-width: 760px; margin: 0 auto; padding: 0 20px;
+  }
+  .explainer-lead {
+    font-family: var(--font-display);
+    font-size: 1.18rem; line-height: 1.35;
+    color: var(--ink);
+    margin: 0 auto 4px;
+    text-align: center;
+  }
+  .explainer-lead .hl { color: var(--rust); }
+  .explainer-sub {
+    color: var(--warm); font-size: 0.86rem;
+    text-align: center; margin: 0 auto 12px;
+    line-height: 1.5;
+  }
+  .explainer-sub em { font-style: italic; color: var(--ink-light); }
+  .how-row {
+    display: flex; gap: 0;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    background: white;
+    border-radius: 8px;
+  }
+  .how-step {
+    flex: 1;
+    padding: 11px 14px;
+    border-right: 1px solid rgba(0,0,0,0.06);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .how-step:last-child { border-right: none; }
+  .how-step .n {
+    font-weight: 700; color: var(--forest);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+  .how-step .t {
+    font-size: 0.84rem; line-height: 1.4;
+    color: var(--ink-light);
+  }
+  .how-step .t b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 640px) {
+    .how-row { flex-direction: column; }
+    .how-step { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 9px 14px; }
+    .how-step:last-child { border-bottom: none; }
+    .explainer-lead { font-size: 1.02rem; }
+    .explainer { padding: 12px 0 14px; }
   }
 
   /* ─── LAYOUT ─── */
@@ -2473,9 +2530,28 @@
 <header>
   <div class="container">
     <div class="logo">Mova<span>camper</span></div>
-    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. <strong>Seriously</strong> — rental companies need them moved.</p>
+    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. <strong>Seriously.</strong></p>
   </div>
 </header>
+
+<!-- EXPLAINER — what & why (added 2026-06-15: first-time visitors don't know
+     what a relocation is. Two short lines + a 3-step strip make the concept
+     obvious before the user has to engage with the search form.) -->
+<section class="explainer">
+  <div class="explainer-inner">
+    <p class="explainer-lead">
+      Rental companies have campers stuck in the <span class="hl">wrong city</span>. They need them <span class="hl">moved back</span>. You drive — they pay (almost) all of it.
+    </p>
+    <p class="explainer-sub">
+      It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
+    </p>
+    <div class="how-row">
+      <div class="how-step"><span class="n">1.</span><span class="t"><b>Find a route</b> — pick a start city, we show live deals.</span></div>
+      <div class="how-step"><span class="n">2.</span><span class="t"><b>Book direct</b> — you pay the rental company, not us.</span></div>
+      <div class="how-step"><span class="n">3.</span><span class="t"><b>Drive 3–10 days</b> — pick up, road-trip, drop off.</span></div>
+    </div>
+  </div>
+</section>
 
 <div class="hero-search">
   <div class="container">
@@ -2484,7 +2560,7 @@
   <section class="search-section">
     <div class="search-card" id="searchCard">
       <h2 id="searchTitle">Where are you starting?</h2>
-      <p style="font-size:0.85rem;color:var(--rust);margin:-8px 0 12px;font-weight:500;">5 providers searched in real time — one free search.</p>
+      <p style="font-size:0.85rem;color:var(--rust);margin:-8px 0 12px;font-weight:500;">One search covers 5 providers — always free, no signup.</p>
       <div class="form-row" style="grid-template-columns:1fr;">
         <div class="form-group">
           <label for="fromCity">From</label>
@@ -3478,6 +3554,65 @@ function showReturnOptions(event, fromCity) {
   `;
 }
 
+// Mid-trip dead-end chooser: two equal cards, "Stay" vs "Move on".
+// Shown only when trip.length > 0 and search returned 0 deals — the user is
+// stuck somewhere mid-itinerary, the question isn't "what's in Europe?" but
+// "do I stop here or hop to a relocation hub?". Replaces the buried Plan B
+// accordion and the long destination-input form in mid-trip mode.
+function renderDeadEndChooser(citySlug, cityLabel, nearestHubSlug) {
+  const safeCity = (citySlug || '').replace(/'/g, '');
+  const hubSlug = nearestHubSlug || 'amsterdam';
+  const hubLabel = displayCity(hubSlug);
+  const trackAlt = (provider) => `if(window._mcTrack)window._mcTrack('alt_click',{provider:'${provider}',from:'${safeCity}',placement:'dead-end-chooser'})`;
+  const trackTransport = (mode) => `if(window._mcTrack)window._mcTrack('transport_click',{mode:'${mode}',from:'${safeCity}',to:'${hubSlug}',placement:'dead-end-chooser'})`;
+
+  return `
+    <div class="dead-end-chooser" style="margin:12px 0 18px">
+      <h4 style="margin:0 0 10px;font-size:1em;color:var(--ink);font-weight:600;text-align:center">What do you want to do?</h4>
+      <div class="dead-end-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+        <div class="dead-end-card" style="background:#fef6ed;border:1px solid #f3d9b5;border-radius:12px;padding:14px">
+          <div style="font-weight:700;font-size:1em;margin-bottom:4px">🌆 Stay in ${cityLabel}</div>
+          <p style="font-size:0.82em;color:#6b7280;margin:0 0 10px">Wrap up your trip here. Stays + things to do:</p>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <a href="${AFFILIATE_LINKS.hostelworld(citySlug)}" target="_blank" rel="noopener" onclick="${trackAlt('hostelworld')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>🛏️</span><span><strong>Hostels</strong> · from €15/night</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.booking(citySlug)}" target="_blank" rel="noopener" onclick="${trackAlt('booking')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>🏨</span><span><strong>Hotels</strong> · Booking.com</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.getyourguide(citySlug)}" target="_blank" rel="noopener" onclick="${trackAlt('getyourguide')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>🎫</span><span><strong>Tours & activities</strong></span>
+            </a>
+          </div>
+        </div>
+
+        <div class="dead-end-card" style="background:#eef4fb;border:1px solid #c7dbf0;border-radius:12px;padding:14px">
+          <div style="font-weight:700;font-size:1em;margin-bottom:4px">✈️ Move on from ${cityLabel}</div>
+          <p style="font-size:0.82em;color:#6b7280;margin:0 0 10px">Hop to ${hubLabel} or another hub, then grab a relocation:</p>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <a href="${AFFILIATE_LINKS.kiwi(cityLabel, hubLabel)}" target="_blank" rel="noopener" onclick="${trackTransport('flight')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>✈️</span><span><strong>Fly</strong> to ${hubLabel}</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.trainline(cityLabel, hubLabel)}" target="_blank" rel="noopener" onclick="${trackTransport('train')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>🚆</span><span><strong>Train</strong> to ${hubLabel}</span>
+            </a>
+            <a href="${AFFILIATE_LINKS.flixbus(cityLabel, hubLabel)}" target="_blank" rel="noopener" onclick="${trackTransport('bus')}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85em">
+              <span>🚌</span><span><strong>FlixBus</strong> to ${hubLabel}</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+      <style>
+        @media (max-width: 600px) {
+          .dead-end-grid { grid-template-columns: 1fr !important; }
+        }
+      </style>
+    </div>
+  `;
+}
+
 function renderEmptyOtherOptions(fromCity, suggestedDest) {
   if (!fromCity) return '';
   const from = displayCity(fromCity);
@@ -3716,20 +3851,22 @@ function browseAll() {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x1F614;</div><h3>No deals available right now</h3><p>Try searching a specific city like Munich, Berlin, or London.</p></div>`;
         return;
       }
-      // Transform featured deals to match renderDealCard format
-      const deals = data.deals.map(d => {
-        const parts = d.route?.split(/→|➜/) || [];
-        return {
-          from: parts[0]?.trim() || '',
-          to: parts[1]?.trim() || '',
-          price: d.price || '€1/day',
-          date_range: d.dates || 'Flexible',
-          vehicle: d.vehicle || 'Campervan',
-          provider: d.provider || 'Imoova',
-          url: d.url || '#',
-          direction_match: false
-        };
-      });
+      // /api/featured returns deals already in the right shape: { from, to, price,
+      // date_range, vehicle, provider, url, seats }. The previous transform tried
+      // to split a non-existent `d.route` field on an arrow, which left from/to
+      // empty — that's why "Browse all deals" showed cards with just an arrow and
+      // no city names. Pass through directly with safe defaults.
+      const deals = data.deals.map(d => ({
+        from: d.from || '',
+        to: d.to || '',
+        price: d.price || '€1/day',
+        date_range: d.date_range || 'Flexible',
+        vehicle: d.vehicle || 'Campervan',
+        seats: d.seats,
+        provider: d.provider || 'Imoova',
+        url: d.url || '#',
+        direction_match: false
+      }));
       currentDeals = deals;
       let html = `<div class="browse-header"><h3>&#x1F30D; ${deals.length} deals available right now</h3><p>Live relocation deals from <strong>${data.hub || 'top European hubs'}</strong> via Imoova. Search a specific city above for results from all 5 providers.</p></div>`;
       deals.forEach((deal, i) => { html += renderDealCard(deal, i); });
@@ -4318,24 +4455,57 @@ async function loadFallbackDeals(nearestHub, searchedCity) {
   // (was buried below). Show up to 5 instead of 3 — these are the user's main
   // action surface, not a footnote. Each card uses the same renderDealCard()
   // path so deal_view + deal_click tracking fires the same way as normal results.
-  const top5 = deals.slice(0, 5);
+  //
+  // 2026-06-14 fix: when mid-trip (trip.length > 0) we must NOT surface deals that
+  // start from a city the user has already left. Example: user did Berlin → Dublin
+  // as leg 1, searches Dublin (dead end), and used to see "Berlin → X" fallback
+  // cards which made no sense — they're already gone from Berlin. Filter those out
+  // and adjust copy so the fallback reads as "continuation suggestions" not
+  // "here are deals from a city you already left".
+  const visitedSlugs = new Set();
+  try {
+    (trip || []).forEach(leg => {
+      if (leg.from) visitedSlugs.add(String(leg.from).toLowerCase().trim());
+      if (leg.to)   visitedSlugs.add(String(leg.to).toLowerCase().trim());
+    });
+    const searchedSlug = (searchedCity || '').toLowerCase().trim();
+    if (searchedSlug) visitedSlugs.add(searchedSlug);
+  } catch(e) {}
+
+  const filteredDeals = deals.filter(d => {
+    const fromSlug = (d.from || '').toLowerCase().trim();
+    // Keep deals whose origin we have NOT already passed through.
+    return fromSlug && !visitedSlugs.has(fromSlug);
+  });
+
+  const top5 = filteredDeals.slice(0, 5);
   if (top5.length === 0) { fallbackEl.innerHTML = ''; return; }
+
+  const midTrip = (trip && trip.length > 0);
+  const variant = midTrip ? 'mid-trip-fallback' : 'no-results-fallback';
 
   // Track that fallback deals were shown — lets us measure EXP-018 lift
   // (% of no-results visitors that get presented these vs. baseline)
   if (window._mcTrack) {
-    window._mcTrack('deal_view', { city: 'fallback', count: top5.length, variant: 'no-results-fallback' });
+    window._mcTrack('deal_view', { city: 'fallback', count: top5.length, variant });
   }
 
   const hubName = nearestHub ? displayCity(nearestHub) : (top5[0]?.from || 'Europe');
+  const heading = midTrip
+    ? `🔥 Deals starting elsewhere in Europe — ${top5.length} live ${top5.length === 1 ? 'option' : 'options'}`
+    : `🔥 Available right now in Europe — ${top5.length} live ${top5.length === 1 ? 'deal' : 'deals'}`;
+  const subhead = midTrip
+    ? `<p style="margin:4px 0 0;font-size:0.82em;color:#6b7280;">To pick up one of these, hop on a flight, train or bus from ${displayCity(searchedCity)} first.</p>`
+    : '';
   fallbackEl.innerHTML = `
     <div style="margin:8px 0 10px;padding:0 4px;">
-      <h3 style="margin:0;font-size:1.05em;color:var(--espresso);font-weight:600;">🔥 Available right now in Europe — ${top5.length} live ${top5.length === 1 ? 'deal' : 'deals'}</h3>
+      <h3 style="margin:0;font-size:1.05em;color:var(--espresso);font-weight:600;">${heading}</h3>
+      ${subhead}
     </div>
     ${top5.map((d, i) => renderDealCard(d, i)).join('')}
     <div style="text-align:center;margin:14px 0 24px;">
       <button onclick="browseAll();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;">Browse all available deals &rarr;</button>
-      ${nearestHub ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;margin-left:8px;">Search from ${hubName}</button>` : ''}
+      ${nearestHub && !visitedSlugs.has((nearestHub||'').toLowerCase().trim()) ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;margin-left:8px;">Search from ${hubName}</button>` : ''}
     </div>
   `;
 }
@@ -4382,14 +4552,27 @@ function renderResults(data) {
     // return 0 results yet we have 119 deal_clicks on the 2.6% that do — the funnel
     // works, it's just rarely fed. Promoting the fallback to the top puts real
     // bookable deals in front of every visitor regardless of search outcome.
-    container.innerHTML = `
-      <div class="empty-state" style="padding-bottom:8px">
-        <div class="empty-icon" style="opacity:0.7">
-          <img src="/empty-van.png" alt="Campervan at a dead end" style="max-height:90px" />
-        </div>
-        <h3 style="margin:6px 0 4px;font-size:1.15em">${cityLabel} is quiet today — but Europe isn't</h3>
-        <p style="font-size:0.9em;color:#666;margin:0 0 4px">No deals from ${cityLabel} right now. Here's what's bookable right now in Europe:</p>
+    const midTripDeadEnd = (trip && trip.length > 0);
+    const emptyHeading = midTripDeadEnd
+      ? `You've arrived in ${cityLabel} — no outbound relocations today`
+      : `${cityLabel} is quiet today — but Europe isn't`;
+    const emptySub = midTripDeadEnd
+      ? `Wrap up your trip here, or continue from another European hub:`
+      : `No deals from ${cityLabel} right now. Here's what's bookable right now in Europe:`;
+    // Mid-trip dead-end: the user got here via a relocation and the next leg has
+    // no options. The right UX is two equal-weight choices ("stay" vs "move on"),
+    // not a Plan B accordion + a destination-input form. Only show fallback deals
+    // afterwards as "or pick up a relocation elsewhere".
+    // First-visit no-results: keep the existing UX (Plan B accordion + other ways
+    // form) — those users don't have a "stay vs move on" question yet, they're
+    // just exploring.
+    const planBSection = midTripDeadEnd ? `
+      ${renderDeadEndChooser(citySlug, cityLabel, nearestHub)}
+      <div style="margin:18px 0 6px;text-align:center">
+        <p style="font-size:0.85em;color:#6b7280;margin:0">Or pick up your next relocation from somewhere else in Europe:</p>
       </div>
+      <div id="fallbackDeals"></div>
+    ` : `
       <div id="fallbackDeals"></div>
       ${nearbyHtml ? `<div style="background:#f9fafb;border-radius:10px;padding:12px;margin:12px 0">${nearbyHtml}</div>` : ''}
       <details style="margin:18px 0;border:1px solid #e5e7eb;border-radius:10px">
@@ -4442,6 +4625,16 @@ function renderResults(data) {
         </div>
       </details>
       ${meta.from ? renderEmptyOtherOptions(cityLabel, suggestedDest) : ''}
+    `;
+    container.innerHTML = `
+      <div class="empty-state" style="padding-bottom:8px">
+        <div class="empty-icon" style="opacity:0.7">
+          <img src="/empty-van.png" alt="Campervan at a dead end" style="max-height:90px" />
+        </div>
+        <h3 style="margin:6px 0 4px;font-size:1.15em">${emptyHeading}</h3>
+        <p style="font-size:0.9em;color:#666;margin:0 0 4px">${emptySub}</p>
+      </div>
+      ${planBSection}
       ${renderContextualSubscribe(meta.from || meta.to || '', 'no-results')}
     `;
 
@@ -4716,7 +4909,6 @@ function renderDealCard(deal, index) {
       </div>
       <div class="deal-meta">
         ${detailParts.map(p => `<span>${p}</span>`).join('')}
-        <span class="provider-badge ${providerClass}">${providerName}</span>
       </div>
       <div class="deal-actions">
         <a href="${bookUrl}" target="_blank" rel="noopener" class="btn-book btn-book-primary btn-book-pulse" onclick="if(window._mcTrack)window._mcTrack('deal_click',{provider:'${(deal.provider||'').replace(/'/g,'')}',from:'${(deal.from||'').replace(/'/g,'')}',to:'${(deal.to||'').replace(/'/g,'')}'})">
@@ -4727,17 +4919,15 @@ function renderDealCard(deal, index) {
         </button>
         <div class="deal-trust">&#x2705; Secure booking direct with ${providerName}</div>
       </div>
-      ${!localStorage.getItem('mc-subscribed') ? `
-      <div class="deal-alert-link" onclick="toggleDealAlert(${index})">🔔 Alert me for more ${deal.from} → ${deal.to} deals</div>
-      <div class="deal-alert-inline" id="dealAlertInline-${index}">
-        <form onsubmit="submitDealAlert(event, '${(deal.from||'').replace(/'/g,"\\'")}', ${index})">
-          <input type="email" placeholder="your@email.com" required>
-          <button type="submit">Alert me</button>
-        </form>
-      </div>` : ''}
     </div>
   `;
 }
+// Per-card "Alert me for more X → Y deals" link removed 2026-06-14: redundant
+// with the page-level renderContextualSubscribe('after-results') that already
+// captures intent for the searched city, and it produced broken text ("Alert me
+// for more → deals") when from/to were empty (e.g. cached Browse-all results
+// before the route-mapping fix). One subscribe surface per page = less visual
+// noise per card, clearer steps: pick a deal → book or plan as leg.
 
 // ─── TRIP BUILDER ───
 function addToTrip(deal) {
