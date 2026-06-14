@@ -364,6 +364,10 @@ export const HUB_CITIES = [
   'munich', 'berlin', 'hamburg', 'frankfurt', 'lisbon', 'porto', 'barcelona',
   'london', 'amsterdam', 'paris',
   'florence', 'stuttgart', 'dusseldorf', 'nantes',
+  // Added 14 juni after EXP-017 snapshot review — top origins consistently
+  // present in Imoova's 12-14 juni rotation that weren't yet pre-fetched.
+  // Free per-city (60s cache shares the single global EU fetch since juni 10).
+  'oslo', 'madrid', 'bari', 'bologna', 'seville',
 ];
 
 // ── Helper Functions ──
