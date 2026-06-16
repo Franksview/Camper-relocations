@@ -1625,161 +1625,6 @@
   }
 
   /* ─── FOOTER ─── */
-  /* ─── FEATURED DEALS ─── */
-  .featured-section {
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-md);
-    padding: 16px 20px 20px;
-    margin-top: 12px;
-  }
-
-  .featured-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 10px;
-  }
-
-  .featured-header h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.05rem;
-    font-weight: 400;
-  }
-
-  .featured-header .live-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: #22c55e;
-    border-radius: 50%;
-    margin-right: 6px;
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .featured-cta {
-    font-size: 0.82rem;
-    color: var(--rust);
-    font-weight: 600;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-family: inherit;
-    padding: 0;
-    transition: opacity var(--transition);
-  }
-
-  .featured-cta:hover { opacity: 0.7; }
-
-  .featured-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
-  }
-
-  .featured-card {
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(0,0,0,0.04);
-    padding: 14px 16px;
-    transition: all var(--transition);
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    display: block;
-  }
-
-  .featured-card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
-    border-color: rgba(196, 112, 75, 0.3);
-  }
-
-  .featured-route {
-    font-family: 'DM Serif Display', serif;
-    font-size: 0.95rem;
-    margin-bottom: 5px;
-  }
-
-  .featured-route .arrow { color: var(--rust); margin: 0 6px; }
-
-  .featured-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: #888;
-    margin-bottom: 7px;
-  }
-
-  .featured-details span {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .featured-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .featured-price {
-    background: var(--rust-light);
-    color: var(--rust);
-    padding: 2px 8px;
-    border-radius: 16px;
-    font-weight: 700;
-    font-size: 0.78rem;
-  }
-
-  .featured-provider {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #999;
-  }
-
-  /* Skeleton loading for featured deals */
-  .featured-skeleton {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
-  }
-
-  .skeleton-card {
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(0,0,0,0.04);
-    padding: 14px 16px;
-    height: 85px;
-  }
-
-  .skeleton-line {
-    height: 14px;
-    background: linear-gradient(90deg, var(--sand) 25%, #e8e5e0 50%, var(--sand) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: 4px;
-    margin-bottom: 10px;
-  }
-
-  .skeleton-line:first-child { width: 70%; height: 18px; }
-  .skeleton-line:nth-child(2) { width: 50%; }
-  .skeleton-line:nth-child(3) { width: 35%; }
-
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
 
   /* ─── PROVIDER LOGOS ─── */
   .provider-strip {
@@ -2413,18 +2258,6 @@
       grid-template-columns: 1fr;
     }
 
-    .featured-strip {
-      grid-template-columns: 1fr;
-    }
-
-    .featured-skeleton {
-      grid-template-columns: 1fr;
-    }
-
-    .featured-skeleton .skeleton-card:nth-child(3) {
-      display: none;
-    }
-
     .deal-top {
       flex-direction: column;
       gap: 8px;
@@ -2629,22 +2462,6 @@
       Searching: Imoova · Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span style="color:var(--rust);font-weight:600;">100% free</span>
     </div>
 
-    <!-- FEATURED DEALS (inside hero) -->
-    <section class="featured-section" id="featuredSection" style="margin-top:12px;">
-      <div class="featured-header">
-        <h2><span class="live-dot"></span> <span id="featuredTitle">Live deals right now</span></h2>
-        <span style="font-size:0.75rem;color:var(--rust);font-weight:500;" id="dealsUpdatedLabel">Updated today</span>
-        <button class="featured-cta" onclick="browseAll()">See all deals &rarr;</button>
-      </div>
-      <div id="featuredContainer">
-        <div class="featured-skeleton">
-          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-        </div>
-      </div>
-    </section>
-
   </section>
 
   </div>
@@ -2845,117 +2662,15 @@ function getRoundTripGoal() {
   return { returnCity, budgetDays };
 }
 
-// ─── FEATURED DEALS (auto-load on page open) ───
-let featuredHub = 'Munich';
-
-async function loadFeaturedDeals() {
-  const container = document.getElementById('featuredContainer');
-  try {
-    // Check localStorage cache first (instant)
-    const cached = localStorage.getItem('mc_featured');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        // Use cache if less than 2 hours old
-        if (Date.now() - parsed.time < 2 * 60 * 60 * 1000 && parsed.data.deals?.length > 0) {
-          renderFeaturedDeals(parsed.data);
-          // Still refresh in background
-          fetchFeaturedDeals();
-          return;
-        }
-      } catch(e) {}
-    }
-    await fetchFeaturedDeals();
-  } catch (err) {
-    console.error('Featured deals error:', err);
-    container.innerHTML = '';
-  }
-}
-
-async function fetchFeaturedDeals() {
-  try {
-    const res = await fetch('/api/featured');
-    if (!res.ok) throw new Error('Failed');
-    const data = await res.json();
-    if (data.deals?.length > 0) {
-      featuredHub = data.hub || 'Munich';
-      renderFeaturedDeals(data);
-      localStorage.setItem('mc_featured', JSON.stringify({ data, time: Date.now() }));
-    } else {
-      document.getElementById('featuredContainer').innerHTML = '';
-    }
-  } catch (err) {
-    console.error('Featured fetch error:', err);
-    document.getElementById('featuredContainer').innerHTML = '';
-  }
-}
-
-function renderFeaturedDeals(data) {
-  const container = document.getElementById('featuredContainer');
-  const deals = data.deals || [];
-  if (deals.length === 0) { container.innerHTML = ''; return; }
-
-  featuredHub = data.hub || deals[0]?.from || 'Munich';
-
-  // Update header with live count
-  const titleEl = document.getElementById('featuredTitle');
-  if (titleEl && data.total_available) {
-    titleEl.textContent = data.total_available + ' deals available right now';
-  }
-  // Update trust stats
-  const statEl = document.getElementById('statDeals');
-  if (statEl && data.total_available) {
-    statEl.textContent = data.total_available + '+';
-  }
-
-  let html = '<div class="featured-strip">';
-  deals.forEach(deal => {
-    const providerLabel = (deal.provider || 'Imoova').replace(' via Imoova', '');
-    html += `
-      <a href="${deal.url || '#'}" target="_blank" rel="noopener" class="featured-card">
-        <div class="featured-route">
-          ${deal.from}<span class="arrow">&rarr;</span>${deal.to}
-        </div>
-        <div class="featured-details">
-          <span>📅 ${deal.date_range || 'Flexible'}</span>
-          <span>🚐 ${deal.vehicle || 'Campervan'}</span>
-          ${deal.seats ? `<span>👤 ${deal.seats} seats</span>` : ''}
-        </div>
-        <div class="featured-bottom">
-          <span class="featured-price">${deal.price || '€1/day'}</span>
-          <span class="featured-provider">${providerLabel}</span>
-        </div>
-      </a>
-    `;
-  });
-
-  if (data.total_available > deals.length) {
-    html += `
-      <div class="featured-card" onclick="searchFromHub('${featuredHub}')" style="display:flex;align-items:center;justify-content:center;text-align:center;color:var(--rust);font-weight:600;cursor:pointer;">
-        +${data.total_available - deals.length} more deals from ${featuredHub}<br>
-        <span style="font-weight:400;font-size:0.82rem;margin-top:4px;">Search all &rarr;</span>
-      </div>
-    `;
-  }
-
-  html += '</div>';
-  container.innerHTML = html;
-}
-
 // ─── Event delegation for deal buttons (XSS-safe) ───
-['resultsContainer', 'featuredContainer'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-deal-index]');
-    if (btn) {
-      const deal = getDeal(parseInt(btn.dataset.dealIndex, 10));
-      if (deal) addToTrip(deal);
-    }
-  });
+const el = document.getElementById('resultsContainer');
+if (el) el.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-deal-index]');
+  if (btn) {
+    const deal = getDeal(parseInt(btn.dataset.dealIndex, 10));
+    if (deal) addToTrip(deal);
+  }
 });
-
-// Fire on page load
-loadFeaturedDeals();
 
 // Load trip from URL param only (shared trip links); fresh start on every visit
 loadTripFromUrl();
@@ -3891,12 +3606,6 @@ function browseAll() {
     });
 }
 
-function searchFromHub(hubCity) {
-  document.getElementById('fromCity').value = hubCity;
-  doSearch();
-  document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 // ─── COUNTRY DETECTION ───
 const COUNTRY_MAP = {
   'netherlands': ['Amsterdam', 'Rotterdam', 'Utrecht'],
@@ -4022,10 +3731,6 @@ async function doSearch() {
 
   // Track search event
   if (window._mcTrack) window._mcTrack('search', { city: fromCleaned || headingTowards });
-
-  // Hide homepage carousel so search results are immediately visible
-  const featuredEl = document.getElementById('featuredSection');
-  if (featuredEl) featuredEl.style.display = 'none';
 
   const resultsSection = document.getElementById('resultsSection');
   resultsSection.style.display = 'block';
