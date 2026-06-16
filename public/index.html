@@ -115,61 +115,74 @@
     font-weight: 700;
   }
 
-  /* ─── EXPLAINER (what & why) — compact, no icons ─── */
+  /* ─── EXPLAINER (what & why) ─── */
   .explainer {
     background: white;
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
-    padding: 18px 0 20px;
+    padding: 0 0 0;
     margin: 12px auto;
+    overflow: hidden;
+    border-top: 4px solid var(--rust);
   }
   .explainer-inner {
-    max-width: 760px; margin: 0 auto; padding: 0 20px;
+    max-width: 760px; margin: 0 auto; padding: 20px 20px 0;
   }
   .explainer-lead {
     font-family: var(--font-display);
-    font-size: 1.18rem; line-height: 1.35;
+    font-size: 1.22rem; line-height: 1.35;
     color: var(--ink);
-    margin: 0 auto 4px;
+    margin: 0 auto 6px;
     text-align: center;
   }
-  .explainer-lead .hl { color: var(--rust); }
+  .explainer-lead .hl {
+    color: var(--rust);
+    border-bottom: 2px solid var(--rust-light);
+  }
   .explainer-sub {
     color: var(--warm); font-size: 0.86rem;
-    text-align: center; margin: 0 auto 12px;
+    text-align: center; margin: 0 auto 16px;
     line-height: 1.5;
   }
   .explainer-sub em { font-style: italic; color: var(--ink-light); }
   .how-row {
     display: flex; gap: 0;
-    border-top: 1px solid rgba(0,0,0,0.06);
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    background: white;
-    border-radius: 8px;
+    background: var(--cream);
+    border-top: 1px solid var(--sand);
   }
   .how-step {
     flex: 1;
-    padding: 11px 14px;
-    border-right: 1px solid rgba(0,0,0,0.06);
-    display: flex; align-items: baseline; gap: 8px;
+    padding: 16px 14px;
+    border-right: 1px solid var(--sand);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
   }
   .how-step:last-child { border-right: none; }
   .how-step .n {
-    font-weight: 700; color: var(--forest);
-    font-size: 0.82rem;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--rust);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
   .how-step .t {
-    font-size: 0.84rem; line-height: 1.4;
+    font-size: 0.84rem; line-height: 1.45;
     color: var(--ink-light);
   }
-  .how-step .t b { color: var(--ink); font-weight: 600; }
+  .how-step .t b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; }
   @media (max-width: 640px) {
     .how-row { flex-direction: column; }
-    .how-step { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 9px 14px; }
+    .how-step {
+      flex-direction: row; align-items: flex-start;
+      border-right: none; border-bottom: 1px solid var(--sand);
+      padding: 12px 14px; gap: 10px;
+    }
     .how-step:last-child { border-bottom: none; }
-    .explainer-lead { font-size: 1.02rem; }
-    .explainer { padding: 12px 0 14px; }
+    .how-step .t b { display: inline; margin-bottom: 0; }
+    .explainer-lead { font-size: 1.05rem; }
+    .explainer-inner { padding: 16px 16px 0; }
   }
 
   /* ─── LAYOUT ─── */
@@ -2696,10 +2709,10 @@
       It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
     </p>
     <div class="how-row">
-      <div class="how-step"><span class="n">1.</span><span class="t"><b>Find a route</b> — pick a start city, we show live deals.</span></div>
-      <div class="how-step"><span class="n">2.</span><span class="t"><b>Book direct</b> — you pay the rental company, not us.</span></div>
-      <div class="how-step"><span class="n">3.</span><span class="t"><b>Drive 3–10 days</b> — pick up, road-trip, drop off.</span></div>
-      <div class="how-step"><span class="n">4.</span><span class="t"><b>Do it again</b> — search from your drop-off city and chain the next leg.</span></div>
+      <div class="how-step"><span class="n">1</span><span class="t"><b>Find a route</b>Pick a start city, we show live deals.</span></div>
+      <div class="how-step"><span class="n">2</span><span class="t"><b>Book direct</b>You pay the rental company, not us.</span></div>
+      <div class="how-step"><span class="n">3</span><span class="t"><b>Drive 3–10 days</b>Pick up, road-trip, drop off.</span></div>
+      <div class="how-step"><span class="n">4</span><span class="t"><b>Do it again</b>Search from your drop-off city, chain the next leg.</span></div>
     </div>
   </div>
 </section>
