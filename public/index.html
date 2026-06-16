@@ -121,7 +121,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
     padding: 18px 0 20px;
-    margin: 12px 0 12px;
+    margin: 12px auto;
   }
   .explainer-inner {
     max-width: 760px; margin: 0 auto; padding: 0 20px;
@@ -198,6 +198,8 @@
     line-height: 1.5;
     background: var(--paper);
     border-top: 1px solid var(--sand);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
   }
 
   .how-it-works strong {
@@ -1647,7 +1649,11 @@
   /* ─── FOOTER ─── */
   /* ─── FEATURED DEALS ─── */
   .featured-section {
-    margin-top: 16px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 16px 20px 20px;
+    margin-top: 12px;
   }
 
   .featured-header {
@@ -2698,7 +2704,7 @@
   </div>
 </section>
 
-<div class="container page-card">
+<div class="container page-card" id="mainCard" style="display:none;">
 
   <!-- TRIP BUILDER -->
   <section class="trip-builder" id="tripBuilder">
@@ -3877,6 +3883,7 @@ function renderBridgeBlock(fromCity, dealCount) {
 function browseAll() {
   const resultsSection = document.getElementById('resultsSection');
   resultsSection.style.display = 'block';
+  document.getElementById('mainCard').style.display = '';
   const container = document.getElementById('resultsContainer');
   container.innerHTML = `
     <div class="loading" id="loadingState">
@@ -4024,6 +4031,8 @@ async function doSearch() {
     document.getElementById('fromCity').focus();
     return;
   }
+
+  document.getElementById('mainCard').style.display = '';
 
   // ─── COUNTRY DETECTION ───
   const countrySuggestions = checkCountry(from);
@@ -5077,6 +5086,7 @@ function renderTrip() {
   }
 
   builder.classList.add('visible');
+  document.getElementById('mainCard').style.display = '';
   const gaps = calculateGaps();
   const summary = calculateTripSummary();
 
