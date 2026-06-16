@@ -121,7 +121,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
     padding: 0 0 0;
-    margin: 12px auto;
+    margin: 12px 0;
     overflow: hidden;
     border-top: 4px solid var(--rust);
   }
@@ -186,6 +186,12 @@
   }
 
   /* ─── LAYOUT ─── */
+  .sections-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
   .container {
     max-width: 860px;
     margin: 0 auto;
@@ -197,7 +203,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
     padding: 8px 20px 20px;
-    margin: 12px auto;
+    margin: 12px 0;
   }
 
   .step-num {
@@ -2467,6 +2473,8 @@
   </div>
 </div>
 
+<div class="sections-wrapper">
+
 <section class="explainer">
   <div class="explainer-inner">
     <p class="explainer-lead">
@@ -2573,6 +2581,8 @@
     <div class="newsletter-privacy" style="font-size:0.75rem;color:#999;margin-top:6px;">We'll email you when matching deals pop up. No spam, unsubscribe anytime.</div>
   </div>
 </section>
+
+</div><!-- /.sections-wrapper -->
 
 <footer>
   <p>Movacamper searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
