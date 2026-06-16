@@ -74,7 +74,8 @@
 
   body {
     font-family: 'DM Sans', -apple-system, sans-serif;
-    background: var(--paper);
+    background:
+      url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1600&auto=format&fit=crop&q=80') center/cover fixed;
     color: var(--ink);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -83,19 +84,21 @@
 
   /* ─── HEADER ─── */
   header {
-    padding: 14px 0 0;
+    padding: 20px 0 0;
     text-align: center;
+    background: transparent;
   }
 
   .logo {
     font-family: 'DM Serif Display', serif;
     font-size: clamp(1.6rem, 4vw, 2.2rem);
     letter-spacing: -0.02em;
-    color: var(--ink);
+    color: #fff;
     margin-bottom: 4px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
   }
 
-  .logo span { color: var(--rust); }
+  .logo span { color: var(--gold); }
 
   .tagline {
     font-size: 0.92rem;
@@ -114,11 +117,11 @@
 
   /* ─── EXPLAINER (what & why) — compact, no icons ─── */
   .explainer {
-    background: var(--cream);
-    border-top: 1px solid rgba(0,0,0,0.04);
-    border-bottom: 1px solid rgba(0,0,0,0.04);
-    padding: 14px 0 18px;
-    margin: 0 0 8px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 18px 0 20px;
+    margin: 12px 0 12px;
   }
   .explainer-inner {
     max-width: 760px; margin: 0 auto; padding: 0 20px;
@@ -176,6 +179,14 @@
     padding: 0 20px;
   }
 
+  .page-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 8px 20px 20px;
+    margin: 12px auto;
+  }
+
   /* ─── HOW IT WORKS (attached to search box) ─── */
   .how-it-works {
     text-align: center;
@@ -225,9 +236,23 @@
 
   /* ─── HERO SEARCH WRAPPER ─── */
   .hero-search {
-    background: linear-gradient(180deg, var(--sand) 0%, var(--paper) 100%);
+    background: linear-gradient(to bottom, rgba(10,6,2,0.30) 0%, rgba(10,6,2,0.20) 60%, transparent 100%);
     margin: 0 -20px;
-    padding: 0 20px 20px;
+    padding: 0 20px 28px;
+  }
+
+  .hero-headline {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 4.5vw, 2.2rem);
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.2;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.45);
+  }
+
+  .hero-headline span {
+    color: #f5b731;
   }
 
   /* ─── PROVIDER HINT (inline) ─── */
@@ -2199,8 +2224,9 @@
   /* ─── NEWSLETTER SECTION ─── */
   .newsletter-section {
     background: var(--forest);
-    padding: 48px 20px;
-    margin: 36px 0 0;
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    margin: 12px 0;
   }
 
   .newsletter-inner {
@@ -2272,8 +2298,11 @@
   /* ─── TESTIMONIALS ─── */
   .testimonials-section {
     background: white;
-    padding: 48px 20px 36px;
-    border-top: 1px solid var(--sand);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 40px 20px 28px;
+    border-top: none;
+    margin: 12px 0;
   }
   .testimonials-inner {
     max-width: 720px;
@@ -2316,8 +2345,11 @@
 
   /* ─── TRUST / ABOUT SECTION ─── */
   .trust-section {
-    background: var(--cream);
-    padding: 56px 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 40px 20px;
+    margin: 12px 0;
   }
 
   .trust-inner {
@@ -2527,34 +2559,16 @@
 </head>
 <body>
 
-<header>
-  <div class="container">
-    <div class="logo">Mova<span>camper</span></div>
-    <p class="tagline">Drive a campervan across Europe from <strong>€1/day</strong>. <strong>Seriously.</strong></p>
-  </div>
-</header>
-
-<!-- EXPLAINER — what & why (added 2026-06-15: first-time visitors don't know
-     what a relocation is. Two short lines + a 3-step strip make the concept
-     obvious before the user has to engage with the search form.) -->
-<section class="explainer">
-  <div class="explainer-inner">
-    <p class="explainer-lead">
-      Rental companies have campers stuck in the <span class="hl">wrong city</span>. They need them <span class="hl">moved back</span>. You drive — they pay (almost) all of it.
-    </p>
-    <p class="explainer-sub">
-      It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
-    </p>
-    <div class="how-row">
-      <div class="how-step"><span class="n">1.</span><span class="t"><b>Find a route</b> — pick a start city, we show live deals.</span></div>
-      <div class="how-step"><span class="n">2.</span><span class="t"><b>Book direct</b> — you pay the rental company, not us.</span></div>
-      <div class="how-step"><span class="n">3.</span><span class="t"><b>Drive 3–10 days</b> — pick up, road-trip, drop off.</span></div>
-    </div>
-  </div>
-</section>
-
 <div class="hero-search">
+  <header>
+    <div class="container">
+      <div class="logo">Mova<span>camper</span></div>
+    </div>
+  </header>
+
   <div class="container">
+
+  <p class="hero-headline">Drive Europe for <span>€1/day</span> — in a campervan</p>
 
   <!-- SEARCH (hero position) -->
   <section class="search-section">
@@ -2667,7 +2681,24 @@
   </div>
 </div>
 
-<div class="container">
+<section class="explainer">
+  <div class="explainer-inner">
+    <p class="explainer-lead">
+      Rental companies have campers stuck in the <span class="hl">wrong city</span>. They need them <span class="hl">moved back</span>. You drive — they pay (almost) all of it.
+    </p>
+    <p class="explainer-sub">
+      It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
+    </p>
+    <div class="how-row">
+      <div class="how-step"><span class="n">1.</span><span class="t"><b>Find a route</b> — pick a start city, we show live deals.</span></div>
+      <div class="how-step"><span class="n">2.</span><span class="t"><b>Book direct</b> — you pay the rental company, not us.</span></div>
+      <div class="how-step"><span class="n">3.</span><span class="t"><b>Drive 3–10 days</b> — pick up, road-trip, drop off.</span></div>
+      <div class="how-step"><span class="n">4.</span><span class="t"><b>Do it again</b> — search from your drop-off city and chain the next leg.</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="container page-card">
 
   <!-- TRIP BUILDER -->
   <section class="trip-builder" id="tripBuilder">
@@ -3316,6 +3347,18 @@ function getKiwiUrl(from, to) {
   return `https://www.kiwi.com/en/search/results/${encodeURIComponent(from.toLowerCase())}/${encodeURIComponent(to.toLowerCase())}/anytime/no-return`;
 }
 
+function buildImoovaUrl(rawUrl, medium, campaign) {
+  if (!rawUrl || !rawUrl.includes('imoova.com')) return rawUrl || '#';
+  try {
+    const u = new URL(rawUrl);
+    u.searchParams.set('via', 'relocamp');
+    u.searchParams.set('utm_source', 'movacamper');
+    u.searchParams.set('utm_medium', medium);
+    u.searchParams.set('utm_campaign', campaign);
+    return u.toString();
+  } catch(e) { return rawUrl; }
+}
+
 const AFFILIATE_LINKS = {
   trainline: (from, to) => `https://www.thetrainline.com/book/results?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`,  // → add Partnerize tracking
   europcar: (from, to) => `https://www.awin1.com/cread.php?awinmid=7629&awinaffid=2818714&ued=${encodeURIComponent('https://www.europcar.it/it-it/noleggio-auto/' + from.toLowerCase().replace(/\s+/g,'-') + '/' + to.toLowerCase().replace(/\s+/g,'-'))}`,  // Awin Europcar IT — 6% commissie
@@ -3326,7 +3369,7 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=2818714&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
   bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
-  imoova:    (from, to) => `https://www.imoova.com/en?via=relocamp`,
+  imoova:    (from, to) => buildImoovaUrl('https://www.imoova.com/en', 'organic', 'bridge'),
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
   // Format: https://t.adcell.com/click.php?bid=ADCELL_MOVACAR_BID&link=DESTINATION_URL
   movacar:   (from, to) => {
@@ -3869,7 +3912,7 @@ function browseAll() {
       }));
       currentDeals = deals;
       let html = `<div class="browse-header"><h3>&#x1F30D; ${deals.length} deals available right now</h3><p>Live relocation deals from <strong>${data.hub || 'top European hubs'}</strong> via Imoova. Search a specific city above for results from all 5 providers.</p></div>`;
-      deals.forEach((deal, i) => { html += renderDealCard(deal, i); });
+      deals.forEach((deal, i) => { html += renderDealCard({...deal, _utmCampaign: 'featured'}, i); });
       html += '<div class="browse-tip">💡 <strong>Want more results?</strong> Search a specific city above to get deals from all 5 providers including Roadsurfer, Indie Campers, and more.</div>';
       container.innerHTML = html;
     })
@@ -4502,7 +4545,7 @@ async function loadFallbackDeals(nearestHub, searchedCity) {
       <h3 style="margin:0;font-size:1.05em;color:var(--espresso);font-weight:600;">${heading}</h3>
       ${subhead}
     </div>
-    ${top5.map((d, i) => renderDealCard(d, i)).join('')}
+    ${top5.map((d, i) => renderDealCard({...d, _utmCampaign: 'no-results'}, i)).join('')}
     <div style="text-align:center;margin:14px 0 24px;">
       <button onclick="browseAll();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;">Browse all available deals &rarr;</button>
       ${nearestHub && !visitedSlugs.has((nearestHub||'').toLowerCase().trim()) ? `<button onclick="document.getElementById('fromCity').value='${nearestHub}';doSearch();" class="bridge-search-btn" style="font-size:0.95em;padding:9px 22px;margin-left:8px;">Search from ${hubName}</button>` : ''}
@@ -4856,9 +4899,8 @@ function renderDealCard(deal, index) {
     : 'provider-bunk';
 
   let bookUrl = deal.url && deal.url.startsWith('http') ? deal.url : '#';
-  // Add Imoova affiliate tracking
   if (bookUrl !== '#' && bookUrl.includes('imoova.com')) {
-    bookUrl += (bookUrl.includes('?') ? '&' : '?') + 'via=relocamp';
+    bookUrl = buildImoovaUrl(bookUrl, 'organic', deal._utmCampaign || 'search');
   }
 
   const nearbyBadge = deal.nearby_distance > 0

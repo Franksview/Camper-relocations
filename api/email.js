@@ -2,6 +2,7 @@
 // Shared module for welcome emails, deal alerts, and broadcasts
 
 import { createHmac } from 'crypto';
+import { buildImoovaUrl } from './lib/search-core.js';
 
 // ── Unsubscribe Tokens ──
 const UNSUB_SECRET = process.env.UNSUB_SECRET || 'mc-unsub-default-secret-2026';
@@ -413,10 +414,9 @@ export function buildDealAlertEmail(subscriber, deals) {
   enContent += `<p>Here's what I've got for you:</p>\n`;
 
   for (const deal of deals.slice(0, 5)) {
-    let dealUrl = deal.url || 'https://movacamper.com';
-    if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
-      dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
-    }
+    const dealUrl = deal.url?.includes('imoova.com')
+      ? buildImoovaUrl(deal.url, { medium: 'email', campaign: 'deal-alert' })
+      : (deal.url || 'https://movacamper.com');
     enContent += `<div class="deal">
   <div class="route">${deal.from} → ${deal.to}</div>
   <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}${deal.seats ? ' · ' + deal.seats + ' seats' : ''}${deal.transmission && deal.transmission !== 'unknown' ? ' · ' + deal.transmission : ''}</div>
@@ -500,10 +500,9 @@ export function buildDigestEmail(subscriber, deals, stats) {
   }
 
   for (const deal of deals.slice(0, 5)) {
-    let dealUrl = deal.url || 'https://movacamper.com';
-    if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
-      dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
-    }
+    const dealUrl = deal.url?.includes('imoova.com')
+      ? buildImoovaUrl(deal.url, { medium: 'email', campaign: 'weekly-digest' })
+      : (deal.url || 'https://movacamper.com');
     content += `<div class="deal">
   <div class="route">${deal.from} → ${deal.to}</div>
   <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
@@ -562,10 +561,9 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
   <div style="font-size:13px;color:#2d6a4f;margin:4px 0">🚌 Getting there: ${transportTip}</div>\n`;
 
     for (const deal of group.deals.slice(0, 2)) {
-      let dealUrl = deal.url || 'https://movacamper.com';
-      if (dealUrl.includes('imoova.com') && !dealUrl.includes('via=relocamp')) {
-        dealUrl += (dealUrl.includes('?') ? '&' : '?') + 'via=relocamp';
-      }
+      const dealUrl = deal.url?.includes('imoova.com')
+        ? buildImoovaUrl(deal.url, { medium: 'email', campaign: 'nearby-alert' })
+        : (deal.url || 'https://movacamper.com');
       content += `  <div class="deal" style="margin-top:8px">
     <div class="route">${deal.from} → ${deal.to}</div>
     <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>

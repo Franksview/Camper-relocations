@@ -7,6 +7,19 @@ export const ANTHROPIC_VERSION = '2023-06-01';
 export const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/en/relocations?region=EU&via=relocamp';
 export const DEFAULT_PRICE = '€1.00/night';
 
+// ── Imoova URL builder ──
+// Always sets via=relocamp (required for commission) + UTM params for channel attribution.
+export function buildImoovaUrl(rawUrl, { medium = 'organic', campaign = 'search' } = {}) {
+  const base = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : 'https://www.imoova.com/en/relocations?region=EU';
+  if (!base.includes('imoova.com')) return base;
+  const u = new URL(base);
+  u.searchParams.set('via', 'relocamp');
+  u.searchParams.set('utm_source', 'movacamper');
+  u.searchParams.set('utm_medium', medium);
+  u.searchParams.set('utm_campaign', campaign);
+  return u.toString();
+}
+
 // ── City slug normalization (multilingual) ──
 export const CITY_SLUGS = {
   // Munich (DE/NL/PT/IT/FR)
