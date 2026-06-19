@@ -63,6 +63,13 @@ const CAMPAIGNS = {
     validUntil: '2026-06-30',
     build: (sub) => buildComebackEmail(sub),
   },
+  'camper26-jun22': {
+    subject: '\u20ac85 off a campervan rental \u2014 code expires June 30 \ud83d\ude90',
+    fromName: 'Frank from Movacamper',
+    validFrom: '2026-06-22',
+    validUntil: '2026-06-30',
+    build: (sub) => buildCamper26Email(sub),
+  },
 };
 
 // ─── HTML escape helper ───
@@ -188,6 +195,75 @@ function buildCamperdaysEmail(sub) {
 
   <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
     <a href="${unsubUrl}" style="font-size:12px;color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── Camper26 email builder (jun 2026 — €85 off €850+) ───
+function buildCamper26Email(sub) {
+  const email = sub?.email || 'preview@example.com';
+  const city = sub?.city && sub.city !== 'any' ? sub.city : '';
+  const cityDisplay = city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const unsubUrl = getUnsubUrl(email);
+
+  const ued = city
+    ? encodeURIComponent('https://www.camperdays.com/search?location=' + city)
+    : encodeURIComponent('https://www.camperdays.com');
+  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${ued}&clickref=${encodeURIComponent('bc-jun22-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
+
+  const cityLine = cityDisplay
+    ? `If you've been watching for a relocation deal from <strong>${esc(cityDisplay)}</strong> but the timing hasn't lined up — this is a solid backup.`
+    : `If the timing on relocation deals hasn't lined up yet, this is a solid backup.`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movacamper — €85 off campervan rental</title>
+</head>
+<body style="margin:0;padding:0;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;line-height:1.55;">
+<div style="max-width:560px;margin:0 auto;padding:24px 20px;">
+
+  <div style="text-align:center;margin-bottom:20px;">
+    <div style="font-family:Georgia,serif;font-size:1.5rem;color:#2d6a4f;font-weight:700;">Movacamper</div>
+  </div>
+
+  <h2 style="font-family:Georgia,serif;font-size:1.4rem;font-weight:400;color:#1f2937;margin:0 0 12px;">🚐 €85 off a campervan rental — ends June 30</h2>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 16px;">Hey,</p>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 16px;">Quick heads-up from our partners at <strong>Camperdays</strong>. ${cityLine}</p>
+
+  <div style="background:#fff8e6;border:1.5px solid #f5b731;border-radius:10px;padding:18px;margin:20px 0;">
+    <div style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#b8860b;font-weight:700;margin-bottom:8px;">Limited-time promo</div>
+    <div style="font-size:15px;line-height:1.9;color:#1f2937;">
+      💰 <strong>€85 off</strong> any booking of €850 or more<br>
+      🏷️ Code: <code style="background:#fff;padding:3px 8px;border-radius:4px;border:1px solid #f5b731;font-size:14px;font-weight:700;letter-spacing:0.05em;">camper26</code><br>
+      📅 Valid <strong>now until June 30, 2026</strong>
+    </div>
+  </div>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 20px;">Camperdays compares <strong>30+ campervan rental companies</strong> across Europe — so you pick the dates, pickup city, and van that work for you.</p>
+
+  <div style="text-align:center;margin:28px 0;">
+    <a href="${camperdaysUrl}" style="display:inline-block;background:#e8734a;color:#fff;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 3px 10px rgba(232,115,74,0.25);">🚐 Browse Camperdays deals →</a>
+  </div>
+
+  <p style="font-size:14px;color:#6b7280;text-align:center;margin:0 0 20px;">Enter code <strong>camper26</strong> at checkout. Offer ends June 30.</p>
+
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
+
+  <p style="font-size:12px;color:#9ca3af;line-height:1.55;margin:0 0 12px;"><em>Small note: Camperdays is an affiliate partner — we earn a small commission when you book through us. The price stays the same for you, and every booking helps keep Movacamper running.</em></p>
+
+  <p style="font-size:14px;color:#374151;margin:16px 0 6px;">Happy travels,</p>
+  <p style="font-size:14px;color:#374151;margin:0 0 24px;">Frank · Movacamper</p>
+
+  <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
+    <a href="${esc(unsubUrl)}" style="font-size:12px;color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
   </div>
 
 </div>
