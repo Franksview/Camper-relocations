@@ -91,7 +91,7 @@ function buildComebackEmail(sub) {
   const greeting = firstName ? `Hey ${esc(firstName)}` : 'Hey there';
   const unsubUrl = getUnsubUrl(email);
 
-  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}&clickref=${encodeURIComponent('comeback-jun26-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
+  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}&clickref=${encodeURIComponent('comeback-jun26-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -143,7 +143,7 @@ function buildCamperdaysEmail(sub) {
   const ued = city
     ? encodeURIComponent('https://www.camperdays.com/search?location=' + city)
     : encodeURIComponent('https://www.camperdays.com');
-  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${ued}&clickref=${encodeURIComponent('bc-apr26-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
+  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${ued}&clickref=${encodeURIComponent('bc-apr26-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
 
   const cityLine = cityDisplay
     ? `If you\u2019ve been waiting for a Movacamper deal from <strong>${esc(cityDisplay)}</strong> but your dates don\u2019t quite match, this is your shortcut.`
@@ -212,7 +212,7 @@ function buildCamper26Email(sub) {
   const ued = city
     ? encodeURIComponent('https://www.camperdays.com/search?location=' + city)
     : encodeURIComponent('https://www.camperdays.com');
-  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${ued}&clickref=${encodeURIComponent('bc-jun22-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
+  const camperdaysUrl = `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${ued}&clickref=${encodeURIComponent('bc-jun22-' + Buffer.from(email).toString('base64').slice(0, 8))}`;
 
   const cityLine = cityDisplay
     ? `If you've been watching for a relocation deal from <strong>${esc(cityDisplay)}</strong> but the timing hasn't lined up — this is a solid backup.`
