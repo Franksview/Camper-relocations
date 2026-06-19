@@ -4104,6 +4104,31 @@ async function submitNewsletter(event) {
   }
 }
 
+// ─── RELOCAMP CROSS-LINK CALLOUT ───
+// Cities with corresponding Relocamp pages
+const RELOCAMP_CITIES = ['munich', 'berlin', 'amsterdam', 'milan', 'paris', 'barcelona', 'florence', 'düsseldorf', 'dusseldorf', 'stuttgart'];
+
+function renderReloCampCrossLink(city) {
+  if (!city) return '';
+  const cityLower = city.toLowerCase().trim();
+  // Normalize düsseldorf variants
+  const normalized = cityLower === 'dusseldorf' ? 'düsseldorf' : cityLower;
+  if (!RELOCAMP_CITIES.includes(normalized)) return '';
+
+  const citySlug = cityLower === 'dusseldorf' ? 'dusseldorf' : cityLower; // URL-safe
+  const cityDisplay = displayCity(city);
+  return `
+    <div style="background:#f0fef9;border:1px solid #a7f3d0;border-radius:var(--radius);padding:18px;margin:24px 0;text-align:center">
+      <p style="margin:0 0 10px 0;color:#0f766e;font-size:0.95rem">
+        <strong>Plan a multi-leg trip</strong> from ${cityDisplay}
+      </p>
+      <a href="https://relocamp.nl/deals/${citySlug}" target="_blank" rel="noopener" style="display:inline-block;background:#10b981;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:background 0.2s">
+        Build your route on Relocamp →
+      </a>
+    </div>
+  `;
+}
+
 // ─── CONTEXTUAL SUBSCRIBE PROMPT ───
 function renderContextualSubscribe(city, variant) {
   const cityDisplay = city ? displayCity(city) : '';
@@ -4613,6 +4638,14 @@ function renderResults(data) {
   // Accommodation upsell — natural fit: user just found deals, may need a place to stay the night before pickup
   if (meta.from && dateMatchedDeals.length > 0) {
     html += renderAccommodationUpsell(meta.from);
+  }
+
+  // Relocamp cross-link: show after 3+ deals to capture warm traffic
+  // Only on city pages that have Relocamp equivalents
+  const totalDealsShown = dateMatchedDeals.length + (hasDirection ? directionDeals.length : 0);
+  const reloCampCity = meta.from || meta.to;
+  if (totalDealsShown >= 3 && reloCampCity) {
+    html += renderReloCampCrossLink(reloCampCity);
   }
 
   // Contextual subscribe prompt after search results
