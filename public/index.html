@@ -3105,7 +3105,7 @@ const AFFILIATE_LINKS = {
   blablacar: (from, to) => `https://www.blablacar.com/search?fn=${encodeURIComponent(from)}&tn=${encodeURIComponent(to)}`, // → add Travelpayouts tracking
   nightjet:  (from, to) => `https://www.nightjet.com/en/`,          // → Trainline affiliate for booking
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
-  camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=2818714&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + city)}`,  // Awin affiliate — deeplink to city search
+  camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}`,  // Awin affiliate — homepage (search?location= returns 404)
   bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
   imoova:    (from, to) => buildImoovaUrl('https://www.imoova.com/en', 'organic', 'bridge'),
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.

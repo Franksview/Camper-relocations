@@ -446,9 +446,7 @@ export function buildDealAlertEmail(subscriber, deals) {
 
   // Camperdays upsell
   const camperCity = hasCity ? cityDisplay.toLowerCase() : '';
-  const camperdaysUrl = camperCity
-    ? `https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com/search?location=' + camperCity)}`
-    : 'https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
+  const camperdaysUrl = 'https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
   enContent += `<hr class="divider">\n`;
   enContent += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0;text-align:center">
   <p style="font-size:14px;font-weight:600;color:#1f2937;margin:0 0 8px">🚐 Want a campervan on your own schedule?</p>
@@ -514,7 +512,7 @@ export function buildDigestEmail(subscriber, deals, stats) {
   content += '<div class="tip">🎯 Want alerts for a specific city instead of the weekly overview? Just reply with your departure city and rough dates — I\'ll set it up for you!</div>\n';
 
   // Camperdays upsell
-  const camperdaysDigestUrl = 'https://www.awin1.com/cread.php?awinmid=72498&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
+  const camperdaysDigestUrl = 'https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=' + encodeURIComponent('https://www.camperdays.com');
   content += `<hr class="divider">\n`;
   content += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0;text-align:center">
   <p style="font-size:14px;font-weight:600;color:#1f2937;margin:0 0 8px">🚐 Want a campervan on your own schedule?</p>
