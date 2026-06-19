@@ -119,12 +119,13 @@
   .explainer {
     background: white;
     border-radius: var(--radius);
-    box-shadow: var(--shadow-md);
-    padding: 0 0 0;
+    box-shadow: var(--shadow-sm);
+    padding: 0 0 14px;
     margin: 12px 0;
     overflow: hidden;
-    border-top: 4px solid var(--rust);
+    border: 1px solid rgba(0,0,0,0.05);
   }
+  .how-row { margin: 0 14px; border-radius: 10px; }
   .explainer-inner {
     max-width: 760px; margin: 0 auto; padding: 20px 20px 0;
   }
@@ -244,14 +245,22 @@
   /* ─── PROVIDER HINT (inline) ─── */
   .provider-hint {
     text-align: center;
-    font-size: 0.75rem;
-    color: var(--stone);
-    margin-top: 6px;
+    font-size: 0.78rem;
+    color: #fff;
+    margin: 10px auto 0;
     letter-spacing: 0.02em;
+    background: rgba(10,6,2,0.45);
+    padding: 7px 14px;
+    border-radius: 999px;
+    width: max-content;
+    max-width: 100%;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
   }
-
-  .provider-hint span {
-    white-space: nowrap;
+  .provider-hint span { white-space: nowrap; }
+  .provider-hint .free { color: #ffd45b; font-weight: 700; }
+  @media (max-width: 600px) {
+    .provider-hint { font-size: 0.72rem; padding: 6px 12px; }
   }
 
   /* ─── STICKY MOBILE SEARCH ─── */
@@ -2211,11 +2220,12 @@
   }
 
   .trust-stats {
-    display: flex;
-    gap: 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
     justify-content: center;
-    margin: 32px 0;
-    padding: 24px;
+    margin: 16px 0;
+    padding: 16px 12px;
     background: white;
     border-radius: var(--radius);
     border: 1px solid var(--sand);
@@ -2223,14 +2233,14 @@
 
   .trust-stat {
     text-align: center;
-    flex: 1;
   }
 
   .stat-number {
     font-family: var(--font-display);
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     color: var(--rust);
     font-weight: 700;
+    line-height: 1.2;
   }
 
   .stat-label {
@@ -2250,16 +2260,26 @@
     text-align: center;
     padding: 40px 20px;
     font-size: 0.78rem;
-    color: var(--stone);
+    color: white;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
   }
 
   footer a {
-    color: var(--warm);
+    color: #f0d7a8;
     text-decoration: none;
   }
 
   /* ─── RESPONSIVE ─── */
   @media (max-width: 640px) {
+    .trust-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 12px 8px;
+      margin: 12px 0;
+    }
+    .stat-number { font-size: 0.95rem; }
+    .stat-label { font-size: 0.7rem; margin-top: 1px; }
     .form-row {
       grid-template-columns: 1fr;
     }
@@ -2465,7 +2485,7 @@
       </div>
     </div>
     <div class="provider-hint">
-      Searching: Imoova · Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span style="color:var(--rust);font-weight:600;">100% free</span>
+      Searching: Imoova · Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span class="free">100% free</span>
     </div>
 
   </section>
@@ -2484,10 +2504,10 @@
       It's called a <em>relocation</em>. Real one-way trips, real campers, often with fuel credit. We scan 5 providers live.
     </p>
     <div class="how-row">
-      <div class="how-step"><span class="n">1</span><span class="t"><b>Find a route</b>Pick a start city, we show live deals.</span></div>
-      <div class="how-step"><span class="n">2</span><span class="t"><b>Book direct</b>You pay the rental company, not us.</span></div>
-      <div class="how-step"><span class="n">3</span><span class="t"><b>Drive 3–10 days</b>Pick up, road-trip, drop off.</span></div>
-      <div class="how-step"><span class="n">4</span><span class="t"><b>Do it again</b>Search from your drop-off city, chain the next leg.</span></div>
+      <div class="how-step"><span class="n">1</span><span class="t"><b>Find a route</b> — Pick a start city, we show live deals.</span></div>
+      <div class="how-step"><span class="n">2</span><span class="t"><b>Book direct</b> — You pay the rental company, not us.</span></div>
+      <div class="how-step"><span class="n">3</span><span class="t"><b>Drive 3–10 days</b> — Pick up, road-trip, drop off.</span></div>
+      <div class="how-step"><span class="n">4</span><span class="t"><b>Do it again</b> — Search from your drop-off city, chain the next leg.</span></div>
     </div>
   </div>
 </section>
@@ -2527,7 +2547,7 @@
     </div>
     <div class="trust-stats">
       <div class="trust-stat">
-        <div class="stat-number" id="statDeals">—</div>
+        <div class="stat-number" id="statDeals">Live</div>
         <div class="stat-label">Deals available now</div>
       </div>
       <div class="trust-stat">
@@ -2543,7 +2563,7 @@
         <div class="stat-label">Travelers served</div>
       </div>
     </div>
-    <p class="trust-made">Made in Amsterdam 🇳🇱 by a backpacker who couldn't afford rental cars.</p>
+    <p class="trust-made">Made in Amsterdam 🇳🇱 by a backpacker tired of checking 5 rental sites — one search now does it all.</p>
   </div>
 </section>
 
@@ -2681,6 +2701,30 @@ if (el) el.addEventListener('click', (e) => {
     if (deal) addToTrip(deal);
   }
 });
+
+// Hydrate "Deals available now" trust-stat with a real count.
+// Cache-first so first paint shows a number, then background-refresh.
+// Falls back to "Live" if /api/featured is unreachable — never shows "—".
+(function hydrateDealsStat() {
+  const el = document.getElementById('statDeals');
+  if (!el) return;
+  const setCount = (n) => {
+    if (typeof n === 'number' && n > 0) el.textContent = n + '+';
+  };
+  try {
+    const cached = localStorage.getItem('mc_featured');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const cachedCount = parsed?.data?.total_available || parsed?.data?.deals?.length;
+      setCount(cachedCount);
+    }
+  } catch(e) {}
+  fetch('/api/featured').then(r => r.ok ? r.json() : null).then(data => {
+    if (!data) return;
+    setCount(data.total_available || data.deals?.length);
+    try { localStorage.setItem('mc_featured', JSON.stringify({ data, time: Date.now() })); } catch(e) {}
+  }).catch(() => {});
+})();
 
 // Load trip from URL param only (shared trip links); fresh start on every visit
 loadTripFromUrl();
