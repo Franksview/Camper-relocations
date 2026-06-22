@@ -1455,11 +1455,19 @@ async function loadAutoSendLog() {
       const icon = entry.type === 'deal-alert' ? '🎯' : entry.type === 'nearby-alert' ? '📍' : entry.type === 'weekly-digest' ? '📰' : '📧';
       const date = entry.ts ? new Date(entry.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
       const city = entry.city ? `<span style="color:var(--accent);font-weight:600">${entry.city}</span>` : '';
-      const deals = entry.deals > 0 ? `<span style="color:#64748b">(${entry.deals} deals)</span>` : '';
+      // matchCount = full pool the subject line quotes; deals = top-N sliced into the email body;
+      // perfectCount = how many of those bypassed the throttle. Show all three so "5 shown" isn't
+      // mistaken for a bug when the subject said "28 deals".
+      const matchCount = entry.matchCount ?? entry.deals ?? 0;
+      const shownCount = entry.deals ?? 0;
+      const perfectCount = entry.perfectCount ?? 0;
+      const counts = matchCount > 0
+        ? `<span style="color:#64748b">(${shownCount} shown / ${matchCount} matched${perfectCount > 0 ? ` · ${perfectCount} perfect` : ''})</span>`
+        : '';
       return `<div class="sent-item">
         <span class="sent-icon">${icon}</span>
         <span class="sent-to">${entry.email ? entry.email.replace(/^(.{2}).*(@.*)$/, '$1***$2') : '?'}</span>
-        ${city} ${deals}
+        ${city} ${counts}
         <span class="sent-type">${entry.type || ''}</span>
         <span class="sent-date">${date}</span>
       </div>`;
