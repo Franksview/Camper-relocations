@@ -4,13 +4,13 @@
 // ── Constants ──
 export const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 export const ANTHROPIC_VERSION = '2023-06-01';
-export const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/en/relocations?region=EU&via=relocamp';
+export const IMOOVA_FALLBACK_URL = 'https://www.imoova.com/relocations?region=EU&via=relocamp';
 export const DEFAULT_PRICE = '€1.00/night';
 
 // ── Imoova URL builder ──
 // Always sets via=relocamp (required for commission) + UTM params for channel attribution.
 export function buildImoovaUrl(rawUrl, { medium = 'organic', campaign = 'search' } = {}) {
-  const base = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : 'https://www.imoova.com/en/relocations?region=EU';
+  const base = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : 'https://www.imoova.com/relocations?region=EU';
   if (!base.includes('imoova.com')) return base;
   const u = new URL(base);
   u.searchParams.set('via', 'relocamp');
@@ -447,7 +447,7 @@ export async function fetchImoovaPage(city, timeoutMs = 10000) {
   // redirect to client-rendered SPA pages with no deals in HTML. The global EU page
   // still server-renders ~50 deals. Strategy: fetch global once, filter by origin
   // city at the caller. `city` param kept for log/debug only.
-  const url = 'https://www.imoova.com/en/relocations?region=EU';
+  const url = 'https://www.imoova.com/relocations?region=EU';
   const now = Date.now();
   const cached = _imoovaCache.get(url);
   if (cached && cached.expiresAt > now) {

@@ -2605,7 +2605,7 @@
 </div><!-- /.sections-wrapper -->
 
 <footer>
-  <p>Movacamper searches <a href="https://imoova.com/en?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
+  <p>Movacamper searches <a href="https://imoova.com?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
   <p style="margin-top:12px;"><a href="https://relocamp.nl" target="_blank" title="Plan multi-leg campervan relocation trips on a map">Trip Planner</a> · <a href="/about">About</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:hello@movacamper.com">hello@movacamper.com</a></p>
 </footer>
@@ -3107,7 +3107,7 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}`,  // Awin affiliate — homepage (search?location= returns 404)
   bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
-  imoova:    (from, to) => buildImoovaUrl('https://www.imoova.com/en', 'organic', 'bridge'),
+  imoova:    (from, to) => buildImoovaUrl('https://www.imoova.com', 'organic', 'bridge'),
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
   // Format: https://t.adcell.com/click.php?bid=ADCELL_MOVACAR_BID&link=DESTINATION_URL
   movacar:   (from, to) => {

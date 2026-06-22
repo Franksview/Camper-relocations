@@ -98,7 +98,7 @@ async function checkInventoryBlackout(redis, todayDate, todayGlobalUnique) {
         subject: '🚨 Imoova pool empty 2 days in a row — possible blackout',
         html: `<p>The global Imoova EU relocations pool has shown <strong>0 unique deals</strong> for two consecutive days (${yesterday} and ${todayDate}).</p>
 <p>This is the same pattern as the May/June scraper blackout, where Imoova changed their page structure and our parser silently stopped matching anything for 17 days.</p>
-<p>Check: <a href="https://www.imoova.com/en/relocations?region=EU">https://www.imoova.com/en/relocations?region=EU</a> loads deals in a browser? If yes, the scraper regex in api/lib/search-core.js likely needs an update for a structure change.</p>`,
+<p>Check: <a href="https://www.imoova.com/relocations?region=EU">https://www.imoova.com/relocations?region=EU</a> loads deals in a browser? If yes, the scraper regex in api/lib/search-core.js likely needs an update for a structure change.</p>`,
       }),
     });
     if (sendRes.ok) {
