@@ -64,6 +64,54 @@ async function getRedis() {
   return null;
 }
 
+// Alerts Frank when the Imoova global pool has been empty for 2+ consecutive
+// days — the exact signature of the May/June 17-day blackout that went
+// unnoticed until Frank spotted it himself. Self-clearing: the "already sent"
+// flag is removed once the pool recovers, so a future blackout alerts again.
+async function checkInventoryBlackout(redis, todayDate, todayGlobalUnique) {
+  const BLACKOUT_FLAG_KEY = 'alert:imoova-blackout-sent';
+  try {
+    if (todayGlobalUnique >= 1) {
+      await redis.del(BLACKOUT_FLAG_KEY);
+      return;
+    }
+    const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const prevRaw = await redis.get(`stats:imoova_pool:${yesterday}`);
+    const prev = prevRaw ? (typeof prevRaw === 'string' ? JSON.parse(prevRaw) : prevRaw) : null;
+    const prevGlobalUnique = prev ? (prev.global_unique_deals ?? 0) : null;
+    if (prevGlobalUnique === null || prevGlobalUnique >= 1) return; // only 1 bad day so far — wait for confirmation
+
+    const alreadySent = await redis.get(BLACKOUT_FLAG_KEY);
+    if (alreadySent) return; // already alerted for this ongoing blackout
+
+    const FROM = process.env.BRIEFING_FROM || 'briefing@movacamper.com';
+    const TO = process.env.BRIEFING_TO || 'snelders.f@gmail.com';
+    const sendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM,
+        to: TO,
+        subject: '🚨 Imoova pool empty 2 days in a row — possible blackout',
+        html: `<p>The global Imoova EU relocations pool has shown <strong>0 unique deals</strong> for two consecutive days (${yesterday} and ${todayDate}).</p>
+<p>This is the same pattern as the May/June scraper blackout, where Imoova changed their page structure and our parser silently stopped matching anything for 17 days.</p>
+<p>Check: <a href="https://www.imoova.com/en/relocations?region=EU">https://www.imoova.com/en/relocations?region=EU</a> loads deals in a browser? If yes, the scraper regex in api/lib/search-core.js likely needs an update for a structure change.</p>`,
+      }),
+    });
+    if (sendRes.ok) {
+      await redis.set(BLACKOUT_FLAG_KEY, '1', 'EX', 14 * 24 * 3600);
+      console.log('[cron] Sent Imoova blackout alert');
+    } else {
+      console.error('[cron] Blackout alert send failed:', await sendRes.json().catch(() => null));
+    }
+  } catch (e) {
+    console.log('[cron] blackout check failed:', e.message);
+  }
+}
+
 module.exports = async function handler(req, res) {
   const authHeader = req.headers.authorization;
   const token = req.query.token;
@@ -275,6 +323,7 @@ module.exports = async function handler(req, res) {
         global_destinations: globalDestinations,
       };
       await redis.set(`stats:imoova_pool:${todayDate}`, JSON.stringify(snapshot), 'EX', 90 * 24 * 3600);
+      await checkInventoryBlackout(redis, todayDate, globalUnique);
     } catch (e) {
       console.log('[cron] inventory snapshot failed:', e.message);
     }
