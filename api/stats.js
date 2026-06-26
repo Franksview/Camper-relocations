@@ -585,10 +585,23 @@ export default async function handler(req, res) {
       path: d.key, count: d.total, visitors: d.devices,
     }));
 
-    // ── Top referrers (Vercel) ──
-    const topReferrers = (vercelReferrers?.data || []).map(d => ({
-      source: d.key, count: d.total, visitors: d.devices,
-    }));
+    // ── Top referrers (Vercel + Redis merged, max per domain) ──
+    // Redis already logs referrer domain on every pageview (api/track.js), so it
+    // works as a fallback the same way PV/UV does above when Vercel Analytics is
+    // unavailable or under-counting — referrers should never silently go empty.
+    const referrerMap = new Map();
+    for (const d of (vercelReferrers?.data || [])) {
+      const key = d.key.toLowerCase().replace(/^www\./, '');
+      referrerMap.set(key, { source: d.key, count: d.total, visitors: d.devices });
+    }
+    for (const { source, count } of redisData.topReferrers) {
+      const key = source.toLowerCase().replace(/^www\./, '');
+      const existing = referrerMap.get(key);
+      if (!existing || count > existing.count) {
+        referrerMap.set(key, { source, count, visitors: existing?.visitors });
+      }
+    }
+    const topReferrers = [...referrerMap.values()].sort((a, b) => b.count - a.count);
 
     // ── Countries (Vercel) ──
     const countries = (vercelCountries?.data || []).map(d => ({
@@ -637,9 +650,9 @@ export default async function handler(req, res) {
   }
 }
 
-// ── Redis: fetch search/subscribe/city data ──
+// ── Redis: fetch search/subscribe/city/referrer data ──
 async function fetchRedisData(redis, dates) {
-  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [] };
+  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [], topReferrers: [] };
   if (!redis) return empty;
 
   try {
@@ -654,6 +667,7 @@ async function fetchRedisData(redis, dates) {
       pipe.get(`stats:evt:trip_share:${date}`);           // 6: trip shares
       pipe.get(`stats:evt:search_results:${date}`);       // 7: search results
       pipe.get(`stats:evt:search_no_results:${date}`);    // 8: search no results
+      pipe.hgetall(`stats:ref:${date}`);                  // 9: referrer domains
     }
 
     const rawResults = await pipe.exec();
@@ -661,9 +675,10 @@ async function fetchRedisData(redis, dates) {
 
     const daily = [];
     const allCities = {};
+    const allReferrers = {};
 
     for (let i = 0; i < dates.length; i++) {
-      const base = i * 9;
+      const base = i * 10;
       const searches = parseInt(results[base]) || 0;
       const subscribes = parseInt(results[base + 1]) || 0;
       const cities = results[base + 2] || {};
@@ -673,11 +688,16 @@ async function fetchRedisData(redis, dates) {
       const tripShares = parseInt(results[base + 6]) || 0;
       const searchResults = parseInt(results[base + 7]) || 0;
       const searchNoResults = parseInt(results[base + 8]) || 0;
+      const referrers = results[base + 9] || {};
 
       daily.push({ searches, subscribes, deal_clicks: dealClicks, deal_views: dealViews, trip_adds: tripAdds, trip_shares: tripShares, search_results: searchResults, search_no_results: searchNoResults });
 
       for (const [k, v] of Object.entries(cities)) {
         allCities[k] = (allCities[k] || 0) + (parseInt(v) || 0);
+      }
+      for (const [k, v] of Object.entries(referrers)) {
+        if (k === 'direct') continue;
+        allReferrers[k] = (allReferrers[k] || 0) + (parseInt(v) || 0);
       }
     }
 
@@ -686,7 +706,12 @@ async function fetchRedisData(redis, dates) {
       .slice(0, 20)
       .map(([city, count]) => ({ city, count }));
 
-    return { daily, topCities };
+    const topReferrers = Object.entries(allReferrers)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([source, count]) => ({ source, count }));
+
+    return { daily, topCities, topReferrers };
   } catch (err) {
     console.error('Redis fetch error:', err.message);
     return empty;

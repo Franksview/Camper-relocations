@@ -12,3 +12,4 @@ _learning/
 marketing/
 nul
 .env*.local
+.env*
