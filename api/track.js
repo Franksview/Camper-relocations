@@ -57,6 +57,21 @@ function today() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
+// This endpoint is public and unauthenticated (CORS: *), and several of these fields
+// (page, city, provider, from, to) get stored in Redis and later rendered in the admin
+// dashboard. Output escaping there is the real XSS defense, but cap/clean here too so
+// junk or oversized values can't bloat Redis or sneak past a future render path.
+function cleanField(value, maxLen = 200) {
+  if (typeof value !== 'string') return '';
+  let out = '';
+  for (const ch of value) {
+    const code = ch.codePointAt(0);
+    if (code >= 0x20 && code !== 0x7F) out += ch;
+    if (out.length >= maxLen) break;
+  }
+  return out.trim();
+}
+
 // Simple hash for visitor fingerprint (no PII stored)
 function hashVisitor(ip, ua) {
   let hash = 0;
@@ -80,7 +95,17 @@ export default async function handler(req, res) {
   const redis = await getStore();
   if (!redis) return res.status(200).json({ ok: true, stored: false });
 
-  const { page, referrer, event, city, source, provider, from, to, variant, count } = req.body || {};
+  const body = req.body || {};
+  const page = cleanField(body.page);
+  const referrer = body.referrer;
+  const event = body.event;
+  const city = cleanField(body.city, 80);
+  const source = body.source;
+  const provider = cleanField(body.provider, 60);
+  const from = cleanField(body.from, 60);
+  const to = cleanField(body.to, 60);
+  const variant = body.variant;
+  const count = body.count;
   const date = today();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const ua = req.headers['user-agent'] || '';

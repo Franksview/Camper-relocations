@@ -363,6 +363,23 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
+// Several fields rendered below (page paths, search cities, referrer domains, deal-click
+// from/to/provider, subscriber email/notes) originate from public, unauthenticated POST
+// bodies to /api/track or weakly-validated subscribe-form input. They are attacker-
+// controlled strings, not trusted data — always run them through escapeHtml() before
+// putting them in innerHTML, even inside attribute values.
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// For attacker-controlled values placed inside a single-quoted JS string literal
+// within an HTML attribute (e.g. onclick="fn('${...}')") — escape for the JS string
+// first, then HTML-escape the result so the browser's attribute decoding restores
+// the intended JS escape sequence rather than letting the value break out of either layer.
+function escapeJsAttr(str) {
+  return escapeHtml(String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+}
+
 // Token from URL (?token=xxx) or remembered in localStorage. Prompts once.
 const urlToken = new URLSearchParams(window.location.search).get('token');
 let storedToken = null;
@@ -468,14 +485,14 @@ function generateInsights(data) {
 
   // Top referrer
   if (top_referrers.length > 0 && top_referrers[0].source !== 'direct') {
-    insights.push({ icon: '🌐', text: `Top traffic source: <strong>${top_referrers[0].source}</strong> (${top_referrers[0].count} visits).`, type: 'info' });
+    insights.push({ icon: '🌐', text: `Top traffic source: <strong>${escapeHtml(top_referrers[0].source)}</strong> (${top_referrers[0].count} visits).`, type: 'info' });
   } else if (top_referrers.length > 0 && top_referrers[0].source === 'direct') {
     insights.push({ icon: '📱', text: `Most traffic is <strong>direct</strong> — try building organic/referral channels.`, type: 'warn' });
   }
 
   // Top city
   if (top_search_cities.length > 0) {
-    insights.push({ icon: '🏙️', text: `Most searched city: <strong>${top_search_cities[0].city}</strong> (${top_search_cities[0].count}x). Make sure deals from there are fresh.`, type: 'info' });
+    insights.push({ icon: '🏙️', text: `Most searched city: <strong>${escapeHtml(top_search_cities[0].city)}</strong> (${top_search_cities[0].count}x). Make sure deals from there are fresh.`, type: 'info' });
   }
 
   // Pages per visitor (bounce-like)
@@ -890,7 +907,7 @@ function renderBarTable(items, labelKey, valueKey, color) {
       <span class="stat-rank">${i + 1}</span>
       <div class="stat-bar-bg">
         <div class="stat-bar-fill" style="width:${pct}%;background:${color};opacity:0.2"></div>
-        <span class="stat-bar-label">${item[labelKey]}</span>
+        <span class="stat-bar-label">${escapeHtml(item[labelKey])}</span>
       </div>
       <span class="stat-count">${item[valueKey].toLocaleString()}</span>
     </div>`;
@@ -1035,19 +1052,19 @@ function renderInlineDraft(email) {
   const typeClass = (d.type || 'deal-alert').replace(/\s+/g, '-');
   const created = d.created ? new Date(d.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
   const previewId = `inline-preview-${email.replace(/[^a-z0-9]/gi, '_')}`;
-  const safeEmail = d.to.replace(/'/g, "\\'");
+  const safeEmail = escapeJsAttr(d.to);
 
   let dealsHtml = '';
   if (d.deals && d.deals.length > 0) {
     dealsHtml = '<div class="draft-deals">' + d.deals.map(deal => {
-      const nearbyLabel = deal.nearbyCity ? ` <span style="font-size:0.6rem;color:#7dd3fc">(📍 ${deal.nearbyCity}, ${deal.nearbyDistance}km)</span>` : '';
-      const providerLabel = deal.provider && deal.provider !== 'Imoova' ? ` <span style="font-size:0.6rem;color:#a78bfa">[${deal.provider}]</span>` : '';
-      return `<span class="draft-deal-tag">${deal.from} → ${deal.to} <span class="price">${deal.price}</span>${nearbyLabel}${providerLabel}</span>`;
+      const nearbyLabel = deal.nearbyCity ? ` <span style="font-size:0.6rem;color:#7dd3fc">(📍 ${escapeHtml(deal.nearbyCity)}, ${deal.nearbyDistance}km)</span>` : '';
+      const providerLabel = deal.provider && deal.provider !== 'Imoova' ? ` <span style="font-size:0.6rem;color:#a78bfa">[${escapeHtml(deal.provider)}]</span>` : '';
+      return `<span class="draft-deal-tag">${escapeHtml(deal.from)} → ${escapeHtml(deal.to)} <span class="price">${escapeHtml(deal.price)}</span>${nearbyLabel}${providerLabel}</span>`;
     }).join('') + '</div>';
   } else if (d.type === 'no-match') {
-    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#3f3f46;color:#a1a1aa">No deals near ' + (d.city || 'any') + '</span></div>';
+    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#3f3f46;color:#a1a1aa">No deals near ' + escapeHtml(d.city || 'any') + '</span></div>';
   } else if (d.type === 'non-eu') {
-    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — ' + (d.city || 'non-EU') + '</span></div>';
+    dealsHtml = '<div class="draft-deals"><span class="draft-deal-tag" style="background:#78350f;color:#fbbf24">Europe only — ' + escapeHtml(d.city || 'non-EU') + '</span></div>';
   }
 
   return `<div class="inline-draft" style="background:#1a1f2e;border:1.5px solid #f59e0b44;border-radius:8px;padding:12px 14px;margin:-2px 0 8px 0;">
@@ -1055,7 +1072,7 @@ function renderInlineDraft(email) {
       <div style="font-size:0.75rem;font-weight:600;color:#fbbf24">📬 New email ready</div>
       <span class="draft-type-badge ${typeClass}" style="font-size:0.65rem">${typeLabel}</span>
     </div>
-    <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">Subject: "${d.subject || 'Welcome'}"</div>
+    <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">Subject: "${escapeHtml(d.subject || 'Welcome')}"</div>
     ${dealsHtml}
     <div style="font-size:0.68rem;color:#475569;margin:6px 0">Created ${created}${d.matchCount ? ' · ' + d.matchCount + ' deals matched' : ''}</div>
     <div class="draft-actions" style="margin-top:8px">
@@ -1064,7 +1081,7 @@ function renderInlineDraft(email) {
       <button class="draft-btn dismiss" onclick="dismissDraftInline('${safeEmail}', this)">✕ Dismiss</button>
     </div>
     <div class="draft-preview-frame" id="${previewId}" style="display:none">
-      <iframe srcdoc="${(d.html || '<p>No preview</p>').replace(/"/g, '&quot;')}"></iframe>
+      <iframe sandbox="" srcdoc="${(d.html || '<p>No preview</p>').replace(/"/g, '&quot;')}"></iframe>
     </div>
   </div>`;
 }
@@ -1096,13 +1113,15 @@ async function loadSubscribers() {
       const created = sub.created ? new Date(sub.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown date';
 
       // Human-readable summary of what they want
+      const cityEsc = escapeHtml(city);
+      const dateEsc = escapeHtml(date);
       let wants = '';
       if (city && date) {
-        wants = `Wants deals departing from <strong>${city}</strong> around <strong>${date}</strong> (±${flex} days)`;
+        wants = `Wants deals departing from <strong>${cityEsc}</strong> around <strong>${dateEsc}</strong> (±${flex} days)`;
       } else if (city) {
-        wants = `Wants deals departing from <strong>${city}</strong> (any date)`;
+        wants = `Wants deals departing from <strong>${cityEsc}</strong> (any date)`;
       } else if (date) {
-        wants = `Wants deals from any city around <strong>${date}</strong> (±${flex} days)`;
+        wants = `Wants deals from any city around <strong>${dateEsc}</strong> (±${flex} days)`;
       } else {
         wants = `Wants <strong>any deal</strong> — no specific city or date`;
       }
@@ -1140,15 +1159,16 @@ async function loadSubscribers() {
       }
       const emailCountHtml = sub.emailCount ? `<div class="sub-email-count">📧 ${sub.emailCount} email${sub.emailCount > 1 ? 's' : ''} sent</div>` : '';
 
-      const notesHtml = sub.notes ? `<div style="font-size:0.75rem;color:#f59e0b;margin-top:2px">📝 ${sub.notes}</div>` : '';
+      const notesHtml = sub.notes ? `<div style="font-size:0.75rem;color:#f59e0b;margin-top:2px">📝 ${escapeHtml(sub.notes)}</div>` : '';
       const editId = `edit-${sub.email.replace(/[^a-z0-9]/gi, '_')}`;
       const histId = `hist-${sub.email.replace(/[^a-z0-9]/gi, '_')}`;
-      const safeEmail = sub.email.replace(/'/g, "\\'");
+      const safeEmail = escapeJsAttr(sub.email);
+      const emailEsc = escapeHtml(sub.email);
 
       return `<div class="sub-item">
         <div class="sub-avatar">${initial}</div>
         <div class="sub-info">
-          <div class="sub-email">${sub.email}${sourceBadge}</div>
+          <div class="sub-email">${emailEsc}${sourceBadge}</div>
           <div class="sub-wants">${wants}</div>
           <div class="sub-date">Subscribed ${created}</div>
           ${lastContactHtml}${emailCountHtml}${notesHtml}
@@ -1164,10 +1184,10 @@ async function loadSubscribers() {
       <div id="${editId}" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin:-4px 0 8px 0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <label style="font-size:0.7rem;color:#94a3b8">
-            City<br><input id="${editId}-city" value="${city || ''}" placeholder="e.g. Munich" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+            City<br><input id="${editId}-city" value="${cityEsc}" placeholder="e.g. Munich" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
           </label>
           <label style="font-size:0.7rem;color:#94a3b8">
-            Date<br><input id="${editId}-date" type="date" value="${date || ''}" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+            Date<br><input id="${editId}-date" type="date" value="${dateEsc}" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
           </label>
           <label style="font-size:0.7rem;color:#94a3b8">
             Flexibility<br><select id="${editId}-flex" style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
@@ -1178,7 +1198,7 @@ async function loadSubscribers() {
             </select>
           </label>
           <label style="font-size:0.7rem;color:#94a3b8">
-            Notes<br><input id="${editId}-notes" value="${(sub.notes || '').replace(/"/g, '&quot;')}" placeholder="Your notes..." style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
+            Notes<br><input id="${editId}-notes" value="${escapeHtml(sub.notes || '')}" placeholder="Your notes..." style="width:100%;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;box-sizing:border-box">
           </label>
         </div>
         <button onclick="saveEdit('${safeEmail}', '${editId}')" style="background:#2d6a4f;color:white;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:0.8rem">💾 Save</button>
@@ -1265,8 +1285,8 @@ async function toggleHistory(email, histId) {
     el.innerHTML = history.map(h => {
       const icon = icons[h.type] || '•';
       const time = new Date(h.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      const detail = h.details ? Object.entries(h.details).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join(', ') : '';
-      return `<div style="padding:4px 0;border-bottom:1px solid #1e293b">${icon} <strong>${h.type}</strong> <span style="color:#475569">${time}</span>${detail ? `<br><span style="color:#64748b;font-size:0.7rem">${detail}</span>` : ''}</div>`;
+      const detail = h.details ? Object.entries(h.details).filter(([k,v]) => v).map(([k,v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`).join(', ') : '';
+      return `<div style="padding:4px 0;border-bottom:1px solid #1e293b">${icon} <strong>${escapeHtml(h.type)}</strong> <span style="color:#475569">${time}</span>${detail ? `<br><span style="color:#64748b;font-size:0.7rem">${detail}</span>` : ''}</div>`;
     }).join('');
   } catch (err) {
     el.innerHTML = `<div style="color:#f87171">Error: ${err.message}</div>`;
@@ -1386,8 +1406,8 @@ async function loadClickLog() {
       }
       return `<div style="padding:6px 0;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center">
         <div>
-          <span style="color:#e2e8f0;font-weight:500">${c.from || '?'} → ${c.to || '?'}</span>
-          <span style="color:#64748b;font-size:0.75rem;margin-left:8px">${prov}</span>${affTag} ${site}
+          <span style="color:#e2e8f0;font-weight:500">${escapeHtml(c.from || '?')} → ${escapeHtml(c.to || '?')}</span>
+          <span style="color:#64748b;font-size:0.75rem;margin-left:8px">${escapeHtml(prov)}</span>${affTag} ${site}
         </div>
         <div style="color:#475569;font-size:0.7rem">${time}</div>
       </div>`;
@@ -1421,9 +1441,9 @@ async function loadSentLog() {
       const deals = entry.deals ? ` (${entry.deals} deals)` : '';
       return `<div class="sent-item">
         <span class="sent-icon">${icon}</span>
-        <span class="sent-to">${entry.to}</span>
-        <span class="sent-subject">${entry.subject || ''}${deals}</span>
-        <span class="sent-type ${typeClass}">${entry.type || 'welcome'}</span>
+        <span class="sent-to">${escapeHtml(entry.to)}</span>
+        <span class="sent-subject">${escapeHtml(entry.subject || '')}${deals}</span>
+        <span class="sent-type ${typeClass}">${escapeHtml(entry.type || 'welcome')}</span>
         <span class="sent-date">${date}</span>
       </div>`;
     }).join('');
@@ -1454,7 +1474,7 @@ async function loadAutoSendLog() {
     list.innerHTML = log.map(entry => {
       const icon = entry.type === 'deal-alert' ? '🎯' : entry.type === 'nearby-alert' ? '📍' : entry.type === 'weekly-digest' ? '📰' : '📧';
       const date = entry.ts ? new Date(entry.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-      const city = entry.city ? `<span style="color:var(--accent);font-weight:600">${entry.city}</span>` : '';
+      const city = entry.city ? `<span style="color:var(--accent);font-weight:600">${escapeHtml(entry.city)}</span>` : '';
       // matchCount = full pool the subject line quotes; deals = top-N sliced into the email body;
       // perfectCount = how many of those bypassed the throttle. Show all three so "5 shown" isn't
       // mistaken for a bug when the subject said "28 deals".
@@ -1466,9 +1486,9 @@ async function loadAutoSendLog() {
         : '';
       return `<div class="sent-item">
         <span class="sent-icon">${icon}</span>
-        <span class="sent-to">${entry.email ? entry.email.replace(/^(.{2}).*(@.*)$/, '$1***$2') : '?'}</span>
+        <span class="sent-to">${entry.email ? escapeHtml(entry.email.replace(/^(.{2}).*(@.*)$/, '$1***$2')) : '?'}</span>
         ${city} ${counts}
-        <span class="sent-type">${entry.type || ''}</span>
+        <span class="sent-type">${escapeHtml(entry.type || '')}</span>
         <span class="sent-date">${date}</span>
       </div>`;
     }).join('');
