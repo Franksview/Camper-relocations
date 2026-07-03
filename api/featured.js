@@ -3,7 +3,7 @@
 // Shares the scraper with api/search.js (api/lib/search-core.js) so deep-link URLs
 // (relocations/deal/<slug>-RLC<id>) match the post-2026-06 Imoova site rebuild.
 
-import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL } from './lib/search-core.js';
+import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL } from './_lib/search-core.js';
 
 const cache = new Map();
 const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours (deals don't change that fast)

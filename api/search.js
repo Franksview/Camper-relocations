@@ -8,7 +8,7 @@ import {
   getNearbyCities, fetchImoovaPage, parseImoovaHtml,
   cleanCityName, identifyProvider, extractJsonArray, callHaikuWebSearch,
   buildImoovaUrl,
-} from './lib/search-core.js';
+} from './_lib/search-core.js';
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour

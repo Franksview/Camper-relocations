@@ -32,12 +32,12 @@ async function getEmailHelpers() {
 }
 
 async function getSearchCore() {
-  const mod = await import('../lib/search-core.js');
+  const mod = await import('../_lib/search-core.js');
   return mod;
 }
 
 async function getHistory() {
-  const mod = await import('../lib/history.js');
+  const mod = await import('../_lib/history.js');
   return mod;
 }
 

@@ -2,9 +2,9 @@
 // Persistent storage via Redis (Vercel Storage)
 // Now with welcome emails and unsubscribe
 
-import { sendEmail, buildWelcomeEmail, buildNonEUWelcomeEmail, isNonEU, verifyUnsubToken, verifyPrefsToken, getPrefsUrl } from './lib/email.js';
-import { normalizeCitySlug } from './lib/search-core.js';
-import { logEvent } from './lib/history.js';
+import { sendEmail, buildWelcomeEmail, buildNonEUWelcomeEmail, isNonEU, verifyUnsubToken, verifyPrefsToken, getPrefsUrl } from './_lib/email.js';
+import { normalizeCitySlug } from './_lib/search-core.js';
+import { logEvent } from './_lib/history.js';
 
 let store = null;
 let storeType = 'none';

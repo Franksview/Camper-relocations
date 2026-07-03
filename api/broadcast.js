@@ -12,7 +12,7 @@
 //        → date-gated: refuses to send before campaign.validFrom
 //        → logs each send to email:broadcast-log
 
-import { sendEmail, getUnsubUrl } from './lib/email.js';
+import { sendEmail, getUnsubUrl } from './_lib/email.js';
 
 const TEST_RECIPIENT = 'frank@movacamper.com';
 

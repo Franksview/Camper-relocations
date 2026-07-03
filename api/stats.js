@@ -174,7 +174,7 @@ export default async function handler(req, res) {
 
           // Log history event
           try {
-            const { logEvent } = await import('./lib/history.js');
+            const { logEvent } = await import('./_lib/history.js');
             await logEvent(redis, email, `${draft.type}-sent`, { subject: draft.subject });
           } catch (e) { /* best-effort */ }
 
@@ -195,7 +195,7 @@ export default async function handler(req, res) {
         await redis.del(`draft:${email}`);
         await redis.srem('email:drafts', email);
         try {
-          const { logEvent } = await import('./lib/history.js');
+          const { logEvent } = await import('./_lib/history.js');
           await logEvent(redis, email, 'dismissed', {});
         } catch (e) { /* best-effort */ }
         return res.status(200).json({ ok: true });
@@ -223,7 +223,7 @@ export default async function handler(req, res) {
         await redis.set(`sub:${email}`, JSON.stringify(data));
 
         try {
-          const { logEvent } = await import('./lib/history.js');
+          const { logEvent } = await import('./_lib/history.js');
           await logEvent(redis, email, 'admin-edited', changes);
         } catch (e) { /* best-effort */ }
 
@@ -427,7 +427,7 @@ export default async function handler(req, res) {
     if (!email) return res.status(400).json({ error: 'email required' });
     if (!redis) return res.status(200).json({ history: [] });
     try {
-      const { getHistory } = await import('./lib/history.js');
+      const { getHistory } = await import('./_lib/history.js');
       const history = await getHistory(redis, email, 50);
       return res.status(200).json({ history, email });
     } catch (err) {
