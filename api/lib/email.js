@@ -2,7 +2,7 @@
 // Shared module for welcome emails, deal alerts, and broadcasts
 
 import { createHmac } from 'crypto';
-import { buildImoovaUrl } from './lib/search-core.js';
+import { buildImoovaUrl } from './search-core.js';
 
 // ── Unsubscribe Tokens ──
 const UNSUB_SECRET = process.env.UNSUB_SECRET || 'mc-unsub-default-secret-2026';

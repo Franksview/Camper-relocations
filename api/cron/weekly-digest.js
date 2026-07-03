@@ -9,7 +9,7 @@
 // Suppressed for subs who received any email in the last 2 days (already active).
 // Rate-limited at 4 emails/sec to stay within Resend free tier.
 
-import { buildDigestEmail, sendEmail } from '../email.js';
+import { buildDigestEmail, sendEmail } from '../lib/email.js';
 import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL } from '../lib/search-core.js';
 
 const DIGEST_SENT_KEY_PREFIX = 'digest:weekly:sent:';
