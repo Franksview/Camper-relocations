@@ -7,6 +7,7 @@ import {
   NEARBY_CITIES, normalizeCitySlug, capitalize, formatDateRange,
   getNearbyCities, fetchImoovaPage, parseImoovaHtml,
   cleanCityName, identifyProvider, extractJsonArray, callHaikuWebSearch,
+  buildImoovaUrl,
 } from './lib/search-core.js';
 
 const cache = new Map();
@@ -262,7 +263,7 @@ If no deals: []` }],
       vehicle: d.vehicle || 'Campervan',
       seats: d.seats || 0,
       provider: d.provider || identifyProvider(d.vehicle),
-      url: d.url || IMOOVA_FALLBACK_URL,
+      url: buildImoovaUrl(d.url || IMOOVA_FALLBACK_URL, { medium: 'organic', campaign: 'search' }),
       direction_match: false,
       description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || DEFAULT_PRICE),
       nearby_distance: d._nearbyDistance || 0,
