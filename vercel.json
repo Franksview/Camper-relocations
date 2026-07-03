@@ -7,10 +7,12 @@
     { "source": "/api/subscribe", "destination": "/api/subscribe" },
     { "source": "/api/track", "destination": "/api/track" },
     { "source": "/api/stats", "destination": "/api/stats" },
-    { "source": "/api/cron/match-subscribers", "destination": "/api/cron/match-subscribers" }
+    { "source": "/api/cron/match-subscribers", "destination": "/api/cron/match-subscribers" },
+    { "source": "/api/cron/weekly-digest", "destination": "/api/cron/weekly-digest" }
   ],
   "crons": [
-    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" }
+    { "path": "/api/cron/match-subscribers", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/weekly-digest", "schedule": "0 8 * * 3" }
   ],
   "headers": [
     {
