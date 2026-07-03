@@ -19,4 +19,13 @@ Allow: /
 User-agent: anthropic-ai
 Allow: /
 
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Gemini-Web
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
 Sitemap: https://www.movacamper.com/sitemap.xml
