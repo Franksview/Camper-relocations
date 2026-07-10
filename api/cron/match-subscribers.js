@@ -27,7 +27,7 @@ const AUTO_SEND_LOG_KEY = 'email:auto-sent-log';
 const AUTO_SEND_LOG_MAX = 200;    // keep last 200 entries
 
 async function getEmailHelpers() {
-  const mod = await import('../email.js');
+  const mod = await import('../_lib/email.js');
   return mod;
 }
 
