@@ -24,11 +24,12 @@ export default async function handler(req, res) {
     // of whether any emails were sent. "0 sent" can happen for legitimate
     // reasons (thin Imoova pool, all subs throttled) — we shouldn't alert in
     // those cases. The snapshot is the honest "did cron run yesterday" signal.
-    const [statsRes, subsRes, logRes, invRes] = await Promise.all([
+    const [statsRes, subsRes, logRes, invRes, ai14Res] = await Promise.all([
       fetch(`${BASE}/api/stats?token=${TOKEN}&days=60`),
       fetch(`${BASE}/api/stats?token=${TOKEN}&action=subscribers`),
       fetch(`${BASE}/api/stats?token=${TOKEN}&action=auto-sent-log&limit=200`),
       fetch(`${BASE}/api/stats?token=${TOKEN}&action=imoova-pool-history&days=2`),
+      fetch(`${BASE}/api/stats?token=${TOKEN}&days=14`),
     ]);
 
     if (!statsRes.ok || !subsRes.ok || !logRes.ok) {
@@ -38,6 +39,31 @@ export default async function handler(req, res) {
     const [stats, subsData, logData] = await Promise.all([
       statsRes.json(), subsRes.json(), logRes.json(),
     ]);
+
+    // ── 1b. AI-chat referral share (14-day rolling) ──────────────────────────
+    // Tracks ChatGPT/Perplexity/Claude/Copilot referral share vs the ~9%
+    // baseline measured mid-June 2026, before the June 23 AI-search deploy
+    // (FAQPage schema + robots.txt allows for GPTBot/ClaudeBot/PerplexityBot).
+    let aiReferral = null;
+    try {
+      if (ai14Res.ok) {
+        const ai14 = await ai14Res.json();
+        const totalVisitors = ai14.totals?.visitors || 0;
+        const AI_CHAT_KEYWORDS = ['chatgpt', 'openai', 'perplexity', 'claude', 'anthropic'];
+        const bingCount = (ai14.top_referrers || [])
+          .filter(r => (r.source || '').toLowerCase().includes('bing'))
+          .reduce((s, r) => s + (r.count || 0), 0);
+        const aiChatCount = (ai14.top_referrers || [])
+          .filter(r => AI_CHAT_KEYWORDS.some(k => (r.source || '').toLowerCase().includes(k)))
+          .reduce((s, r) => s + (r.count || 0), 0);
+        if (totalVisitors >= 50) {
+          const pct = Math.round((aiChatCount / totalVisitors) * 1000) / 10;
+          aiReferral = { pct, count: aiChatCount, bingCount, totalVisitors, enoughData: true };
+        } else {
+          aiReferral = { totalVisitors, enoughData: false };
+        }
+      }
+    } catch { /* best-effort — don't fail the whole briefing over this */ }
 
     // ── 2. Delta calculations from timeseries ────────────────────────────────
     function sumKey(arr, key) {
@@ -229,6 +255,15 @@ export default async function handler(req, res) {
       return `<span style="color:#fbbf24;font-weight:700">⚠ No cron activity yesterday — check Vercel cron</span>`;
     })();
 
+    const AI_REFERRAL_BASELINE_PCT = 9;
+    const AI_REFERRAL_GOAL_PCT = 18;
+    const aiReferralVerdict = (() => {
+      if (!aiReferral || !aiReferral.enoughData) return 'Not enough data yet.';
+      if (aiReferral.pct >= AI_REFERRAL_GOAL_PCT * 0.85) return `Tracking toward the ${AI_REFERRAL_GOAL_PCT}% goal.`;
+      if (aiReferral.pct >= AI_REFERRAL_BASELINE_PCT) return 'Flat vs baseline.';
+      return 'Declined vs baseline — investigate.';
+    })();
+
     const html = `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -271,6 +306,19 @@ export default async function handler(req, res) {
     </table>
   </td></tr>
   <tr><td style="height:12px"></td></tr>
+  ${aiReferral ? `<tr><td style="background:#1e293b;border-radius:12px;padding:18px 20px">
+    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#c084fc;letter-spacing:1.5px;text-transform:uppercase">&#9679; AI-chat referral share (14d)</p>
+    ${aiReferral.enoughData ? `
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="color:#94a3b8;font-size:12px">ChatGPT / Perplexity / Claude share of visitors</td>
+        <td style="text-align:right;color:#fff;font-weight:700;font-size:16px">${aiReferral.pct}%</td>
+      </tr>
+    </table>
+    <p style="margin:8px 0 0;color:#64748b;font-size:11px">Baseline (mid-June, pre AI-search deploy): 9%. ${aiReferralVerdict}</p>
+    ` : `<p style="margin:0;color:#64748b;font-size:12px">Not enough data yet (${aiReferral.totalVisitors} visitors in last 14 days, need 50+).</p>`}
+  </td></tr>
+  <tr><td style="height:12px"></td></tr>` : ''}
   <tr><td style="background:#1e293b;border-radius:12px;padding:18px 20px">
     <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:1.5px;text-transform:uppercase">⚙ System health</p>
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -345,6 +393,8 @@ export default async function handler(req, res) {
       subscribers_total:     subscribersTotal,
       sent_today:            sentToday,
       cron_ran_yesterday:    cronRanYesterday,
+      ai_referral_pct_14d:   aiReferral?.enoughData ? aiReferral.pct : null,
+      ai_referral_verdict:   aiReferralVerdict,
       resend_id:             sendData.id,
     });
 
