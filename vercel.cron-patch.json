@@ -1,0 +1,18 @@
+{
+  "crons": [
+    {
+      "path": "/api/morning-briefing?token=mc-dash-1643257a9857b3040f993418",
+      "schedule": "30 6 * * *"
+    }
+  ]
+}
+
+// ── Instructions ────────────────────────────────────────────────────────────
+// Merge the "crons" block above into your existing vercel.json.
+//
+// "30 6 * * *" = 06:30 UTC = 08:30 CEST (summer) / 07:30 CET (winter)
+// Adjust to "30 7 * * *" in winter if you want exactly 08:30 year-round.
+//
+// NOTE: Vercel crons require a Pro plan or higher.
+// Free alternative: the Cowork scheduled task will hit the same endpoint
+// at exactly 08:30 local time as long as the Claude desktop app is open.
