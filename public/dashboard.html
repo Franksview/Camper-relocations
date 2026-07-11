@@ -397,6 +397,27 @@ try { localStorage.setItem('movacamper_dash_token', TOKEN); } catch(e) {}
 if (urlToken) {
   try { history.replaceState({}, '', window.location.pathname); } catch(e) {}
 }
+
+// Self-heal on a stale/rotated token: any fetch carrying `token=` that comes
+// back 401 clears the stored token, re-prompts once, and retries with the
+// fresh value — instead of every API call on the page silently failing.
+const RAW_FETCH = window.fetch.bind(window);
+window.fetch = async function(url, opts) {
+  let res = await RAW_FETCH(url, opts);
+  if (res.status === 401 && typeof url === 'string' && url.includes('token=')) {
+    try { localStorage.removeItem('movacamper_dash_token'); } catch(e) {}
+    const freshToken = window.prompt('Dashboard token expired or invalid. Enter new token:');
+    if (!freshToken) {
+      document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#64748b;font-family:Inter,sans-serif"><h2>Access denied</h2></div>';
+      throw new Error('No token');
+    }
+    TOKEN = freshToken;
+    try { localStorage.setItem('movacamper_dash_token', TOKEN); } catch(e) {}
+    res = await RAW_FETCH(url.replace(/token=[^&]*/, `token=${encodeURIComponent(TOKEN)}`), opts);
+  }
+  return res;
+};
+
 let currentDays = 14;
 let charts = {};
 
