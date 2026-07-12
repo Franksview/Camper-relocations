@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/morning-briefing?token=mc-dash-1643257a9857b3040f993418",
+      "path": "/api/morning-briefing?token=<DASH_TOKEN>",
       "schedule": "30 6 * * *"
     }
   ]
