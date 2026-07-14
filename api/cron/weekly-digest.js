@@ -15,7 +15,12 @@ import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL }
 const DIGEST_SENT_KEY_PREFIX = 'digest:weekly:sent:';
 const AUTO_SEND_LOG_KEY = 'email:auto-sent-log';
 const AUTO_SEND_LOG_MAX = 200;
-const SUPPRESS_WITHIN_HOURS = 48;
+// 156h (6.5 days), not 48h: a generic subscriber's one-time intro digest
+// (sent by match-subscribers.js, up to 6 days before the next Wednesday
+// depending on signup day) must stay suppressed until this cron's normal
+// 7-day cadence catches up, or they'd get a near-duplicate digest within
+// the same week. See _learning/decisions.md 2026-07-14 for the incident.
+const SUPPRESS_WITHIN_HOURS = 156;
 
 async function getRedis() {
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {

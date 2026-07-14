@@ -251,11 +251,14 @@ export default async function handler(req, res) {
       const oldDate = sub.date;
 
       if (newCity !== undefined) {
-        const rawNewCity = String(newCity).trim();
+        const rawNewCity = newCity == null ? '' : String(newCity).trim();
         sub.city = rawNewCity ? normalizeCitySlug(rawNewCity) : 'any';
       }
       if (newDate !== undefined) sub.date = newDate || null;
-      if (newFlex !== undefined) sub.flexibility = parseInt(newFlex) || 7;
+      if (newFlex !== undefined) {
+        const parsedFlex = parseInt(newFlex, 10);
+        sub.flexibility = Number.isFinite(parsedFlex) && parsedFlex >= 0 ? parsedFlex : 7;
+      }
 
       await redis.set(`sub:${normalizedEmail}`, JSON.stringify(sub));
       await logEvent(redis, normalizedEmail, 'admin-preferences-updated', {

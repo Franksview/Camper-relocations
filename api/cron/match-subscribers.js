@@ -545,16 +545,12 @@ module.exports = async function handler(req, res) {
     // Recurring weekly sends are owned solely by api/cron/weekly-digest.js (Wednesdays).
     // This loop used to also resend every Monday, which duplicated weekly-digest.js's
     // send with no shared dedup key — subscribers were getting the same digest twice
-    // a week. Now it fires exactly once per subscriber, right after signup.
-    for (const sub of genericSubs) {
+    // a week. Now it fires exactly once per subscriber, right after signup. Filtering
+    // here (rather than skipping inside the loop) also avoids a no-op iteration + log
+    // entry for every already-handled generic subscriber on every single daily run.
+    const introSubs = genericSubs.filter(sub => !sub.digestSent);
+    for (const sub of introSubs) {
       try {
-        const isFirstDigest = !sub.digestSent;
-        if (!isFirstDigest) {
-          results.skipped++;
-          results.details.push({ email: sub.email, reason: 'intro digest already sent — recurring sends handled by weekly-digest.js' });
-          continue;
-        }
-
         // Only block on existing draft in manual mode
         if (!AUTO_SEND) {
           const existingDraft = await redis.get(`draft:${sub.email}`);
@@ -625,12 +621,15 @@ module.exports = async function handler(req, res) {
             await logEvent(redis, sub.email, outcome === 'sent' ? 'digest-sent' : 'digest-drafted', {
               totalDeals: uniqueDeals.length, intro: isFirstDigest,
             });
+            // Mark digestSent so we don't re-create intro drafts every cron run.
+            // Only on 'sent'/'draft' — NOT on 'error' (e.g. Resend outage), or a
+            // transient send failure would permanently skip this subscriber's
+            // intro digest since this branch only ever fires once (digestSent gate).
+            try {
+              sub.digestSent = true;
+              await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
+            } catch (e) { /* best-effort */ }
           }
-          // Mark digestSent so we don't re-create intro drafts every cron run
-          try {
-            sub.digestSent = true;
-            await redis.set(`sub:${sub.email}`, JSON.stringify(sub));
-          } catch (e) { /* best-effort */ }
         } else {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'no deals for digest' });
