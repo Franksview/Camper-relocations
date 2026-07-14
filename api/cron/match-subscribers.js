@@ -137,7 +137,6 @@ module.exports = async function handler(req, res) {
   if (!redis) return res.status(200).json({ ok: false, reason: 'no redis' });
 
   const now = new Date();
-  const isMonday = now.getUTCDay() === 1;
   const results = { sent: 0, drafts: 0, skipped: 0, errors: 0, details: [] };
 
   // ── Auto-send helper ──
@@ -542,14 +541,17 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ── Generic subscribers: weekly digest (Mondays), BUT new subs get an intro digest on any day ──
+    // ── Generic subscribers: one-time intro digest only ──
+    // Recurring weekly sends are owned solely by api/cron/weekly-digest.js (Wednesdays).
+    // This loop used to also resend every Monday, which duplicated weekly-digest.js's
+    // send with no shared dedup key — subscribers were getting the same digest twice
+    // a week. Now it fires exactly once per subscriber, right after signup.
     for (const sub of genericSubs) {
       try {
         const isFirstDigest = !sub.digestSent;
-        // Skip non-Monday runs only for subs that already received their intro digest
-        if (!isMonday && !isFirstDigest) {
+        if (!isFirstDigest) {
           results.skipped++;
-          results.details.push({ email: sub.email, reason: 'digest only on Mondays' });
+          results.details.push({ email: sub.email, reason: 'intro digest already sent — recurring sends handled by weekly-digest.js' });
           continue;
         }
 

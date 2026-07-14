@@ -224,6 +224,52 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Admin update (DASH_TOKEN-gated) ──
+  // Lets an authenticated process (dashboard, or the reply-to-alert automation)
+  // update a subscriber's city/date/flexibility without needing their personal
+  // prefs token — used when Frank (or automation reading his inbox) needs to
+  // action a request on the subscriber's behalf, e.g. a reply to a digest email.
+  if (req.query.action === 'admin-update') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const dashToken = process.env.DASH_TOKEN;
+    const token = req.query.token || req.headers['x-dash-token'];
+    if (!dashToken || token !== dashToken) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { email, city: newCity, date: newDate, flexibility: newFlex, note } = req.body || {};
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail) return res.status(400).json({ error: 'email required' });
+    if (!redis) return res.status(500).json({ error: 'Redis unavailable' });
+
+    try {
+      const raw = await redis.get(`sub:${normalizedEmail}`);
+      if (!raw) return res.status(404).json({ error: 'Subscriber not found' });
+      const sub = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const oldCity = sub.city;
+      const oldDate = sub.date;
+
+      if (newCity !== undefined) {
+        const rawNewCity = String(newCity).trim();
+        sub.city = rawNewCity ? normalizeCitySlug(rawNewCity) : 'any';
+      }
+      if (newDate !== undefined) sub.date = newDate || null;
+      if (newFlex !== undefined) sub.flexibility = parseInt(newFlex) || 7;
+
+      await redis.set(`sub:${normalizedEmail}`, JSON.stringify(sub));
+      await logEvent(redis, normalizedEmail, 'admin-preferences-updated', {
+        oldCity, newCity: sub.city, oldDate, newDate: sub.date, flexibility: sub.flexibility,
+        note: note || null,
+      });
+
+      return res.status(200).json({ ok: true, sub });
+    } catch (err) {
+      console.error('Admin update error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // ── GET: return subscriber count ──
   if (req.method === 'GET') {
     if (!redis) {
