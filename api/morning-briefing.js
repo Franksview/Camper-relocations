@@ -149,30 +149,30 @@ export default async function handler(req, res) {
       },
       {
         // Monday
-        emoji: '🔍', title: 'UTM-flavoured Imoova links per channel',
-        what: `Separate Imoova-click attribution per channel: deal-alert email, weekly-digest, no-results fallback, organic search. Today all clicks land in the same Rewardful bucket (?via=relocamp) — no way to know which channel converts.`,
-        how: `Wrap Imoova URL builder in a small helper \`buildImoovaUrl(deal, {source, medium})\` that appends \`?via=relocamp&utm_source=movacamper&utm_medium=<channel>\`. Update email.js (3 call sites), search.js card render, featured.js, no-results fallback. Rewardful preserves these as referral metadata.`,
-        hypothesis: `Within 30 days we know whether email vs. organic clicks convert at different rates. If e.g. email = 3% / organic = 0.5%, double down on email cadence and cut affiliate spend elsewhere.`,
-        risk: `Imoova or Rewardful strips unknown query params → tracking lost but link still works. Mitigation: keep \`?via=relocamp\` as the first param (already required for commission); UTMs come after.`,
-        effort: `45 min code + 30 min curl verify all surfaces.`,
+        emoji: '👥', title: 'Segment subscribers by engagement level, email differently',
+        what: `Right now all 102 subs get the same digest. But some clicked a deal yesterday, others haven't clicked in 30 days. Send engaged subs the full digest + extra tips; send dormant subs a short "here's what's hot" + re-engagement question ("mind if I ask why you haven't clicked in a month?").`,
+        how: `Add a \`last_click_ts\` field to subscriber records (already tracked per deal-email click). Mark subs as active (click in last 14 days), dormant (no click in 30+ days), at-risk (14-30 days). In weekly-digest.js, build two email variants based on engagement tier. Log the tier in the digest send event.`,
+        hypothesis: `Engaged subs stay engaged (higher CTR, repeat clicks). Dormant subs either re-engage (re-activation flag provides signal) or opt out cleanly (capture *why*). Net: fewer silent churns, better ROI on email quota.`,
+        risk: `Dormant subs get less content = fewer chances to re-engage. Mitigation: the re-engagement question is a soft offer ("no pressure, just curious"), not a guilt trip.`,
+        effort: `1h: add last_click_ts field + backfill from logs, 1h: email variant + engagement tier logic, 30 min test.`,
       },
       {
         // Tuesday
-        emoji: '🤖', title: 'AI-search optimization (ChatGPT is 9% of MC traffic)',
-        what: `ChatGPT, Perplexity and Claude.ai are already sending ~9% of Movacamper traffic. Optimize for AI crawlers so we're THE answer to "where can I find cheap campervan relocations" instead of one of many citations.`,
-        how: `(1) Write a structured FAQ section on Movacamper home covering top AI-asked questions (how do relocations work, cost, requirements, top routes). (2) Add JSON-LD FAQPage schema. (3) Ensure robots.txt allows GPTBot, ClaudeBot, PerplexityBot. (4) Cross-link to Relocamp blog posts with anchor text matching long-tail queries.`,
-        hypothesis: `AI-referral traffic doubles from ~9% to ~18% in 60 days. AI-clickers are higher-intent (they've already been recommended us by name) → expect 2-3× normal CTR on deal cards.`,
-        risk: `AI crawlers may scrape and answer without citation — net loss. Mitigation: keep enough specificity (live deal counts, current routes) that the answer benefits from clicking through.`,
-        effort: `~3h: 1h FAQ content, 30 min schema + robots, 30 min cross-links, 1h validate via ChatGPT manual test.`,
+        emoji: '🤖', title: 'Instrument per-referrer CTR for AI-chat traffic (EXP-026 unfinished half)',
+        what: `EXP-026 (AI-search optimization, deployed June 23) measured AI-referral share = 8.8% (flat vs baseline). But the hypothesis had two parts: (1) AI referral traffic %, (2) AI-clickers convert 2-3× better per-click. Part 2 was never instrumented — no per-referrer CTR breakdown exists. Time to measure it.`,
+        how: `In search.js, when building the deal card & click handler, tag each click with its referrer source (detect \`document.referrer\` + categorize as "ai-chat" if it's ChatGPT/Claude/Perplexity domain). Log referrer + deal + click + outcome (clicked or no). In morning-briefing.js, compute CTR per referrer (ai-chat / organic / email / etc) and compare to baseline. Update the \`ai_referral_verdict\` field with full verdict: "X% traffic, Y% CTR, conversion rate Z% vs baseline".`,
+        hypothesis: `AI-chat CTR is NOT 2-3× baseline. Most likely 0.8-1.2× because AI-users have already been answered by the AI itself — they're clicking our links out of curiosity/verification, not high-intent purchase. But measurement will show the real signal for whether to invest more in AI SEO.`,
+        risk: `Referrer spoofing / inconsistent tagging if users click through multiple hops. Mitigation: use first-party event tracking, not just document.referrer.`,
+        effort: `1.5h: add click-source tagging + event logging, 30 min: compute per-referrer CTR in briefing, 30 min: test.`,
       },
       {
         // Wednesday
-        emoji: '📧', title: 'Weekly cross-city digest to all 61 subs',
-        what: `Right now subs only get mails for their own city. Most cities have 0 deals most days → 97% of searches give nothing. A weekly Wednesday digest of TOP 5 cross-EU deals reframes "nothing for you" into "here's what's hot anywhere".`,
-        how: `New campaign \`weekly-digest-wed\` in api/broadcast.js. Pulls top 5 from \`/api/featured\`, builds an email card per deal with route + price + Book on Imoova CTA. Suppress for subs that opted into city-specific only. Schedule via Cowork task or Vercel cron.`,
-        hypothesis: `+30 extra Imoova clicks per week from 50 engaged subs at ~5% click rate. At 1% Rewardful conversion = ~1 extra booking/month = +$40 AUD/month.`,
-        risk: `Unsubscribe rate ↑ if subs find weekly mails too noisy. Mitigation: clear opt-out in footer + soft language ("ignore if not relevant").`,
-        effort: `~1.5h: campaign template + scheduling. Reuses comeback-jun26 plumbing.`,
+        emoji: '❓', title: 'Soft-unsubscribe flow: ask *why* before losing the subscriber',
+        what: `Right now when a subscriber clicks unsubscribe, they're gone. No feedback, no re-engagement chance. Add a quick step: a small form asking "mind if I ask why you're leaving?" with pre-filled options (too many emails, wrong city, not enough deals, personal reasons, other). Result: Frank knows *why* subs churn, can iterate.`,
+        how: `POST /api/subscribe?action=soft-unsubscribe&email=X&reason=too_many_emails. Record the reason in subscriber.unsubscribe_reason. Show a thank-you ("got it, you're unsubscribed, but we'll note that for next time") instead of just "done". In morning-briefing, compute unsubscribe reasons distribution: "3 left for too-noisy, 1 for wrong city". Frank reads the pattern.`,
+        hypothesis: `Learn the real churn drivers. If "too many emails" dominates, shift to bi-weekly. If "wrong city" dominates, improve city matching. If "not enough deals in my city", make Relocamp the fallback. Result: lower future churn, faster iteration on the thing that matters.`,
+        risk: `Users feel guilty or interrogated by the form. Mitigation: make it truly optional ("no pressure, but..."), 2 clicks max.`,
+        effort: `45 min: soft-unsubscribe endpoint + form UI, 30 min: reason logging + aggregation in briefing, 30 min test.`,
       },
       {
         // Thursday
@@ -185,12 +185,12 @@ export default async function handler(req, res) {
       },
       {
         // Friday
-        emoji: '🌱', title: 'Cross-link Relocamp from Movacamper SEO pages',
-        what: `Relocamp does ~20% of Movacamper traffic. Each Movacamper city result page should link to its Relocamp counterpart ("plan a full trip from Berlin →") and vice versa. Free SEO juice for both domains.`,
-        how: `In public/index.html search-results render, when there's a Relocamp \`/deals/<city>\` page (current set: Munich, Berlin, Amsterdam, Milan, Paris, Barcelona, Florence, Düsseldorf, Stuttgart), add a soft callout below the deal list: "Plan a multi-leg trip from <City> on Relocamp →". Same direction back from Relocamp city pages.`,
-        hypothesis: `Movacamper → Relocamp click-through ~5% on city pages. Boosts Relocamp organic visibility (more user-time, more shares, more backlinks).`,
-        risk: `Sends traffic AWAY from Movacamper without immediate Imoova click. Mitigation: only show callout AFTER user has seen 3+ deals (i.e. didn't click any yet) — captures the "this isn't for me" segment.`,
-        effort: `~45 min: lookup table of existing Relocamp city pages + conditional render.`,
+        emoji: '📍', title: 'Route "no results" searchers to Relocamp with city pre-filled',
+        what: `User searches "Budapest", gets 0 deals today. They leave empty-handed. But Relocamp has ~20 trips *from* Budapest right now. Instead of losing them, show a single-line callout: "Looking for trips from Budapest? Browse relocations on Relocamp →" with the city pre-filled. Real user value, feeds Relocamp, uses data Frank already has.`,
+        how: `In search.js renderSearchResults: if deals.length === 0 AND searchCity matches a Relocamp city page, append a soft card: "Relocamp has X active trips from <City>. Interested?" Link to relocamp.nl/deals/<city>?departure=<city>. Relocamp already has the deep-link structure for this.`,
+        hypothesis: `Capture ~10% of "no results" searchers (2-3 per week, at 50 visitors/week baseline). Each is a warm lead for Relocamp (pre-qualified: already thinking about campervan travel). Compounds subscriber base for the parallel ecosystem.`,
+        risk: `User feels redirected/dismissed ("you don't have what I want, so here, try this other site"). Mitigation: frame as a genuine offer ("here's what's available from your city"), not a fallback. Make it one click, not a full redirect.`,
+        effort: `30 min: detect no-results case + condition check, 30 min: build callout card, 15 min: verify Relocamp deep-link handling.`,
       },
       {
         // Saturday
