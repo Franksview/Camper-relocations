@@ -70,6 +70,13 @@ const CAMPAIGNS = {
     validUntil: '2026-06-30',
     build: (sub) => buildCamper26Email(sub),
   },
+  'testimonial-jul18': {
+    subject: 'Did you book a relocation with us? \ud83d\udcf8',
+    fromName: 'Frank from Movacamper',
+    validFrom: '2026-07-18',
+    validUntil: '2026-08-31',
+    build: (sub) => buildTestimonialEmail(sub),
+  },
 };
 
 // ─── HTML escape helper ───
@@ -258,6 +265,58 @@ function buildCamper26Email(sub) {
 
   <p style="font-size:14px;color:#374151;margin:16px 0 6px;">Happy travels,</p>
   <p style="font-size:14px;color:#374151;margin:0 0 24px;">Frank · Movacamper</p>
+
+  <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
+    <a href="${esc(unsubUrl)}" style="font-size:12px;color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── Testimonial-ask email builder (jul 2026) ───
+// Why this exists: Rewardful/Imoova explicitly don't share who booked (privacy
+// policy, confirmed in their own commission-notification emails), so there is
+// no way to identify converters and reach out selectively. This asks the whole
+// active list instead — a low-pressure, honest invite to self-identify by
+// replying, in exchange for being featured (with permission) as a real trip
+// story. No incentive/discount; the ask itself is the content.
+function buildTestimonialEmail(sub) {
+  const email = sub?.email || 'preview@example.com';
+  const unsubUrl = getUnsubUrl(email);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movacamper — did you book a relocation?</title>
+</head>
+<body style="margin:0;padding:0;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;line-height:1.6;">
+<div style="max-width:560px;margin:0 auto;padding:24px 20px;">
+
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-family:Georgia,serif;font-size:1.5rem;color:#2d6a4f;font-weight:700;">Movacamper</div>
+  </div>
+
+  <h2 style="font-family:Georgia,serif;font-size:1.4rem;font-weight:400;color:#1f2937;margin:0 0 16px;">📸 Did you book a relocation with us?</h2>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">Hey there,</p>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">Quick, slightly odd request — if you booked a campervan relocation after finding it through Movacamper or Relocamp, we honestly have no way of knowing it was you. Our booking partner keeps customer details private, even from us.</p>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">So if that's you: just hit reply and tell us about the trip. Where did you go, how was the drive, anything that stood out. A photo would be great too.</p>
+
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 18px;margin:22px 0;">
+    <p style="font-size:14px;color:#1f2937;margin:0;line-height:1.6;">🚐 <strong>Why we're asking:</strong><br>
+    We'd love to feature a few real trips on the site — first name only, or fully anonymous if you'd rather. Real stories from real travelers, not stock photos. Totally your call, and only with your OK.</p>
+  </div>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 14px;">No worries at all if this isn't you — this is just an open invite, not a survey. Nothing else changes either way.</p>
+
+  <p style="font-size:15px;color:#374151;margin:18px 0 6px;">Happy travels,</p>
+  <p style="font-size:15px;color:#374151;margin:0 0 24px;">Frank · Movacamper</p>
 
   <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
     <a href="${esc(unsubUrl)}" style="font-size:12px;color:#9ca3af;text-decoration:underline;">Unsubscribe</a>

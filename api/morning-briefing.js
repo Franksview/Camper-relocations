@@ -137,17 +137,13 @@ export default async function handler(req, res) {
     // ── 4. Rotating marketing tip — 5-section proposal format ──────────────
     // Each tip is a complete worked-out proposal, not a one-liner. Sections:
     //   what / how / hypothesis / risk / effort. Frank approves with ja/nee.
-    const tips = [
-      {
-        // Sunday
-        emoji: '📊', title: 'Weekly inventory review: prune dead HUB_CITIES',
-        what: `Audit which HUB_CITIES actually saw deals in the last 7 days of inventory snapshots, and decide whether to swap inactive ones for current-trending origins (Florence, Stuttgart, Düsseldorf).`,
-        how: `Read \`stats:imoova_pool\` for last 7 days, list origins per day, mark any HUB_CITY with 0 appearances. Edit HUB_CITIES in api/lib/search-core.js + add multilingual aliases in email.js. Update Relocamp city pages to match (already done for Florence/Stuttgart/Düsseldorf).`,
-        hypothesis: `Cron pre-fetches 10 cities daily. Replacing dead hubs with trending ones raises cron-pool from 4-6 → 10-15 deals on the same daily fetch budget.`,
-        risk: `Removing a hub kills future matches for subs in that city. Mitigation: keep all sub-cities (Amsterdam, Lisbon, Valencia, London, Paris, Munich, Berlin) regardless of inventory — only swap unused legacy hubs.`,
-        effort: `30 min code + 30 min verify.`,
-      },
-      {
+    // Only 4 days/week get a proposal (Mon/Tue/Wed/Fri) — these are the ones
+    // rewritten July 15 2026 against actual shipped/measured state. Sun/Thu/Sat
+    // were dropped: their old entries were stale, unverified leftovers from the
+    // June 13 rewrite (see the Saturday exit-intent-modal case, July 18 2026).
+    const dayNames = ['Zon', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+    const tipsByDay = {
+      1: {
         // Monday
         emoji: '👥', title: 'Segment subscribers by engagement level, email differently',
         what: `Right now all 102 subs get the same digest. But some clicked a deal yesterday, others haven't clicked in 30 days. Send engaged subs the full digest + extra tips; send dormant subs a short "here's what's hot" + re-engagement question ("mind if I ask why you haven't clicked in a month?").`,
@@ -156,7 +152,7 @@ export default async function handler(req, res) {
         risk: `Dormant subs get less content = fewer chances to re-engage. Mitigation: the re-engagement question is a soft offer ("no pressure, just curious"), not a guilt trip.`,
         effort: `1h: add last_click_ts field + backfill from logs, 1h: email variant + engagement tier logic, 30 min test.`,
       },
-      {
+      2: {
         // Tuesday
         emoji: '🤖', title: 'Instrument per-referrer CTR for AI-chat traffic (EXP-026 unfinished half)',
         what: `EXP-026 (AI-search optimization, deployed June 23) measured AI-referral share = 8.8% (flat vs baseline). But the hypothesis had two parts: (1) AI referral traffic %, (2) AI-clickers convert 2-3× better per-click. Part 2 was never instrumented — no per-referrer CTR breakdown exists. Time to measure it.`,
@@ -165,7 +161,7 @@ export default async function handler(req, res) {
         risk: `Referrer spoofing / inconsistent tagging if users click through multiple hops. Mitigation: use first-party event tracking, not just document.referrer.`,
         effort: `1.5h: add click-source tagging + event logging, 30 min: compute per-referrer CTR in briefing, 30 min: test.`,
       },
-      {
+      3: {
         // Wednesday
         emoji: '❓', title: 'Soft-unsubscribe flow: ask *why* before losing the subscriber',
         what: `Right now when a subscriber clicks unsubscribe, they're gone. No feedback, no re-engagement chance. Add a quick step: a small form asking "mind if I ask why you're leaving?" with pre-filled options (too many emails, wrong city, not enough deals, personal reasons, other). Result: Frank knows *why* subs churn, can iterate.`,
@@ -174,16 +170,7 @@ export default async function handler(req, res) {
         risk: `Users feel guilty or interrogated by the form. Mitigation: make it truly optional ("no pressure, but..."), 2 clicks max.`,
         effort: `45 min: soft-unsubscribe endpoint + form UI, 30 min: reason logging + aggregation in briefing, 30 min test.`,
       },
-      {
-        // Thursday
-        emoji: '⏰', title: 'Per-deal expiry countdown on deal cards',
-        what: `Every Imoova deal has an \`available_to_date\`. Render a real countdown badge per card: "🔥 Expires in 2 days" (red), "Expires this week" (amber), "X days left" (subtle). Real urgency, no fake countdowns.`,
-        how: `Calculate \`days_remaining = available_to_date - today\` in search.js (already in the deal object). Add to deal payload. In public/index.html renderDealCard: small badge above price block. Sort deals so most-urgent come first.`,
-        hypothesis: `Per-deal urgency lifts CTR on result pages from ~5/page baseline to ~7/page. Most-urgent-first sort also drives bookings to the deals that genuinely need a driver fast = higher Imoova conversion.`,
-        risk: `Sorting by urgency demotes flexible deals which may be better matches for some users. Mitigation: keep secondary sort by perfectness (date+location match).`,
-        effort: `45 min code + 30 min CSS tuning + verify.`,
-      },
-      {
+      5: {
         // Friday
         emoji: '📍', title: 'Route "no results" searchers to Relocamp with city pre-filled',
         what: `User searches "Budapest", gets 0 deals today. They leave empty-handed. But Relocamp has ~20 trips *from* Budapest right now. Instead of losing them, show a single-line callout: "Looking for trips from Budapest? Browse relocations on Relocamp →" with the city pre-filled. Real user value, feeds Relocamp, uses data Frank already has.`,
@@ -192,18 +179,9 @@ export default async function handler(req, res) {
         risk: `User feels redirected/dismissed ("you don't have what I want, so here, try this other site"). Mitigation: frame as a genuine offer ("here's what's available from your city"), not a fallback. Make it one click, not a full redirect.`,
         effort: `30 min: detect no-results case + condition check, 30 min: build callout card, 15 min: verify Relocamp deep-link handling.`,
       },
-      {
-        // Saturday
-        emoji: '📩', title: 'Exit-intent / scroll-up subscribe modal',
-        what: `Modal triggered on desktop exit-intent (mouse leaves viewport top) and mobile scroll-up (user scrolled past content, then up — strong leave intent). Headline pre-filled with city they searched: "Don't see what you need? Get notified when <City> deals appear."`,
-        how: `Desktop: mouseout y<5. Mobile: scroll-up >100px after scrolled ≥80% AND ≥5s engagement. Suppression: localStorage 7-day cooldown, 14d after dismiss, never if already subscribed. Reuses subscribeFromCity() — no backend changes.`,
-        hypothesis: `Subscriber rate from 3.1% of visitors → 4.5-5.5% within 14 days. At today's 50 visitors/day = +1 sub/day → +30 subs/month → larger weekly-digest audience compounds with the Wednesday-digest tip above.`,
-        risk: `Google mobile interstitial penalty if shown too early. Mitigation: trigger only AFTER engagement (5s + 80% scroll), occupies <70% viewport, easy close. Track dismiss rate — kill if >50% in week 1.`,
-        effort: `~2h: modal HTML/CSS, trigger logic, suppression localStorage, tracking events.`,
-      },
-    ];
+    };
 
-    const tip = tips[new Date().getDay()];
+    const tip = tipsByDay[new Date().getDay()];
 
     // ── 5. HTML email ────────────────────────────────────────────────────────
     const dateStr = new Date().toLocaleDateString('nl-NL', {
@@ -335,10 +313,10 @@ export default async function handler(req, res) {
       </tr>
     </table>
   </td></tr>
-  <tr><td style="height:12px"></td></tr>
+  ${tip ? `<tr><td style="height:12px"></td></tr>
   <tr><td style="background:#0f2318;border:1px solid #14532d;border-radius:12px;padding:18px 20px">
     <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#4ade80;letter-spacing:1.5px;text-transform:uppercase">
-      ${tip.emoji} Proposal — ${['Zon','Ma','Di','Wo','Do','Vr','Za'][new Date().getDay()]}
+      ${tip.emoji} Proposal — ${dayNames[new Date().getDay()]}
     </p>
     <p style="margin:0 0 12px;color:#fff;font-size:16px;font-weight:700">${tip.title}</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.55">
@@ -349,7 +327,7 @@ export default async function handler(req, res) {
       <tr><td style="padding:4px 0;color:#86efac;vertical-align:top;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Effort</td><td style="color:#dcfce7;padding:4px 0">${tip.effort}</td></tr>
     </table>
     <p style="margin:14px 0 0;color:#86efac;font-size:12px;font-style:italic">Reply "ja", "nee" of een aanpassing.</p>
-  </td></tr>
+  </td></tr>` : ''}
   <tr><td style="height:20px"></td></tr>
   <tr><td style="text-align:center">
     <p style="margin:0;color:#334155;font-size:11px">
