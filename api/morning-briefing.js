@@ -111,6 +111,20 @@ export default async function handler(req, res) {
       pageviews: deltas(rcTs, 'pageviews'),
     };
 
+    // ── 2b. New SEO landing pages — cumulative views since launch ────────────
+    // Simple "did it bring any traffic" signal for pages built as experiments
+    // (e.g. /deals/munich, launched 2026-07-19). Not a daily delta — just the
+    // running total from stats.top_pages (60-day window), so it grows visibly
+    // in the briefing if the page is picking up traffic and stays flat if not.
+    const SEO_WATCH_PAGES = [
+      { path: '/deals/munich', label: 'Munich deals page' },
+    ];
+    const seoPageViews = SEO_WATCH_PAGES.map(({ path, label }) => ({
+      label,
+      path,
+      views: (stats.top_pages || []).find(p => p.path === path)?.count || 0,
+    }));
+
     // ── 3. Subscriber + email stats ──────────────────────────────────────────
     const subscribersTotal = subsData.total || 0;
     const allLogs = logData.log || [];
@@ -273,6 +287,18 @@ export default async function handler(req, res) {
         <td style="color:#94a3b8;font-size:12px;text-align:right">Emails sent today: <strong style="color:#fff">${sentToday}</strong></td>
       </tr>
     </table>
+  </td></tr>
+  <tr><td style="height:12px"></td></tr>
+  <tr><td style="background:#1e293b;border-radius:12px;padding:18px 20px">
+    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#a3e635;letter-spacing:1.5px;text-transform:uppercase">&#9679; SEO pages (new)</p>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      ${seoPageViews.map(p => `
+      <tr>
+        <td style="color:#94a3b8;font-size:12px">${p.label} <span style="color:#64748b">(${p.path})</span></td>
+        <td style="text-align:right;color:#fff;font-weight:700;font-size:16px">${p.views}</td>
+      </tr>`).join('')}
+    </table>
+    <p style="margin:8px 0 0;color:#64748b;font-size:11px">Total views since launch — not a daily delta. Flat at 0 means no traffic yet.</p>
   </td></tr>
   <tr><td style="height:12px"></td></tr>
   <tr><td style="background:#1e293b;border-radius:12px;padding:18px 20px">

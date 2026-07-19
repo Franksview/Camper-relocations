@@ -580,10 +580,21 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── Top pages (Vercel) ──
-    const topPages = (vercelPages?.data || []).map(d => ({
-      path: d.key, count: d.total, visitors: d.devices,
-    }));
+    // ── Top pages (Vercel + Redis merged, max per path) ──
+    // Same rationale as top_referrers below: Redis logs every page path via
+    // api/track.js regardless of whether Vercel Web Analytics is even wired up
+    // for a given static page, so it must not be Vercel-only.
+    const pageMap = new Map();
+    for (const d of (vercelPages?.data || [])) {
+      pageMap.set(d.key, { path: d.key, count: d.total, visitors: d.devices });
+    }
+    for (const { path, count } of redisData.topPages) {
+      const existing = pageMap.get(path);
+      if (!existing || count > existing.count) {
+        pageMap.set(path, { path, count, visitors: existing?.visitors });
+      }
+    }
+    const topPages = [...pageMap.values()].sort((a, b) => b.count - a.count);
 
     // ── Top referrers (Vercel + Redis merged, max per domain) ──
     // Redis already logs referrer domain on every pageview (api/track.js), so it
@@ -652,7 +663,7 @@ export default async function handler(req, res) {
 
 // ── Redis: fetch search/subscribe/city/referrer data ──
 async function fetchRedisData(redis, dates) {
-  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [], topReferrers: [] };
+  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [], topReferrers: [], topPages: [] };
   if (!redis) return empty;
 
   try {
@@ -668,6 +679,7 @@ async function fetchRedisData(redis, dates) {
       pipe.get(`stats:evt:search_results:${date}`);       // 7: search results
       pipe.get(`stats:evt:search_no_results:${date}`);    // 8: search no results
       pipe.hgetall(`stats:ref:${date}`);                  // 9: referrer domains
+      pipe.hgetall(`stats:pages:${date}`);                // 10: page paths
     }
 
     const rawResults = await pipe.exec();
@@ -676,9 +688,10 @@ async function fetchRedisData(redis, dates) {
     const daily = [];
     const allCities = {};
     const allReferrers = {};
+    const allPages = {};
 
     for (let i = 0; i < dates.length; i++) {
-      const base = i * 10;
+      const base = i * 11;
       const searches = parseInt(results[base]) || 0;
       const subscribes = parseInt(results[base + 1]) || 0;
       const cities = results[base + 2] || {};
@@ -689,6 +702,7 @@ async function fetchRedisData(redis, dates) {
       const searchResults = parseInt(results[base + 7]) || 0;
       const searchNoResults = parseInt(results[base + 8]) || 0;
       const referrers = results[base + 9] || {};
+      const pages = results[base + 10] || {};
 
       daily.push({ searches, subscribes, deal_clicks: dealClicks, deal_views: dealViews, trip_adds: tripAdds, trip_shares: tripShares, search_results: searchResults, search_no_results: searchNoResults });
 
@@ -698,6 +712,9 @@ async function fetchRedisData(redis, dates) {
       for (const [k, v] of Object.entries(referrers)) {
         if (k === 'direct') continue;
         allReferrers[k] = (allReferrers[k] || 0) + (parseInt(v) || 0);
+      }
+      for (const [k, v] of Object.entries(pages)) {
+        allPages[k] = (allPages[k] || 0) + (parseInt(v) || 0);
       }
     }
 
@@ -711,7 +728,12 @@ async function fetchRedisData(redis, dates) {
       .slice(0, 20)
       .map(([source, count]) => ({ source, count }));
 
-    return { daily, topCities, topReferrers };
+    const topPages = Object.entries(allPages)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([path, count]) => ({ path, count }));
+
+    return { daily, topCities, topReferrers, topPages };
   } catch (err) {
     console.error('Redis fetch error:', err.message);
     return empty;
