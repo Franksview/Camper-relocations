@@ -356,8 +356,15 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Timeout safety: max 15 city groups per cron run
-      if (cityGroupsProcessed >= 15) {
+      // Timeout safety: max 60 city groups per cron run. Was 15 until 20 juli —
+      // with a fixed (non-rotating) processing order that silently starved every
+      // group past #15 forever (confirmed: madrid/faro sat past the cutoff for
+      // days with live matching deals and zero sends). Raised now that all
+      // current subscriber cities are in HUB_CITIES, so the per-group exact-deal
+      // check is Imoova-only (shared 60s-cached fetch, ~free) rather than hitting
+      // the live per-city Haiku web-search fallback — so more groups per run no
+      // longer means meaningfully more time or API cost.
+      if (cityGroupsProcessed >= 60) {
         for (const sub of subs) {
           results.skipped++;
           results.details.push({ email: sub.email, reason: 'deferred (batch limit)' });

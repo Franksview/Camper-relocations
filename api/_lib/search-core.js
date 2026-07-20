@@ -381,6 +381,15 @@ export const HUB_CITIES = [
   // present in Imoova's 12-14 juni rotation that weren't yet pre-fetched.
   // Free per-city (60s cache shares the single global EU fetch since juni 10).
   'oslo', 'madrid', 'bari', 'bologna', 'seville',
+  // Added 20 juli — every current subscriber city, hubbed so the daily
+  // match cron's exact-deal check for them stays Imoova-only (free, shared
+  // fetch) instead of falling into the live per-city Haiku web-search path.
+  // These cities were sitting past the cron's city-group processing cap and
+  // never got matched; hubbing them let that cap be raised safely (see
+  // match-subscribers.js).
+  'sydney', 'flensburg', 'milan', 'marseille', 'stockholm', 'toulouse',
+  'bilbao', 'edinburgh', 'venice', 'valencia', 'trondheim', 'rome',
+  'naples', 'alicante', 'faro', 'tromso', 'antwerp', 'rosenheim', 'zurich',
 ];
 
 // ── Helper Functions ──
