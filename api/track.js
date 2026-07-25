@@ -115,6 +115,18 @@ export default async function handler(req, res) {
   const pre = source === 'relocamp' ? 'relo:' : '';
   const ownDomain = source === 'relocamp' ? 'relocamp.vercel.app' : 'movacamper.com';
 
+  // Referrer domain for deal_click / deal_view — feeds per-referrer CTR
+  // (EXP-026 part 2: is AI-chat traffic actually converting, not just visiting?).
+  // Separate from the pageview referrer block below on purpose: that one counts
+  // every pageview, this one only counts deal interactions, so mixing them would
+  // double-count against the AI-referral visitor-share denominator.
+  let dealRefDomain = null;
+  if (referrer && referrer !== '' && !referrer.includes(ownDomain)) {
+    try {
+      dealRefDomain = new URL(referrer).hostname.replace(/^www\./, '');
+    } catch (e) { /* malformed referrer, skip */ }
+  }
+
   try {
     // TTL for all keys: 90 days — MUST be defined before any reference below.
     // Pre-existing bug (fixed april 20): ttl was declared after deal_click block,
@@ -165,6 +177,11 @@ export default async function handler(req, res) {
       const inc = Math.max(1, Math.min(parseInt(count) || 1, 20));
       pipe.hincrby(`${pre}stats:city_views:${date}`, city.toLowerCase().trim(), inc);
       pipe.expire(`${pre}stats:city_views:${date}`, ttl);
+      // Per-referrer-domain counter (CTR denominator)
+      if (dealRefDomain) {
+        pipe.hincrby(`${pre}stats:deal_view_ref:${date}`, dealRefDomain, inc);
+        pipe.expire(`${pre}stats:deal_view_ref:${date}`, ttl);
+      }
     }
 
     // Store deal_click details — provider, route, timestamp (last 200 clicks)
@@ -183,6 +200,11 @@ export default async function handler(req, res) {
       if (provider) {
         pipe.hincrby(`${pre}stats:clicks_by_provider:${date}`, provider.toLowerCase(), 1);
         pipe.expire(`${pre}stats:clicks_by_provider:${date}`, ttl);
+      }
+      // Per-referrer-domain counter (CTR numerator)
+      if (dealRefDomain) {
+        pipe.hincrby(`${pre}stats:deal_click_ref:${date}`, dealRefDomain, 1);
+        pipe.expire(`${pre}stats:deal_click_ref:${date}`, ttl);
       }
     }
 

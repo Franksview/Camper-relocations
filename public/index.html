@@ -5217,9 +5217,12 @@ function scrollToSearch() {
     referrer: document.referrer || null,
   });
 
-  // Expose for search and subscribe events
+  // Expose for search and subscribe events. Referrer is only available once
+  // (document.referrer doesn't change mid-session) — resend it on every event
+  // so deal_click/deal_view can be attributed back to the referrer domain
+  // (feeds per-referrer CTR, EXP-026 part 2).
   window._mcTrack = function(event, extra) {
-    track({ page: location.pathname, event: event, ...extra });
+    track({ page: location.pathname, event: event, referrer: document.referrer || null, ...extra });
   };
 })();
 </script>

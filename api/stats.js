@@ -644,6 +644,8 @@ export default async function handler(req, res) {
       },
       timeseries,
       top_referrers: topReferrers,
+      top_referrers_deal_clicks: redisData.topReferrersDealClicks,
+      top_referrers_deal_views: redisData.topReferrersDealViews,
       top_pages: topPages,
       top_search_cities: redisData.topCities,
       countries,
@@ -663,7 +665,7 @@ export default async function handler(req, res) {
 
 // ── Redis: fetch search/subscribe/city/referrer data ──
 async function fetchRedisData(redis, dates) {
-  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [], topReferrers: [], topPages: [] };
+  const empty = { daily: dates.map(() => ({ searches: 0, subscribes: 0, deal_clicks: 0, deal_views: 0, trip_adds: 0, trip_shares: 0, search_results: 0, search_no_results: 0 })), topCities: [], topReferrers: [], topPages: [], topReferrersDealClicks: [], topReferrersDealViews: [] };
   if (!redis) return empty;
 
   try {
@@ -680,6 +682,8 @@ async function fetchRedisData(redis, dates) {
       pipe.get(`stats:evt:search_no_results:${date}`);    // 8: search no results
       pipe.hgetall(`stats:ref:${date}`);                  // 9: referrer domains
       pipe.hgetall(`stats:pages:${date}`);                // 10: page paths
+      pipe.hgetall(`stats:deal_click_ref:${date}`);       // 11: deal clicks by referrer domain
+      pipe.hgetall(`stats:deal_view_ref:${date}`);        // 12: deal views by referrer domain
     }
 
     const rawResults = await pipe.exec();
@@ -689,9 +693,11 @@ async function fetchRedisData(redis, dates) {
     const allCities = {};
     const allReferrers = {};
     const allPages = {};
+    const allDealClickRef = {};
+    const allDealViewRef = {};
 
     for (let i = 0; i < dates.length; i++) {
-      const base = i * 11;
+      const base = i * 13;
       const searches = parseInt(results[base]) || 0;
       const subscribes = parseInt(results[base + 1]) || 0;
       const cities = results[base + 2] || {};
@@ -703,6 +709,8 @@ async function fetchRedisData(redis, dates) {
       const searchNoResults = parseInt(results[base + 8]) || 0;
       const referrers = results[base + 9] || {};
       const pages = results[base + 10] || {};
+      const dealClickRef = results[base + 11] || {};
+      const dealViewRef = results[base + 12] || {};
 
       daily.push({ searches, subscribes, deal_clicks: dealClicks, deal_views: dealViews, trip_adds: tripAdds, trip_shares: tripShares, search_results: searchResults, search_no_results: searchNoResults });
 
@@ -715,6 +723,12 @@ async function fetchRedisData(redis, dates) {
       }
       for (const [k, v] of Object.entries(pages)) {
         allPages[k] = (allPages[k] || 0) + (parseInt(v) || 0);
+      }
+      for (const [k, v] of Object.entries(dealClickRef)) {
+        allDealClickRef[k] = (allDealClickRef[k] || 0) + (parseInt(v) || 0);
+      }
+      for (const [k, v] of Object.entries(dealViewRef)) {
+        allDealViewRef[k] = (allDealViewRef[k] || 0) + (parseInt(v) || 0);
       }
     }
 
@@ -733,7 +747,18 @@ async function fetchRedisData(redis, dates) {
       .slice(0, 20)
       .map(([path, count]) => ({ path, count }));
 
-    return { daily, topCities, topReferrers, topPages };
+    // Referrer-domain breakdown of deal clicks/views — feeds per-referrer CTR
+    // (EXP-026 part 2). Not capped to top-20 like the lists above: morning-briefing
+    // needs the full set to sum an accurate AI-chat-vs-other split.
+    const topReferrersDealClicks = Object.entries(allDealClickRef)
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => ({ source, count }));
+
+    const topReferrersDealViews = Object.entries(allDealViewRef)
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => ({ source, count }));
+
+    return { daily, topCities, topReferrers, topPages, topReferrersDealClicks, topReferrersDealViews };
   } catch (err) {
     console.error('Redis fetch error:', err.message);
     return empty;

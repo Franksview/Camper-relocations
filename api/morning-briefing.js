@@ -45,22 +45,47 @@ export default async function handler(req, res) {
     // baseline measured mid-June 2026, before the June 23 AI-search deploy
     // (FAQPage schema + robots.txt allows for GPTBot/ClaudeBot/PerplexityBot).
     let aiReferral = null;
+    let aiCtr = null;
     try {
       if (ai14Res.ok) {
         const ai14 = await ai14Res.json();
         const totalVisitors = ai14.totals?.visitors || 0;
         const AI_CHAT_KEYWORDS = ['chatgpt', 'openai', 'perplexity', 'claude', 'anthropic'];
+        const isAiChat = r => AI_CHAT_KEYWORDS.some(k => (r.source || '').toLowerCase().includes(k));
         const bingCount = (ai14.top_referrers || [])
           .filter(r => (r.source || '').toLowerCase().includes('bing'))
           .reduce((s, r) => s + (r.count || 0), 0);
         const aiChatCount = (ai14.top_referrers || [])
-          .filter(r => AI_CHAT_KEYWORDS.some(k => (r.source || '').toLowerCase().includes(k)))
+          .filter(isAiChat)
           .reduce((s, r) => s + (r.count || 0), 0);
         if (totalVisitors >= 50) {
           const pct = Math.round((aiChatCount / totalVisitors) * 1000) / 10;
           aiReferral = { pct, count: aiChatCount, bingCount, totalVisitors, enoughData: true };
         } else {
           aiReferral = { totalVisitors, enoughData: false };
+        }
+
+        // ── Per-referrer CTR (EXP-026 part 2) ──────────────────────────────────
+        // The AI-search hypothesis had two halves: (1) does AI-chat referral share
+        // grow, (2) do AI-chat-referred visitors click deals at a higher rate. Part
+        // 1 is aiReferral above; this is part 2, using per-referrer deal_click /
+        // deal_view counts from api/track.js (shipped 2026-07-25).
+        const sumAiChat = arr => (arr || []).filter(isAiChat).reduce((s, r) => s + (r.count || 0), 0);
+        const sumAll    = arr => (arr || []).reduce((s, r) => s + (r.count || 0), 0);
+
+        const aiClicks = sumAiChat(ai14.top_referrers_deal_clicks);
+        const aiViews  = sumAiChat(ai14.top_referrers_deal_views);
+        const otherClicks = sumAll(ai14.top_referrers_deal_clicks) - aiClicks;
+        const otherViews  = sumAll(ai14.top_referrers_deal_views) - aiViews;
+
+        const MIN_VIEWS_FOR_CTR = 20;
+        if (aiViews >= MIN_VIEWS_FOR_CTR && otherViews >= MIN_VIEWS_FOR_CTR) {
+          const aiCtrPct    = Math.round((aiClicks / aiViews) * 1000) / 10;
+          const otherCtrPct = Math.round((otherClicks / otherViews) * 1000) / 10;
+          const ratio = otherCtrPct > 0 ? Math.round((aiCtrPct / otherCtrPct) * 100) / 100 : null;
+          aiCtr = { aiCtrPct, otherCtrPct, aiClicks, aiViews, otherClicks, otherViews, ratio, enoughData: true };
+        } else {
+          aiCtr = { aiViews, otherViews, enoughData: false };
         }
       }
     } catch { /* best-effort — don't fail the whole briefing over this */ }
@@ -151,10 +176,13 @@ export default async function handler(req, res) {
     // ── 4. Rotating marketing tip — 5-section proposal format ──────────────
     // Each tip is a complete worked-out proposal, not a one-liner. Sections:
     //   what / how / hypothesis / risk / effort. Frank approves with ja/nee.
-    // Only 4 days/week get a proposal (Mon/Tue/Wed/Fri) — these are the ones
+    // Only 3 days/week get a proposal (Mon/Wed/Fri) — these are the ones
     // rewritten July 15 2026 against actual shipped/measured state. Sun/Thu/Sat
     // were dropped: their old entries were stale, unverified leftovers from the
     // June 13 rewrite (see the Saturday exit-intent-modal case, July 18 2026).
+    // Tuesday's proposal ("instrument per-referrer CTR for AI-chat traffic")
+    // was dropped 2026-07-25 — it shipped (see the aiCtr block above + EXP-026
+    // in _learning/experiments.md), so pitching it as unbuilt would be stale.
     const dayNames = ['Zon', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
     const tipsByDay = {
       1: {
@@ -165,15 +193,6 @@ export default async function handler(req, res) {
         hypothesis: `Engaged subs stay engaged (higher CTR, repeat clicks). Dormant subs either re-engage (re-activation flag provides signal) or opt out cleanly (capture *why*). Net: fewer silent churns, better ROI on email quota.`,
         risk: `Dormant subs get less content = fewer chances to re-engage. Mitigation: the re-engagement question is a soft offer ("no pressure, just curious"), not a guilt trip.`,
         effort: `1h: add last_click_ts field + backfill from logs, 1h: email variant + engagement tier logic, 30 min test.`,
-      },
-      2: {
-        // Tuesday
-        emoji: '🤖', title: 'Instrument per-referrer CTR for AI-chat traffic (EXP-026 unfinished half)',
-        what: `EXP-026 (AI-search optimization, deployed June 23) measured AI-referral share = 8.8% (flat vs baseline). But the hypothesis had two parts: (1) AI referral traffic %, (2) AI-clickers convert 2-3× better per-click. Part 2 was never instrumented — no per-referrer CTR breakdown exists. Time to measure it.`,
-        how: `In search.js, when building the deal card & click handler, tag each click with its referrer source (detect \`document.referrer\` + categorize as "ai-chat" if it's ChatGPT/Claude/Perplexity domain). Log referrer + deal + click + outcome (clicked or no). In morning-briefing.js, compute CTR per referrer (ai-chat / organic / email / etc) and compare to baseline. Update the \`ai_referral_verdict\` field with full verdict: "X% traffic, Y% CTR, conversion rate Z% vs baseline".`,
-        hypothesis: `AI-chat CTR is NOT 2-3× baseline. Most likely 0.8-1.2× because AI-users have already been answered by the AI itself — they're clicking our links out of curiosity/verification, not high-intent purchase. But measurement will show the real signal for whether to invest more in AI SEO.`,
-        risk: `Referrer spoofing / inconsistent tagging if users click through multiple hops. Mitigation: use first-party event tracking, not just document.referrer.`,
-        effort: `1.5h: add click-source tagging + event logging, 30 min: compute per-referrer CTR in briefing, 30 min: test.`,
       },
       3: {
         // Wednesday
@@ -251,9 +270,12 @@ export default async function handler(req, res) {
     const AI_REFERRAL_GOAL_PCT = 18;
     const aiReferralVerdict = (() => {
       if (!aiReferral || !aiReferral.enoughData) return 'Not enough data yet.';
-      if (aiReferral.pct >= AI_REFERRAL_GOAL_PCT * 0.85) return `Tracking toward the ${AI_REFERRAL_GOAL_PCT}% goal.`;
-      if (aiReferral.pct >= AI_REFERRAL_BASELINE_PCT) return 'Flat vs baseline.';
-      return 'Declined vs baseline — investigate.';
+      const trafficVerdict = aiReferral.pct >= AI_REFERRAL_GOAL_PCT * 0.85
+        ? `Tracking toward the ${AI_REFERRAL_GOAL_PCT}% goal`
+        : (aiReferral.pct >= AI_REFERRAL_BASELINE_PCT ? 'Flat vs baseline' : 'Declined vs baseline — investigate');
+      if (!aiCtr || !aiCtr.enoughData) return `${trafficVerdict}. (CTR: not enough data yet)`;
+      const ctrCompare = aiCtr.ratio != null ? ` (${aiCtr.ratio}x non-AI referrers' ${aiCtr.otherCtrPct}%)` : '';
+      return `${aiReferral.pct}% traffic, ${trafficVerdict.toLowerCase()}. ${aiCtr.aiCtrPct}% CTR${ctrCompare}.`;
     })();
 
     const html = `<!DOCTYPE html>
@@ -318,8 +340,18 @@ export default async function handler(req, res) {
         <td style="color:#94a3b8;font-size:12px">ChatGPT / Perplexity / Claude share of visitors</td>
         <td style="text-align:right;color:#fff;font-weight:700;font-size:16px">${aiReferral.pct}%</td>
       </tr>
+      ${aiCtr && aiCtr.enoughData ? `
+      <tr>
+        <td style="color:#94a3b8;font-size:12px">AI-chat deal-click CTR (${aiCtr.aiClicks}/${aiCtr.aiViews} views)</td>
+        <td style="text-align:right;color:#fff;font-weight:700;font-size:16px">${aiCtr.aiCtrPct}%</td>
+      </tr>
+      <tr>
+        <td style="color:#94a3b8;font-size:12px">Non-AI referrer CTR (${aiCtr.otherClicks}/${aiCtr.otherViews} views)</td>
+        <td style="text-align:right;color:#fff;font-weight:700;font-size:16px">${aiCtr.otherCtrPct}%</td>
+      </tr>
+      ` : ''}
     </table>
-    <p style="margin:8px 0 0;color:#64748b;font-size:11px">Baseline (mid-June, pre AI-search deploy): 9%. ${aiReferralVerdict}</p>
+    <p style="margin:8px 0 0;color:#64748b;font-size:11px">Baseline (mid-June, pre AI-search deploy): 9% traffic share. ${aiReferralVerdict}</p>
     ` : `<p style="margin:0;color:#64748b;font-size:12px">Not enough data yet (${aiReferral.totalVisitors} visitors in last 14 days, need 50+).</p>`}
   </td></tr>
   <tr><td style="height:12px"></td></tr>` : ''}
@@ -399,6 +431,8 @@ export default async function handler(req, res) {
       cron_ran_yesterday:    cronRanYesterday,
       ai_referral_pct_14d:   aiReferral?.enoughData ? aiReferral.pct : null,
       ai_referral_verdict:   aiReferralVerdict,
+      ai_referral_ctr_pct:   aiCtr?.enoughData ? aiCtr.aiCtrPct : null,
+      ai_referral_ctr_ratio: aiCtr?.enoughData ? aiCtr.ratio : null,
       resend_id:             sendData.id,
     });
 
