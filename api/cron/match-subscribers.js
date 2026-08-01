@@ -14,8 +14,11 @@
 //     we bypass the throttle and send ASAP. Perfect deals appear first in the email.
 //
 // No drafts:
-//   - In AUTO_SEND mode the cron never creates drafts. If we have no deals in the
-//     sub's region today, we silently skip and try again tomorrow.
+//   - In AUTO_SEND mode the cron never creates drafts. If we have no deals
+//     anywhere near the sub's region today, we silently skip and try again
+//     tomorrow (Scenario 3). If deals exist in the sub's own city/region but
+//     none match their date window, we DO email — asking if they're flexible
+//     (Scenario 2.6) — since that's a real, actionable deal, not nothing.
 //   - Non-EU subs are handled by the same pipeline (no special-case draft). In
 //     practice they get nothing unless a perfect deal somehow matches.
 //
@@ -196,7 +199,7 @@ module.exports = async function handler(req, res) {
 
   const {
     buildDealAlertEmail, buildDigestEmail,
-    buildNearbyAlertEmail, sendEmail,
+    buildNearbyAlertEmail, buildDateFlexAlertEmail, sendEmail,
   } = await getEmailHelpers();
 
   const {
@@ -494,6 +497,34 @@ module.exports = async function handler(req, res) {
               await logEvent(redis, sub.email, outcome === 'sent' ? 'nearby-alert-sent' : 'nearby-alert-drafted', {
                 city: sub.city, nearbyCities: nearbyWithDateMatch.map(g => `${g.city} (${g.distance}km)`),
                 totalDeals: totalNearby,
+              });
+            }
+            continue;
+          }
+
+          // ── Scenario 2.6: exact-region deals exist, but none match sub's dates ──
+          // Different from "no match anywhere" (Scenario 3): there IS a real deal in
+          // their own city/region, just outside their stated date window. Worth asking
+          // if they're flexible rather than staying silent. Freshness-checked the same
+          // way as other sends (autoSendOrDraft skips if these exact deals were already
+          // sent last time), so this won't re-nag daily about the same stale listing.
+          if (exactCandidates.length > 0) {
+            const emailData = buildDateFlexAlertEmail(sub, exactCandidates);
+            const dealFingerprints = exactCandidates.slice(0, 5).map(d => `${d.from}-${d.to}-${d.date_range}`);
+            const draft = {
+              to: sub.email, subject: emailData.subject, html: emailData.html,
+              type: 'date-flex-alert', city: sub.city,
+              deals: exactCandidates.slice(0, 5).map(d => ({
+                from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'Imoova',
+              })),
+              matchCount: exactCandidates.length,
+              created: now.toISOString(), status: 'draft',
+              source: subSource, fromName: brandName,
+            };
+            const outcome = await autoSendOrDraft(sub, emailData, draft, dealFingerprints);
+            if (outcome === 'sent' || outcome === 'draft') {
+              await logEvent(redis, sub.email, outcome === 'sent' ? 'date-flex-alert-sent' : 'date-flex-alert-drafted', {
+                city: sub.city, matchCount: exactCandidates.length,
               });
             }
             continue;

@@ -591,6 +591,52 @@ export function buildNearbyAlertEmail(subscriber, nearbyResults) {
   };
 }
 
+// ── Date Flex Alert (deal exists in subscriber's own city/region, but dates don't match) ──
+export function buildDateFlexAlertEmail(subscriber, deals) {
+  const { email, city, date, flexibility, source } = subscriber;
+  const lang = detectLanguage(city);
+  const unsubUrl = getUnsubUrl(email);
+  const prefsUrl = getPrefsUrl(email, source);
+  const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
+  const firstName = (subscriber.name || '').split(' ')[0];
+  const greeting = firstName ? `Hey ${firstName}` : 'Hey';
+
+  let content = `<h2>${greeting} — found something in ${cityDisplay}, wrong dates though</h2>\n`;
+  content += `<p>I spotted ${deals.length > 1 ? `${deals.length} campervan relocation deals` : 'a campervan relocation deal'} in <strong>${cityDisplay}</strong>`;
+  if (date) content += ` — just not around <strong>${date}</strong> (±${flexibility || 7} days), which is what you told me you needed`;
+  content += `. Here's what's there:</p>\n`;
+
+  for (const deal of deals.slice(0, 5)) {
+    const dealUrl = deal.url?.includes('imoova.com')
+      ? buildImoovaUrl(deal.url, { medium: 'email', campaign: 'date-flex-alert' })
+      : (deal.url || 'https://movacamper.com');
+    content += `<div class="deal">
+  <div class="route">${deal.from} → ${deal.to}</div>
+  <div class="meta">${deal.date_range || 'Flexible dates'} · ${deal.vehicle || 'Campervan'}</div>
+  <div class="price">${deal.price || '€1/day'}</div>
+  <a href="${dealUrl}">View deal →</a>
+</div>\n`;
+  }
+
+  content += `<div class="tip">🤔 Any chance your dates are flexible? If you can move your window, update your preferences and I'll match you to deals like this one automatically.</div>\n`;
+  content += `<p><a href="${prefsUrl}" class="btn">Update my dates</a></p>\n`;
+
+  // Local language
+  let localContent = '';
+  if (lang !== 'en' && TRANSLATIONS[lang]) {
+    localContent = '<hr class="divider">\n<div class="local">\n';
+    localContent += `<h3>🌍 ${t(lang, 'found_deals')}</h3>\n`;
+    localContent += `<p>${t(lang, 'happy_travels')}</p>\n`;
+    localContent += '</div>\n';
+  }
+
+  return {
+    to: email,
+    subject: `${cityDisplay} has a deal — just not on your dates. Flexible?`,
+    html: emailWrapper(content + localContent, unsubUrl, prefsUrl),
+  };
+}
+
 // ── No Match Email (nothing found anywhere nearby) ──
 export function buildNoMatchEmail(subscriber) {
   const { email, city, source } = subscriber;
