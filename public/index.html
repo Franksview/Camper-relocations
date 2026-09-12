@@ -327,6 +327,47 @@
     .provider-hint { font-size: 0.72rem; padding: 6px 12px; }
   }
 
+  /* ─── PATAGONIA CALLOUT (corner stamp badge, matches partner's own brand colors) ─── */
+  .patagonia-callout {
+    position: absolute;
+    top: -14px;
+    right: -10px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.78rem;
+    color: #F5F1EA;
+    background: #0A2529;
+    padding: 7px 14px 7px 8px;
+    border-radius: 999px;
+    text-decoration: none !important;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(10,37,41,0.5);
+    border: 2px solid #F5F1EA;
+    transform: rotate(-6deg);
+    animation: patagoniaWobble 2.2s ease-in-out infinite;
+    transform-origin: center;
+  }
+  .patagonia-callout .callout-new {
+    background: #7FD8C9;
+    color: #0A2529;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .patagonia-callout:hover { animation-play-state: paused; transform: rotate(0deg) scale(1.06); box-shadow: 0 4px 18px rgba(127,216,201,0.6); }
+  @keyframes patagoniaWobble {
+    0%, 100% { transform: rotate(-6deg) scale(1); }
+    50% { transform: rotate(3deg) scale(1.06); }
+  }
+  @media (max-width: 600px) {
+    .patagonia-callout { top: -12px; right: -6px; font-size: 0.68rem; padding: 6px 11px 6px 7px; }
+    .patagonia-callout svg { width: 16px; height: 16px; }
+  }
+
   /* ─── STICKY MOBILE SEARCH ─── */
   .sticky-search-bar {
     display: none;
@@ -364,6 +405,7 @@
   }
 
   .search-card {
+    position: relative;
     background: white;
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
@@ -2472,6 +2514,13 @@
   <!-- SEARCH (hero position) -->
   <section class="search-section">
     <div class="search-card" id="searchCard">
+      <a href="/patagonia" class="patagonia-callout">
+        <svg width="20" height="20" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+          <rect x="6" y="6" width="88" height="88" rx="22" stroke="#F5F1EA" stroke-width="8"/>
+          <text x="50" y="53" text-anchor="middle" dominant-baseline="central" font-size="40" font-weight="800" fill="#F5F1EA" font-family="Arial, Helvetica, sans-serif">R9</text>
+        </svg>
+        <span class="callout-new">NEW</span> Patagonia Travels →
+      </a>
       <h2 id="searchTitle">Where are you starting?</h2>
       <p style="font-size:0.85rem;color:var(--rust);margin:-8px 0 12px;font-weight:500;">One search covers 5 providers — always free, no signup.</p>
       <div class="form-row" style="grid-template-columns:1fr;">
@@ -2699,7 +2748,7 @@
 <footer>
   <p>Movacamper searches <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
-  <p style="margin-top:12px;"><a href="https://relocamp.nl" target="_blank" title="Plan multi-leg campervan relocation trips on a map">Trip Planner</a> · <a href="/deals/munich">Munich deals</a> · <a href="/about">About</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:hello@movacamper.com">hello@movacamper.com</a></p>
+  <p style="margin-top:12px;"><a href="https://relocamp.nl" target="_blank" title="Plan multi-leg campervan relocation trips on a map">Trip Planner</a> · <a href="/deals/munich">Munich deals</a> · <a href="/patagonia" title="Campervan, camping and driver listings across Patagonia">Patagonia relocations</a> · <a href="/about">About</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:hello@movacamper.com">hello@movacamper.com</a></p>
 </footer>
 
 <script>
