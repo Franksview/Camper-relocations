@@ -255,7 +255,7 @@ module.exports = async function handler(req, res) {
     const globalDealPool = [];
     await Promise.all(HUB_CITIES.map(async hub => {
       try {
-        const result = await fetchAllDealsForCity(hub, { radiusKm: 0, timeoutMs: 5000 });
+        const result = await fetchAllDealsForCity(hub, { radiusKm: 0, timeoutMs: 5000, apiKey: apiKey || null });
         dealCache.set(hub, result);
         for (const d of (result.exact || [])) {
           // Tag origin so we know where each deal was fetched from (debug + dedupe)
@@ -447,7 +447,7 @@ module.exports = async function handler(req, res) {
               to: sub.email, subject: emailData.subject, html: emailData.html,
               type: 'deal-alert', city: sub.city,
               deals: orderedDeals.slice(0, 5).map(d => ({
-                from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'Imoova',
+                from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'partner',
               })),
               matchCount: orderedDeals.length,
               perfectCount: perfectDeals.length,
@@ -459,7 +459,7 @@ module.exports = async function handler(req, res) {
               await logEvent(redis, sub.email, outcome === 'sent' ? 'deal-alert-sent' : 'deal-alert-drafted', {
                 city: sub.city, matchCount: orderedDeals.length,
                 perfectCount: perfectDeals.length,
-                providers: [...new Set(orderedDeals.map(d => d.provider || 'Imoova'))],
+                providers: [...new Set(orderedDeals.map(d => d.provider || 'partner'))],
               });
             }
             continue;
@@ -515,7 +515,7 @@ module.exports = async function handler(req, res) {
               to: sub.email, subject: emailData.subject, html: emailData.html,
               type: 'date-flex-alert', city: sub.city,
               deals: exactCandidates.slice(0, 5).map(d => ({
-                from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'Imoova',
+                from: d.from, to: d.to, price: d.price, date_range: d.date_range, provider: d.provider || 'partner',
               })),
               matchCount: exactCandidates.length,
               created: now.toISOString(), status: 'draft',
@@ -617,7 +617,7 @@ module.exports = async function handler(req, res) {
         for (const hub of HUB_CITIES.slice(0, 5)) {
           if (!dealCache.has(hub)) {
             try {
-              const { exact } = await fetchAllDealsForCity(hub, { radiusKm: 0, timeoutMs: 5000 });
+              const { exact } = await fetchAllDealsForCity(hub, { radiusKm: 0, timeoutMs: 5000, apiKey: apiKey || null });
               dealCache.set(hub, { exact, nearby: [] });
             } catch (e) {
               dealCache.set(hub, { exact: [], nearby: [] });

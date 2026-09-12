@@ -333,7 +333,7 @@ export function buildWelcomeEmail(subscriber) {
     if (date) enContent += ` around <strong>${date}</strong> (±${flexibility || 7} days)`;
     enContent += `. The moment something comes up, you'll get an email from me with all the details.</p>\n`;
   } else {
-    enContent += `<p>Great to have you! I'm Frank, and I run Movacamper. Every day I scan all the major relocation companies — Imoova, Roadsurfer, Bunk Campers, Movacar, and more — for cheap campervan deals across Europe.</p>\n`;
+    enContent += `<p>Great to have you! I'm Frank, and I run Movacamper. Every day I scan all the major relocation companies — Roadsurfer, Bunk Campers, Movacar, and more — for cheap campervan deals across Europe.</p>\n`;
     enContent += '<p>You\'ll get a weekly roundup of the best deals I find. If you want alerts for a specific city, just reply to this email!</p>\n';
   }
   enContent += '<p>In the meantime, have a look at what\'s available right now:</p>\n';
@@ -647,7 +647,7 @@ export function buildNoMatchEmail(subscriber) {
   const greeting = firstName ? `Hey ${firstName}` : 'Hey';
 
   const content = `<h2>${greeting} — still on the lookout!</h2>
-<p>Just a quick update: I've checked Imoova, Roadsurfer, Bunk Campers, Movacar, and more — and there's nothing near <strong>${cityDisplay}</strong> at the moment. Not even in nearby cities.</p>
+<p>Just a quick update: I've checked Roadsurfer, Bunk Campers, Movacar, and more — and there's nothing near <strong>${cityDisplay}</strong> at the moment. Not even in nearby cities.</p>
 <p>But here's the good news: relocation deals change constantly. Companies suddenly need vehicles moved, and new routes can appear overnight. I'm checking daily, and the moment something pops up near ${cityDisplay}, you'll be the first to know.</p>
 <div class="tip">💡 <strong>Quick tip:</strong> If you have a rough travel date in mind, let me know — it helps me match deals that actually fit your schedule. <a href="${prefsUrl}">Update your preferences here</a></div>
 <p>Want to see what's available right now in other parts of Europe? Some people grab a cheap FlixBus to a nearby pickup city:</p>

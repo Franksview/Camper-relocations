@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movacamper — Campervan Relocation Deals Across Europe</title>
-<meta name="description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip. Search live deals from Imoova, Roadsurfer, Indie Campers and more.">
+<meta name="description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip. Search live deals from Roadsurfer, Bunk Campers, Movacar and more.">
 <link rel="canonical" href="https://www.movacamper.com">
 <meta property="og:title" content="Movacamper — Campervan Relocation Deals Across Europe">
 <meta property="og:description" content="Drive a campervan across Europe from €1/day. Rental companies need vehicles relocated — you get a cheap road trip.">
@@ -64,7 +64,7 @@
       "name": "Where can I find cheap campervan relocation deals in Europe?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Movacamper searches live relocation deals from multiple providers (including Imoova, Roadsurfer, Indie Campers, Bunk Campers and Movacar) in one place, so you don't have to check each rental company's site separately. Search by city to see current one-way relocation deals across Europe."
+        "text": "Movacamper searches live relocation deals from multiple providers (including Roadsurfer, Indie Campers, Bunk Campers and Movacar) in one place, so you don't have to check each rental company's site separately. Search by city to see current one-way relocation deals across Europe."
       }
     },
     {
@@ -1161,7 +1161,6 @@
     letter-spacing: 0.04em;
   }
 
-  .provider-imoova { background: #fff3cd; color: #856404; }
   .provider-roadsurfer { background: #d4edda; color: #155724; }
   .provider-indie { background: #e3eef5; color: #2a5f8a; }
   .provider-bunk { background: #f0e6f6; color: #6a3d7d; }
@@ -2549,7 +2548,7 @@
       </div>
     </div>
     <div class="provider-hint">
-      Searching: Imoova · Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span class="free">100% free</span>
+      Searching: Roadsurfer · Indie Campers · Bunk Campers · Movacar — <span class="free">100% free</span>
     </div>
 
   </section>
@@ -2643,7 +2642,7 @@
     </div>
     <div class="trust-block">
       <h3>Where can I find cheap campervan relocation deals in Europe?</h3>
-      <p>Right here — Movacamper searches live deals from Imoova, Roadsurfer, Indie Campers, Bunk Campers and Movacar in one place. For inspiration on routes, check <a href="/blog/top-campervan-relocation-routes-europe.html">the top campervan relocation routes in Europe</a> or plan a multi-leg trip on <a href="https://relocamp.nl" target="_blank" rel="noopener">Relocamp</a>.</p>
+      <p>Right here — Movacamper searches live deals from Roadsurfer, Indie Campers, Bunk Campers and Movacar in one place. For inspiration on routes, check <a href="/blog/top-campervan-relocation-routes-europe.html">the top campervan relocation routes in Europe</a> or plan a multi-leg trip on <a href="https://relocamp.nl" target="_blank" rel="noopener">Relocamp</a>.</p>
     </div>
     <div class="trust-block">
       <h3>What do I need to book a campervan relocation?</h3>
@@ -2698,7 +2697,7 @@
 </div><!-- /.sections-wrapper -->
 
 <footer>
-  <p>Movacamper searches <a href="https://imoova.com?via=relocamp" target="_blank">Imoova</a>, <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
+  <p>Movacamper searches <a href="https://roadsurfer.com" target="_blank">Roadsurfer</a>, <a href="https://indiecampers.com" target="_blank">Indie Campers</a>, <a href="https://bunkcampers.com" target="_blank">Bunk Campers</a> and <a href="https://www.movacar.com" target="_blank">Movacar</a> for live deals.</p>
   <p style="margin-top:4px;">Deals change daily. Always confirm details on the provider's website before booking.</p>
   <p style="margin-top:12px;"><a href="https://relocamp.nl" target="_blank" title="Plan multi-leg campervan relocation trips on a map">Trip Planner</a> · <a href="/deals/munich">Munich deals</a> · <a href="/about">About</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="mailto:hello@movacamper.com">hello@movacamper.com</a></p>
 </footer>
@@ -3200,7 +3199,6 @@ const AFFILIATE_LINKS = {
   euroSleeper: (from, to) => `https://www.europeansleeper.eu/en`,
   camperdays: (city) => `https://www.awin1.com/cread.php?awinmid=52885&awinaffid=1795498&ued=${encodeURIComponent('https://www.camperdays.com')}`,  // Awin affiliate — homepage (search?location= returns 404)
   bestcamper: (city) => `https://www.awin1.com/cread.php?awinmid=116447&awinaffid=2818714&ued=${encodeURIComponent('https://www.bestcamper.de/wohnmobile-mieten/' + city.toLowerCase().replace(/\s+/g,'-') + '/')}`,  // Awin — 3% commissie, approved 11 mei 2026
-  imoova:    (from, to) => buildImoovaUrl('https://www.imoova.com', 'organic', 'bridge'),
   // Movacar: €12/lead via Adcell. Replace ADCELL_MOVACAR_BID with bid= value from Adcell program details once approved.
   // Format: https://t.adcell.com/click.php?bid=ADCELL_MOVACAR_BID&link=DESTINATION_URL
   movacar:   (from, to) => {
@@ -3673,18 +3671,6 @@ function renderBridgeBlock(fromCity, dealCount) {
     `;
   }
 
-  // Camper rental
-  html += `
-    <a href="${AFFILIATE_LINKS.imoova(fromCity, bestRoute.hub)}" target="_blank" rel="noopener" class="bridge-option camper">
-      <span class="transport-icon">&#128656;</span>
-      <div class="transport-info">
-        <div class="transport-name">Rent a camper to ${hubInfo.label}</div>
-        <div class="transport-detail">Drive there via Imoova — full road trip experience</div>
-      </div>
-      <span class="transport-price">from ~€85/day</span>
-    </a>
-  `;
-
   html += `</div>`;
 
   // Also show other hubs as quick links
@@ -3738,14 +3724,14 @@ function browseAll() {
         date_range: d.date_range || 'Flexible',
         vehicle: d.vehicle || 'Campervan',
         seats: d.seats,
-        provider: d.provider || 'Imoova',
+        provider: d.provider || 'partner',
         url: d.url || '#',
         direction_match: false
       }));
       currentDeals = deals;
-      let html = `<div class="browse-header"><h3>&#x1F30D; ${deals.length} deals available right now</h3><p>Live relocation deals from <strong>${data.hub || 'top European hubs'}</strong> via Imoova. Search a specific city above for results from all 5 providers.</p></div>`;
+      let html = `<div class="browse-header"><h3>&#x1F30D; ${deals.length} deals available right now</h3><p>Live relocation deals from <strong>${data.hub || 'top European hubs'}</strong>. Search a specific city above for results from all providers.</p></div>`;
       deals.forEach((deal, i) => { html += renderDealCard({...deal, _utmCampaign: 'featured'}, i); });
-      html += '<div class="browse-tip">💡 <strong>Want more results?</strong> Search a specific city above to get deals from all 5 providers including Roadsurfer, Indie Campers, and more.</div>';
+      html += '<div class="browse-tip">💡 <strong>Want more results?</strong> Search a specific city above to get deals from all providers including Roadsurfer, Indie Campers, and more.</div>';
       container.innerHTML = html;
     })
     .catch(err => {
@@ -3889,7 +3875,6 @@ async function doSearch() {
         <div class="loading-van"><img src="/van-icon.png" alt="campervan" /></div>
       </div>
       <div class="loading-providers" id="loadingProviders">
-        <span class="loading-provider" data-p="imoova">Imoova</span>
         <span class="loading-provider" data-p="roadsurfer">Roadsurfer</span>
         <span class="loading-provider" data-p="indie">Indie Campers</span>
         <span class="loading-provider" data-p="bunk">Bunk Campers</span>

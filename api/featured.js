@@ -1,18 +1,9 @@
 // Vercel Serverless — Movacamper Featured Deals API
-// Returns top deals from the live Imoova pool for homepage showcase / no-results fallback
-// Shares the scraper with api/search.js (api/lib/search-core.js) so deep-link URLs
-// (relocations/deal/<slug>-RLC<id>) match the post-2026-06 Imoova site rebuild.
-
-import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL } from './_lib/search-core.js';
-
-const cache = new Map();
-const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours (deals don't change that fast)
-
-async function fetchImoovaDeals() {
-  const { html } = await fetchImoovaPage('featured');
-  if (!html) return [];
-  return parseImoovaHtml(html);
-}
+// 2026-09: was sourced entirely from Imoova's global pool. Imoova removed as a
+// data source/affiliate partner (see decisions.md) and there's no drop-in
+// replacement for a city-less "featured" feed — the Haiku search path needs a
+// city to search from. Returns an honest empty state until a replacement
+// source is wired in, rather than erroring or silently serving stale data.
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,46 +12,10 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Check cache
-  const cacheKey = 'featured';
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.time < CACHE_TTL) {
-    return res.status(200).json(cached.data);
-  }
-
-  try {
-    const limit = parseInt(req.query?.limit) || 3;
-
-    const deals = await fetchImoovaDeals();
-
-    // Take top N diverse deals (different destinations)
-    const seen = new Set();
-    const featured = [];
-    for (const deal of deals) {
-      const destKey = deal.to.toLowerCase();
-      if (!seen.has(destKey) && featured.length < limit) {
-        seen.add(destKey);
-        featured.push({
-          ...deal,
-          url: buildImoovaUrl(deal.url || IMOOVA_FALLBACK_URL, { medium: 'organic', campaign: 'featured' }),
-        });
-      }
-    }
-
-    const result = {
-      deals: featured,
-      hub: featured.length > 0 ? featured[0].from : 'Munich',
-      total_available: deals.length,
-      timestamp: new Date().toISOString(),
-    };
-
-    if (featured.length > 0) {
-      cache.set(cacheKey, { data: result, time: Date.now() });
-    }
-
-    return res.status(200).json(result);
-  } catch (err) {
-    console.error('Featured API error:', err);
-    return res.status(500).json({ error: 'Failed to fetch featured deals' });
-  }
+  return res.status(200).json({
+    deals: [],
+    hub: null,
+    total_available: 0,
+    timestamp: new Date().toISOString(),
+  });
 }

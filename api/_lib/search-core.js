@@ -577,11 +577,7 @@ export function cleanCityName(name) {
 }
 
 export function identifyProvider(vehicleName) {
-  const name = (vehicleName || '').toLowerCase();
-  if (/eu\s*(active|comfort|standard)|vw\s*california|atlas|nomad|etrusco|comfort\s*family|selena/i.test(name)) {
-    return 'Indie Campers via Imoova';
-  }
-  return 'Imoova';
+  return 'Unknown';
 }
 
 // ── Haiku Web Search ──
@@ -621,7 +617,10 @@ export async function callHaikuWebSearch(apiKey, prompt, attempt = 1) {
   return response;
 }
 
-// Build a Haiku prompt for searching deals from a city (other providers, Imoova handled separately)
+// Build a Haiku prompt for searching deals from a city.
+// 2026-09: Imoova removed as a data source/affiliate partner (their terms only
+// cover personal link-sharing, not aggregator listings — see decisions.md).
+// Do NOT search for or list Imoova under any circumstance.
 export function buildHaikuFromPrompt(from, nearby, date, flexibility) {
   const nearbyCityNames = nearby.map(n => capitalize(n.city)).slice(0, 5);
   const dateClause = date
@@ -633,10 +632,12 @@ export function buildHaikuFromPrompt(from, nearby, date, flexibility) {
 
   return `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
 
-Search for these providers ONLY (Imoova already handled separately):
+Search for these providers ONLY:
 1. "roadsurfer rally relocations from ${from}"
 2. "bunk campers relocation deals ${from}"
 3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"
+
+Do NOT include Imoova / imoova.com in any results, even if it appears in search results — Imoova is excluded entirely.
 
 IMPORTANT for Movacar:
 - Movacar has BOTH campervan/camper AND regular car relocations
@@ -656,48 +657,16 @@ Respond with ONLY a JSON array:
 If nothing found: []`;
 }
 
-// ── Fetch all deals for a city (Imoova + nearby, returns structured result) ──
+// ── Fetch all deals for a city (Haiku providers + nearby, returns structured result) ──
+// 2026-09: Imoova removed as a data source (see buildHaikuFromPrompt comment).
+// fetchImoovaPage/parseImoovaHtml remain exported below for the internal-only
+// inventory snapshot in match-subscribers.js — never for public/subscriber results.
 export async function fetchAllDealsForCity(city, { radiusKm = 300, timeoutMs = 5000, apiKey = null } = {}) {
   const slug = normalizeCitySlug(city);
   const nearby = getNearbyCities(city, radiusKm);
 
-  // Cities to fetch from Imoova: primary + top 3 nearby
-  const citiesToFetch = [
-    { city: slug, distance: 0, label: city },
-    ...nearby.slice(0, 3),
-  ];
-
-  // Fetch Imoova in parallel for all cities. Since 2026-06 the fetch always returns
-  // the global EU pool (Imoova removed per-city SSR), so we filter each result down
-  // to deals originating in the requested city.
-  const imoovaResults = await Promise.all(
-    citiesToFetch.map(({ city: c, distance }) =>
-      fetchImoovaPage(c, timeoutMs)
-        .then(({ html }) => {
-          const all = html ? parseImoovaHtml(html) : [];
-          const cSlug = normalizeCitySlug(c);
-          const deals = all.filter(d => normalizeCitySlug(d.from || '') === cSlug);
-          return { city: c, distance, deals };
-        })
-        .catch(() => ({ city: c, distance, deals: [] }))
-    )
-  );
-
-  // Categorize: exact matches vs nearby matches
   const exactDeals = [];
   const nearbyDeals = []; // { city, distance, deals[] }
-
-  for (const result of imoovaResults) {
-    if (result.distance === 0) {
-      exactDeals.push(...result.deals);
-    } else if (result.deals.length > 0) {
-      nearbyDeals.push({
-        city: capitalize(result.city),
-        distance: result.distance,
-        deals: result.deals,
-      });
-    }
-  }
 
   // If we have an API key, also search Haiku for other providers
   let otherDeals = [];

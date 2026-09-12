@@ -1,13 +1,15 @@
-// Vercel Serverless Function — Movacamper v6.2
-// Hybrid: direct Imoova fetch (primary + nearby cities) + Claude Haiku for other providers
-// Uses shared search-core module for all scraping/parsing logic
+// Vercel Serverless Function — Movacamper v7
+// 2026-09: Imoova removed as a data source/affiliate partner — their terms only
+// cover personal link-sharing, not aggregator listings, and suspended our account
+// over it (see decisions.md). Deals now come solely from Claude Haiku web_search
+// across the remaining providers (Roadsurfer, Bunk Campers, Movacar).
+// Uses shared search-core module for parsing/city logic.
 
 import {
-  HAIKU_MODEL, ANTHROPIC_VERSION, IMOOVA_FALLBACK_URL, DEFAULT_PRICE,
+  DEFAULT_PRICE,
   NEARBY_CITIES, normalizeCitySlug, capitalize, formatDateRange,
-  getNearbyCities, fetchImoovaPage, parseImoovaHtml,
+  getNearbyCities,
   cleanCityName, identifyProvider, extractJsonArray, callHaikuWebSearch,
-  buildImoovaUrl,
 } from './_lib/search-core.js';
 
 const cache = new Map();
@@ -79,35 +81,7 @@ export default async function handler(req, res) {
 
   try {
     const nearby = from ? getNearbyCities(from, searchRadius) : [];
-
-    // === STEP 1 & 2: Run Imoova fetches AND Haiku web_search IN PARALLEL ===
-
-    let imoovaPromise;
     const nearbyCitiesSearched = [];
-
-    if (from) {
-      const citiesToFetch = [
-        { city: from, distance: 0 },
-        ...nearby.slice(0, 3),
-      ];
-      console.log(`Imoova fetching: ${citiesToFetch.map(c => `${c.city} (${c.distance}km)`).join(', ')}`);
-
-      imoovaPromise = Promise.all(
-        citiesToFetch.map(({ city, distance }) =>
-          fetchImoovaPage(city, 5000)
-            .then(({ html }) => {
-              const all = html ? parseImoovaHtml(html) : [];
-              // 2026-06: Imoova fetch returns global EU pool; filter to origin city.
-              const citySlug = normalizeCitySlug(city);
-              const deals = all.filter(d => normalizeCitySlug(d.from || '') === citySlug);
-              return { city, distance, html, deals };
-            })
-            .catch(() => ({ city, distance, html: null, deals: [] }))
-        )
-      );
-    } else {
-      imoovaPromise = Promise.resolve([]);
-    }
 
     // -- Build Haiku prompt --
     const dirClause = headingTowards
@@ -129,10 +103,11 @@ export default async function handler(req, res) {
       prompt = `Search for campervan AND car relocation deals ARRIVING IN or near ${searchTo}.
 
 Search for ALL of these providers:
-1. "imoova relocations to ${searchTo} Europe"
-2. "roadsurfer rally relocations to ${searchTo}"
-3. "bunk campers relocation deals to ${searchTo}"
-4. "movacar camper relocation to ${searchTo}" OR "movacar.com mietwagen ${searchTo}"
+1. "roadsurfer rally relocations to ${searchTo}"
+2. "bunk campers relocation deals to ${searchTo}"
+3. "movacar camper relocation to ${searchTo}" OR "movacar.com mietwagen ${searchTo}"
+
+Do NOT include Imoova / imoova.com in any results — Imoova is excluded entirely.
 
 IMPORTANT for Movacar:
 - Movacar has BOTH campervan/camper AND regular car relocations
@@ -156,10 +131,12 @@ If nothing found: []`;
 
       prompt = `Search for campervan AND car relocation deals DEPARTING FROM ${from}.
 
-Search for these providers ONLY (Imoova already handled separately):
+Search for these providers ONLY:
 1. "roadsurfer rally relocations from ${from}"
 2. "bunk campers relocation deals ${from}"
 3. "movacar camper relocation from ${from}" OR "movacar.com mietwagen ${from}"
+
+Do NOT include Imoova / imoova.com in any results — Imoova is excluded entirely.
 
 IMPORTANT for Movacar:
 - Movacar has BOTH campervan/camper AND regular car relocations
@@ -180,95 +157,7 @@ Respond with ONLY a JSON array:
 If nothing found: []`;
     }
 
-    const haikuPromise = callHaikuWebSearch(apiKey, prompt);
-
-    // -- Await both in parallel --
-    const [fetchResults, haikuResponse] = await Promise.all([imoovaPromise, haikuPromise]);
-
-    // -- Process Imoova results --
-    let imoovaDeals = [];
-    for (const result of fetchResults) {
-      if (result.deals.length > 0) {
-        if (result.distance > 0) {
-          nearbyCitiesSearched.push({ city: result.city, distance: result.distance });
-        }
-        for (const deal of result.deals) {
-          deal._nearbyDistance = result.distance;
-          deal._nearbyCity = result.distance > 0 ? result.city : null;
-        }
-        imoovaDeals.push(...result.deals);
-      }
-    }
-
-    console.log(`Imoova total deals: ${imoovaDeals.length} (${fetchResults[0]?.deals?.length || 0} primary + ${imoovaDeals.length - (fetchResults[0]?.deals?.length || 0)} nearby)`);
-
-    // Haiku fallback for primary city if SSR parsing found nothing
-    const primaryHtml = fetchResults[0]?.html;
-    const primaryDeals = fetchResults[0]?.deals || [];
-    if (primaryHtml && primaryDeals.length === 0 && primaryHtml.length > 500) {
-      console.log('SSR parsing found nothing for primary city, trying Haiku parser...');
-      const imoovaText = primaryHtml
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&[a-z]+;/gi, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 6000);
-
-      try {
-        const parseResp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': ANTHROPIC_VERSION,
-          },
-          body: JSON.stringify({
-            model: HAIKU_MODEL,
-            max_tokens: 2000,
-            messages: [{ role: 'user', content: `Extract campervan relocation deals from this Imoova page. Only deals DEPARTING FROM ${from}.
-
-PAGE TEXT:
-${imoovaText}
-
-Return ONLY a JSON array:
-[{"from":"city","to":"city","date_range":"dates","price":"price","vehicle":"name","seats":0,"provider":"Imoova","url":"url","description":"summary"}]
-
-If no deals: []` }],
-            system: 'Data extraction API. Output ONLY valid JSON arrays. No commentary.',
-          }),
-        });
-
-        if (parseResp.ok) {
-          const fallbackDeals = extractJsonArray(await parseResp.json());
-          for (const d of fallbackDeals) {
-            d._nearbyDistance = 0;
-            d._nearbyCity = null;
-          }
-          imoovaDeals.push(...fallbackDeals);
-          console.log('Haiku parsed Imoova deals:', fallbackDeals.length);
-        }
-      } catch (e) {
-        console.error('Haiku Imoova parse error:', e.message);
-      }
-    }
-
-    // Format Imoova deals
-    const formattedImoovaDeals = imoovaDeals.map(d => ({
-      from: cleanCityName(d.from),
-      to: cleanCityName(d.to),
-      date_range: d.date_range || 'unknown',
-      price: d.price || DEFAULT_PRICE,
-      vehicle: d.vehicle || 'Campervan',
-      seats: d.seats || 0,
-      provider: d.provider || identifyProvider(d.vehicle),
-      url: buildImoovaUrl(d.url || IMOOVA_FALLBACK_URL, { medium: 'organic', campaign: 'search' }),
-      direction_match: false,
-      description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || DEFAULT_PRICE),
-      nearby_distance: d._nearbyDistance || 0,
-      nearby_from: d._nearbyCity || null,
-    }));
+    const haikuResponse = await callHaikuWebSearch(apiKey, prompt);
 
     // -- Process Haiku results --
     let otherDeals = [];
@@ -291,14 +180,28 @@ If no deals: []` }],
         const dealFrom = (d.from || '').toLowerCase().trim();
         const dist = nearbyLookup[dealFrom];
         if (dist !== undefined && dealFrom !== fromLower) {
+          nearbyCitiesSearched.push({ city: dealFrom, distance: dist });
           return { ...d, nearby_distance: dist, nearby_from: d.from };
         }
         return { ...d, nearby_distance: 0, nearby_from: null };
       });
     }
 
-    // === STEP 3: Merge, sort & deduplicate ===
-    let allDeals = [...formattedImoovaDeals, ...otherDeals];
+    // === Merge, sort & deduplicate ===
+    let allDeals = otherDeals.map(d => ({
+      from: cleanCityName(d.from),
+      to: cleanCityName(d.to),
+      date_range: d.date_range || 'unknown',
+      price: d.price || DEFAULT_PRICE,
+      vehicle: d.vehicle || 'Campervan',
+      seats: d.seats || 0,
+      provider: d.provider || identifyProvider(d.vehicle),
+      url: d.url || '#',
+      direction_match: !!d.direction_match,
+      description: d.description || (d.vehicle || 'Campervan') + ', ' + (d.price || DEFAULT_PRICE),
+      nearby_distance: d.nearby_distance || 0,
+      nearby_from: d.nearby_from || null,
+    }));
 
     if (headingTowards) {
       const target = headingTowards.toLowerCase();
@@ -309,17 +212,11 @@ If no deals: []` }],
       }));
     }
 
-    // Imoova affiliate priority: treat Imoova deals as if they are 25km closer than other providers.
-    // Commissions doubled May 2026 — only provider with active tracking.
-    const IMOOVA_DISTANCE_BONUS = 25;
     allDeals.sort((a, b) => {
-      const aImoova = (a.provider || '').toLowerCase().includes('imoova');
-      const bImoova = (b.provider || '').toLowerCase().includes('imoova');
-      const distA = (a.nearby_distance || 0) - (aImoova ? IMOOVA_DISTANCE_BONUS : 0);
-      const distB = (b.nearby_distance || 0) - (bImoova ? IMOOVA_DISTANCE_BONUS : 0);
+      const distA = a.nearby_distance || 0;
+      const distB = b.nearby_distance || 0;
       if (distA !== distB) return distA - distB;
-      if (a.direction_match !== b.direction_match) return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
-      return aImoova === bImoova ? 0 : (aImoova ? -1 : 1);
+      return (b.direction_match ? 1 : 0) - (a.direction_match ? 1 : 0);
     });
 
     // Deduplicate
@@ -336,8 +233,6 @@ If no deals: []` }],
       seenCrossCity.add(crossKey);
       return true;
     });
-
-    const nearbyDealCount = formattedImoovaDeals.filter(d => d.nearby_from).length;
 
     // Urgency/social-proof signals — best-effort, never blocks the response.
     // views_today: HGET stats:city_views:<today>:<from-slug> (populated by track.js
@@ -373,15 +268,10 @@ If no deals: []` }],
         count: allDeals.length,
         cached: false,
         timestamp: new Date().toISOString(),
-        sources: { imoova_direct: formattedImoovaDeals.length, web_search: otherDeals.length },
+        sources: { web_search: otherDeals.length },
         signals,
       },
       debug: {
-        imoovaFetched: true,
-        imoovaPrimaryDeals: formattedImoovaDeals.length - nearbyDealCount,
-        imoovaNearbyCities: nearbyCitiesSearched.length,
-        imoovaNearbyCityDeals: nearbyDealCount,
-        imoovaFallbackUsed: formattedImoovaDeals.length === 0,
         otherParsed: otherDeals.length,
       },
     };

@@ -1,16 +1,20 @@
 // Vercel Cron — Weekly Cross-City Digest
 // Runs every Wednesday at 08:00 UTC.
 //
-// Fetches the top 5 live Imoova deals (any city) and sends them to all active
+// Fetches the top 5 live deals (any city) and sends them to all active
 // subscribers who haven't opted out of digests. Unlike the daily matcher which
 // only emails subs when a deal matches their specific city, this one contacts
 // everyone — the point is to show what's hot across Europe this week.
 //
 // Suppressed for subs who received any email in the last 2 days (already active).
 // Rate-limited at 4 emails/sec to stay within Resend free tier.
+//
+// 2026-09: Imoova removed as a data source/affiliate partner (see decisions.md).
+// There's no drop-in replacement for a city-less "any deal" feed, so fetchTopDeals
+// returns [] until a replacement source is wired in — the existing "no deals ->
+// skip send" path below handles that gracefully.
 
 import { buildDigestEmail, sendEmail } from '../_lib/email.js';
-import { fetchImoovaPage, parseImoovaHtml, buildImoovaUrl, IMOOVA_FALLBACK_URL } from '../_lib/search-core.js';
 
 const DIGEST_SENT_KEY_PREFIX = 'digest:weekly:sent:';
 const AUTO_SEND_LOG_KEY = 'email:auto-sent-log';
@@ -45,29 +49,8 @@ async function getRedis() {
 }
 
 async function fetchTopDeals(limit = 5) {
-  try {
-    const { html } = await fetchImoovaPage('featured');
-    if (!html) return [];
-    const raw = parseImoovaHtml(html);
-
-    // Diverse destinations — one deal per destination city
-    const seen = new Set();
-    const top = [];
-    for (const deal of raw) {
-      const destKey = (deal.to || '').toLowerCase();
-      if (!seen.has(destKey) && top.length < limit) {
-        seen.add(destKey);
-        top.push({
-          ...deal,
-          url: buildImoovaUrl(deal.url || IMOOVA_FALLBACK_URL, { medium: 'email', campaign: 'weekly-digest-wed' }),
-        });
-      }
-    }
-    return top;
-  } catch (err) {
-    console.error('[weekly-digest] fetchTopDeals error:', err.message);
-    return [];
-  }
+  // No live data source since Imoova removal — see file header comment.
+  return [];
 }
 
 function computeStats(deals) {
